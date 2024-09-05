@@ -1,3 +1,26 @@
-<h1 class="text-3xl font-bold underline">
-  Hello world!
-</h1>
+<nav class="h-screen flex items-center bg-gray-800 text-white">
+  <ul>
+    <li>
+      <a [routerLink]="['feed']">Feed</a>
+    </li>
+    <li>
+      <a [routerLink]="['profile']">Profile</a>
+    </li>
+    <li>
+      <a [routerLink]="['ranking']">Ranking</a>
+    </li>
+    <li>
+      <a [routerLink]="['task-list']">Task List</a>
+    </li>
+    <li>
+      <a [routerLink]="['conversations']">Conversations</a>
+    </li>
+    <li>
+      <a [routerLink]="['settings']">Settings</a>
+    </li>
+  </ul>
+</nav>
+<section class="grid-cols-1">
+  <router-outlet />
+  <section>side bar</section>
+</section>

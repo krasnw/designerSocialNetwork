@@ -1,12 +1,16 @@
 import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { RouterOutlet, RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.css'
+  imports: [RouterOutlet, RouterLink],
+  templateUrl: `app.component.html`,
+  styles: `
+    :host {
+      display: flex;
+      flex-direction: row;
+    }
+  `,
 })
-export class AppComponent {
-}
+export class AppComponent {}
