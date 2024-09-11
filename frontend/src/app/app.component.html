@@ -20,7 +20,11 @@
     </li>
   </ul>
 </nav>
-<section class="grid-cols-1">
-  <router-outlet />
-  <section>side bar</section>
+<section class="h-screen flex flex-row justify-between">
+  <div class="flex-grow-2">
+    <router-outlet></router-outlet>
+  </div>
+  <div class="flex-grow">
+    <section>side bar</section>
+  </div>
 </section>
