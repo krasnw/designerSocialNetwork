@@ -16,11 +16,15 @@ export default {
   <section class="main-content">
     <router-view v-slot="{ Component }">
       <transition name="move" mode="out-in">
-        <component :is="Component" />
+        <KeepAlive>
+          <component :is="Component" />
+        </KeepAlive>
       </transition>
     </router-view>
   </section>
 </template>
+
+
 
 <style>
 /* Basic styling */
