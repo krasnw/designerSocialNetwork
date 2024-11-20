@@ -68,6 +68,7 @@ a:hover {
   text-decoration: underline;
 }
 
+p,
 h1,
 h2,
 h3,
@@ -143,6 +144,11 @@ textarea:hover {
   z-index: 0;
 }
 
+.post-like {
+  display: flex;
+  align-items: center;
+}
+
 /* Animations */
 .move-enter-active,
 .move-leave-active {
@@ -158,5 +164,20 @@ textarea:hover {
 .move-leave-to {
   opacity: 0;
   transform: translateY(-100%);
+}
+
+/* global animations */
+@keyframes scaleAnimation {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(0.9);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 </style>

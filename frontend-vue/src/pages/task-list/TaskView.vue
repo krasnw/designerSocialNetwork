@@ -14,20 +14,36 @@ export default {
       type: String,
       required: true
     }
+  },
+  data() {
+    return {
+      replay: false
+    };
+  },
+  methods: {
+    replayTask() {
+      this.replay = !this.replay;
+    }
   }
 };
 </script>
 
 <template>
-  <article class="background task">
+  <article class="background task" :class="{ 'task-with-replay': replay }">
     <span class="task-info">
       <img class="profile-picture" :src="userProfilePicture" alt="Profile Picture">
       <h4 class="username">{{ username }}</h4>
     </span>
     <p class="task-description">{{ description }}</p>
+
+    <textarea v-if="replay" class="replay-textarea" placeholder="Replay to the task"></textarea>
+
     <span class="control-buttons">
-      <button class="delete-button button">Remove</button>
-      <button class="accept-button button">Complete</button>
+      <button class="delete-button button" v-if="!replay">Remove</button>
+      <button class="delete-button button" @click="replay = false" v-else>Cancel</button>
+
+      <button @click="replayTask" class="accept-button button" v-if="!replay">Replay</button>
+      <button @click="replayTask" class="accept-button button" v-else>Send</button>
     </span>
   </article>
 </template>
@@ -38,6 +54,20 @@ export default {
   max-width: 925px;
   width: 80%;
   min-width: 550px;
+}
+
+.task-with-replay {
+  animation: incHeight 0.5s ease forwards;
+}
+
+@keyframes incHeight {
+  0% {
+    height: auto;
+  }
+
+  100% {
+    height: auto;
+  }
 }
 
 .username {
@@ -62,12 +92,18 @@ export default {
 .task-description {
   font-weight: 400;
   font-size: 18px;
+  margin-top: 16px;
+}
+
+.replay-textarea {
+  margin-top: 16px;
+  width: 100%;
 }
 
 .control-buttons {
+  margin-top: 16px;
   display: flex;
   justify-content: flex-end;
-  margin-top: 16px;
   gap: 20px;
 }
 
