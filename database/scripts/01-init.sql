@@ -3,29 +3,28 @@
 
 DROP DATABASE IF EXISTS api_database;
 
--- Drop the user if it exists
-DO $$
-    BEGIN
-        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'api_user') THEN
-            REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA api_schema FROM api_user;
-            REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA api_schema FROM api_user;
-            REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA api_schema FROM api_user;
-            ALTER SCHEMA api_schema OWNER TO postgres;
-            DROP ROLE api_user;
-        END IF;
-    END $$;
-
 -- Creation of the database
 CREATE DATABASE api_database;
 -- connect to the database
 \c api_database;
 
+    
 -- Drop the schema if it exists
 DROP SCHEMA IF EXISTS api_schema CASCADE;
 -- Creation of the schema
 CREATE SCHEMA api_schema;
 --switch to the new schema
 SET search_path TO api_schema;
+
+-- Update user's password
+DO $$
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'api_user') THEN
+            ALTER USER api_user WITH PASSWORD 'api_user_password';
+        ELSE
+            CREATE USER api_user WITH PASSWORD 'api_user_password';
+        END IF;
+    END $$;
 
 -- Creation of the tables and enums used in tables
 -- User block
@@ -237,9 +236,6 @@ CREATE TABLE api_schema.post_popularity (
     rating INTEGER NOT NULL
 );
 -- end of rating block
-
--- User definition
-CREATE USER api_user WITH PASSWORD '${API_USER_PASSWORD}';
 
 -- Grant privileges to everything in the schema/database
 ALTER DATABASE api_database OWNER TO api_user;
