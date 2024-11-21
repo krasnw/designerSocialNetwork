@@ -1,48 +1,7 @@
-<script>
-export default {
-  name: "UploadPostPage",
-  data() {
-    return {
-      title: "",
-      description: "",
-      selectedFile: null,
-      dragActive: false, 
-    };
-  },
-  methods: {
-    handleFileChange(event) {
-      const file = event.target.files[0];
-      if (file) {
-        this.selectedFile = file;
-      }
-    },
-    handleDrop(event) {
-      event.preventDefault();
-      const file = event.dataTransfer.files[0];
-      if (file) {
-        this.selectedFile = file;
-      }
-      this.dragActive = false;
-    },
-    removeFile(event) {
-      this.selectedFile = null;
-      event.stopPropagation();
-    },
-    handleDragOver(event) {
-      event.preventDefault();
-      this.dragActive = true;
-    },
-    handleDragLeave() {
-      this.dragActive = false;
-    },
-  },
-};
-</script>
-
 <template>
-  <main>
+  <main v-if="!showTagSelection">
     <h2 class="page-name">Dodaj nowy post</h2>
-    <form class="upload-post background" method="post">
+    <form class="upload-post background" @submit.prevent="handleSubmit">
       <div
         class="file-upload"
         :class="{ active: dragActive }"
@@ -59,7 +18,7 @@ export default {
         <div class="file-content" @click="$refs.fileInput.click()">
           <template v-if="selectedFile">
             <p>{{ selectedFile.name }}</p>
-            <button type="button" class="remove-file"  @click="removeFile">
+            <button type="button" class="remove-file" @click="removeFile">
               Usuń
             </button>
           </template>
@@ -78,15 +37,74 @@ export default {
       </label>
       <label class="description-input">
         <h3>Opis</h3>
-        <textarea v-model="description" placeholder="Description"></textarea>
+        <textarea v-model="description" placeholder="Dodaj opis"></textarea>
       </label>
 
       <div class="button-continue">
-        <button type="submit" class="submit-button" >➔</button>
+        <button
+          type="submit"
+          class="submit-button"
+          :disabled="!isFormValid"
+        >
+          ➔
+        </button>
       </div>
     </form>
   </main>
+  <TagSelectionPage v-else @goBack="showTagSelection = false" />
 </template>
+
+<script>
+import TagSelectionPage from "./TagSelectionPage.vue";
+
+export default {
+  name: "UploadPostPage",
+  components: { TagSelectionPage },
+  data() {
+    return {
+      title: "",
+      description: "",
+      selectedFile: null,
+      dragActive: false,
+      showTagSelection: false,
+    };
+  },
+  computed: {
+    isFormValid() {
+      return this.title && this.description && this.selectedFile;
+    },
+  },
+  methods: {
+    handleFileChange(event) {
+      const file = event.target.files[0];
+      if (file) this.selectedFile = file;
+    },
+    handleDrop(event) {
+      event.preventDefault();
+      const file = event.dataTransfer.files[0];
+      if (file) this.selectedFile = file;
+      this.dragActive = false;
+    },
+    removeFile(event) {
+      this.selectedFile = null;
+      event.stopPropagation();
+    },
+    handleDragOver(event) {
+      event.preventDefault();
+      this.dragActive = true;
+    },
+    handleDragLeave() {
+      this.dragActive = false;
+    },
+    handleSubmit() {
+      if (this.isFormValid) {
+        this.showTagSelection = true;
+      }
+    },
+  },
+};
+</script>
+
 
 <style scoped>
 .upload-post {
