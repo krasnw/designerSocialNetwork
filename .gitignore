@@ -6,3 +6,4 @@ node_modules
 .vscode
 backend/Back/obj/
 backend/Back/bin/
+backend/Back.sln.DotSettings.user
