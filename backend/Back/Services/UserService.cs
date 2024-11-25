@@ -8,11 +8,9 @@ public class UserService
 {
     private readonly HashSet<string> _loggedInUsers = new();
 
-    private static DatabaseService _databaseService =
-        DatabaseService.GetInstance("Host=localhost;Port=5433;Username=api_user;" +
-                                    "Password=api_user_password;Database=api_database;SearchPath=api_schema;");
+    private static DatabaseService _databaseService = DatabaseService.GetInstance();
 
-    public bool SignUp(string username, string email, string password, string firstName, string lastName,
+    public string SignUp(string username, string email, string password, string firstName, string lastName,
         string phoneNumber)
     {
         ValidateSignUpData(username, email, password, firstName, lastName, phoneNumber);
@@ -22,14 +20,14 @@ public class UserService
         CREATE TYPE api_schema.account_status AS ENUM ('active', 'frozen');
         CREATE TABLE api_schema."user" (
             id SERIAL PRIMARY KEY,
-            username VARCHAR(50) NOT NULL,                                  | provided
-            email VARCHAR(50) NOT NULL,                                     | provided
+            username VARCHAR(50) NOT NULL,                                  | provided unique
+            email VARCHAR(50) NOT NULL,                                     | provided unique
             user_password CHAR(64) NOT NULL, -- SHA-256 hash                | provided
             first_name VARCHAR(50) NOT NULL,                                | provided
             last_name VARCHAR(50) NOT NULL,                                 | provided
-            phone_number VARCHAR(25) NOT NULL,                              | provided
+            *phone_number VARCHAR(25) NOT NULL,                              | provided
             join_date DATE NOT NULL,                                        | generated
-            freeze_date DATE,                                               | unset
+            *freeze_date DATE,                                               | unset
             account_status account_status NOT NULL,                         | default 'active'
             account_level account_level NOT NULL,                           | default 'user'
             access_fee INTEGER NOT NULL                                     | must be unset by default
@@ -43,11 +41,10 @@ public class UserService
         User user = new(username, email, password, firstName, lastName, phoneNumber,
             accessFee, accountStatus, accountLevel);
 
-        if (!IsUnique(user)) return false;
+        if (!IsUnique(user)) return "User already exists";
 
         password = BCrypt.Net.BCrypt.HashPassword(password);
         Console.WriteLine("Hashed password: " + password);
-        //salted version of password: password = BCrypt.Net.BCrypt.HashPassword(password, 12);
 
         var query = $"INSERT INTO api_schema.\"user\" (username, email, user_password, first_name, last_name, phone_number, " +
                     "join_date, access_fee, account_status, account_level) " +
@@ -60,11 +57,11 @@ public class UserService
         }
         catch (Exception e)
         {
-            Console.WriteLine(e);
-            return false;
+            Console.WriteLine(e.Message);
+            return "Unexpected error occurred. Blame Volodymyr.";
         }
 
-        return true;
+        return "";
     }
 
     private bool IsUnique(User user)
@@ -84,10 +81,10 @@ public class UserService
             throw new ArgumentException("All fields are required.");
         }
 
-        var usernameRegex = new Regex(@"^[a-zA-Z0-9_]{3,50}$");
+        var usernameRegex = new Regex("^[a-zA-Z0-9_]{2,50}$");
         if (!usernameRegex.IsMatch(username))
-        {// Do we need username validation?
-            throw new ArgumentException("Username must be between 3 and 50 characters long and contain only letters," +
+        { // 2 characters for names like 'Li'
+            throw new ArgumentException("Username must be between 2 and 50 characters long and contain only letters," +
                                         " numbers, and underscores.");
         }
 
@@ -101,13 +98,21 @@ public class UserService
         if (!passwordRegex.IsMatch(password))
         {
             throw new ArgumentException(
-                "Password must be at least 8 characters long and include a mix of upper and lower case letters and numbers.");
+                "Password must be at least 8 characters long" +
+                " and include a mix of upper and lower case letters and numbers.");
+        }
+        
+        var nameRegex = new Regex(@"^[a-zA-Z]{1,50}$");
+        if (!nameRegex.IsMatch(firstName) || !nameRegex.IsMatch(lastName))
+        {
+            throw new ArgumentException("First and last names must be between 1 and 50 characters long" +
+                                        " and contain only letters.");
         }
 
         var phoneNumberRegex = new Regex(@"^\+?[0-9]{6,25}$");
         if (!phoneNumberRegex.IsMatch(phoneNumber))
         {
-            throw new ArgumentException("Invalid phone number format.");
+            throw new ArgumentException("Invalid phone number format. Example: +48123123123");
         }
 
         
@@ -126,7 +131,6 @@ public class UserService
         
         reader.Read();
         string storedPassword = reader.GetString(0);
-        //if (password == storedPassword.Trim()) //TODO: Hash password
         if (BCrypt.Net.BCrypt.Verify(password, storedPassword.Trim()))
         {
             _loggedInUsers.Add(username);
@@ -145,4 +149,5 @@ public class UserService
     {
         return _loggedInUsers.Contains(username);
     }
+    
 }
