@@ -3,6 +3,7 @@ node_modules
 .env
 .env.local
 .idea
+.vs
 .vscode
 backend/Back/obj/
 backend/Back/bin/
