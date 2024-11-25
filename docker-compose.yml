@@ -1,0 +1,88 @@
+# Database. path: ./database
+# FROM postgres:latest
+
+# ENV POSTGRES_USER=api_user
+# ENV POSTGRES_PASSWORD=api_user_password
+# ENV POSTGRES_DB=api_database
+
+# COPY ./scripts/01-init.sql /docker-entrypoint-initdb.d/
+# COPY ./scripts/02-dataToDatabase.sql /docker-entrypoint-initdb.d/
+
+# EXPOSE 5432
+
+# Server path: ./backend/Back
+# FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+# USER app
+# WORKDIR /app
+# EXPOSE 8080
+# EXPOSE 8081
+
+# FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+# ARG BUILD_CONFIGURATION=Release
+# WORKDIR /src
+# COPY ["Back/Back.csproj", "Back/"]
+# RUN dotnet restore "./Back/Back.csproj"
+# COPY . .
+# WORKDIR "/src/Back"
+# RUN dotnet build "./Back.csproj" -c $BUILD_CONFIGURATION -o /app/build
+
+# FROM build AS publish
+# ARG BUILD_CONFIGURATION=Release
+# RUN dotnet publish "./Back.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+
+# FROM base AS final
+# WORKDIR /app
+# COPY --from=publish /app/publish .
+# ENTRYPOINT ["dotnet", "Back.dll"]
+
+services:
+    database:
+        image: postgres:latest
+        container_name: postgres_db
+        environment:
+            POSTGRES_USER: api_user
+            POSTGRES_PASSWORD: api_user_password
+            POSTGRES_DB: api_database
+        volumes:
+            - ./database:/docker-entrypoint-initdb.d/
+            - postgres_data:/var/lib/postgresql/data
+        ports:
+            - "5433:5432"
+        networks:
+            - api-network
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U api_user"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    server:
+        build:
+            context: ./backend/Back
+            dockerfile: Dockerfile
+        env_file:
+            - ./backend/Back/.env
+        environment:
+            - ASPNETCORE_ENVIRONMENT=Development
+            - ConnectionStrings__DefaultConnection=Host=database;Port=5432;Database=api_database;Username=api_user;Password=api_user_password
+        ports:
+            - "8080:8080"
+            - "8081:8081"
+        networks:
+            - api-network
+        depends_on:
+            database:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
+
+networks:
+    api-network:
+        driver: bridge
+
+volumes:
+    postgres_data:

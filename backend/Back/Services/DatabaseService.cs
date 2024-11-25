@@ -13,9 +13,10 @@ namespace Back.Services
             _connection = new NpgsqlConnection(connectionString);
         }
 
-        public static DatabaseService GetInstance(string connectionString)
+        public static DatabaseService GetInstance(string? connectionString = null)
         {
             if (_instance != null) return _instance;
+            if (connectionString == null) throw new Exception("No connection string provided, but no instance exists.");
             lock (Lock)
             {
                 _instance ??= new DatabaseService(connectionString);

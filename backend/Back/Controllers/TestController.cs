@@ -22,38 +22,6 @@ namespace Back.Controllers
             return authService.GenerateToken("TestUser") ?? "Token generation failed";
         }
 
-        [HttpPost("login")]
-        public IActionResult Login([FromBody] LoginRequest request)
-        {
-            if (!userService.IsSignedUp(request.Username) || !userService.Login(request.Username, request.Password))
-            {
-                return Unauthorized("Invalid username or password");
-            }
-
-            var token = authService.GenerateToken(request.Username);
-            return Ok(token ?? "Token generation failed");
-        }
-
-        [HttpPost("signup")]
-        public IActionResult SignUp([FromBody] SignUpRequest request)
-        {
-            try
-            {
-                var isSignedUp = userService.SignUp(request.Username, request.Email, request.Password, request.FirstName,
-                    request.LastName, request.PhoneNumber);
-                if (!isSignedUp) return BadRequest("User already exists");
-                return Ok("User signed up successfully");
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
-        }
-
         [Authorize]
         [HttpPost("logout")]
         public IActionResult Logout()
@@ -67,21 +35,5 @@ namespace Back.Controllers
 
             return BadRequest("User is not logged in");
         }
-    }
-
-    public class LoginRequest
-    {
-        public string Username { get; set; }
-        public string Password { get; set; }
-    }
-
-    public class SignUpRequest
-    {
-        public string Username { get; set; }
-        public string Email { get; set; }
-        public string Password { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public string PhoneNumber { get; set; }
     }
 }
