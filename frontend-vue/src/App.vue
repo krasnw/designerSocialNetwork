@@ -162,6 +162,30 @@ select {
 .main-content {
   margin-left: 100px;
   z-index: 0;
+  max-height: 100svh;
+  /* Добавляем максимальную высоту */
+  overflow-y: auto;
+  /* Добавляем вертикальную прокрутку */
+
+  /* Стилизация скроллбара */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    backdrop-filter: blur(5px);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+  }
 }
 
 .post-like {

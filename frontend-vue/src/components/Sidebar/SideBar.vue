@@ -133,5 +133,28 @@ export default {
   height: 100svh;
   width: 100%;
   background-image: url('/src/assets/Images/noise.png');
+  max-height: 100svh;
+  /* Добавляем максимальную высоту */
+  overflow-y: auto;
+  /* Добавляем вертикальную прокрутку */
+
+  /* Стилизация скроллбара */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #0000;
+    border-left: 0.5px solid rgb(255 255 255 / 0.15);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
 }
 </style>

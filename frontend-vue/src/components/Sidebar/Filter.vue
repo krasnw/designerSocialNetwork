@@ -14,24 +14,48 @@ export default {
       selected_color: [],
       selected_order: '',
       ui: [
-        { value: 'option1', text: 'Opcja 1' },
-        { value: 'option2', text: 'Opcja 2' },
-        { value: 'option3', text: 'Opcja 3' }
+        { value: 'przycisk', text: 'Przycisk' },
+        { value: 'lista', text: 'Lista rozwijana' },
+        { value: 'slider', text: 'Slider' },
+        { value: 'input', text: 'Input' },
+        { value: 'checkbox', text: 'Checkbox' },
+        { value: 'radio', text: 'Radio' },
+        { value: 'toggle', text: 'Toggle' },
+        { value: 'alert', text: 'Alert' },
+        { value: 'tooltip', text: 'Tooltip' },
+        { value: 'dropdown', text: 'Dropdown' },
+        { value: 'table', text: 'Table' },
+        { value: 'card', text: 'Card' },
+        { value: 'icon', text: 'Icon' },
+        { value: 'loader', text: 'Loader' },
+        { value: 'tag', text: 'Tag' },
+        { value: 'calendar', text: 'Calendar' },
+        { value: 'menu', text: 'Menu' },
+        { value: 'sidebar', text: 'Sidebar' },
+        { value: 'navbar', text: 'Navbar' },
+        { value: 'footer', text: 'Footer' },
+        { value: 'form', text: 'Form' },
+        { value: 'typography', text: 'Typography' },
+        { value: 'animation', text: 'Animation' },
       ],
       style: [
-        { value: 'option1', text: 'Opcja 1' },
-        { value: 'option2', text: 'Opcja 2' },
-        { value: 'option3', text: 'Opcja 3' }
+        { value: 'glassmorphism', text: 'Glassmorphism' },
+        { value: 'neumorphism', text: 'Neumorphism' },
+        { value: 'minimalism', text: 'Minimalism' },
+        { value: 'material', text: 'Material' },
+        { value: 'flat', text: 'Flat' },
+        { value: '3d', text: '3D' },
+        { value: 'retro', text: 'Retro' },
       ],
       color: [
-        { value: 'option1', text: 'Opcja 1' },
-        { value: 'option2', text: 'Opcja 2' },
-        { value: 'option3', text: 'Opcja 3' }
+        { value: 'light', text: 'Light' },
+        { value: 'dark', text: 'Dark' },
+        { value: 'colorful', text: 'Colorful' }
       ],
       order: [
-        { value: 'option1', text: 'Opcja 1' },
-        { value: 'option2', text: 'Opcja 2' },
-        { value: 'option3', text: 'Opcja 3' }
+        { value: 'popularne', text: 'Popularne' },
+        { value: 'najnowsze', text: 'Najnowsze' },
+        { value: 'polubione', text: 'Polubione' }
       ],
       activeDropdown: null
     };
@@ -64,6 +88,26 @@ export default {
     },
     toggleDropdown(id) {
       this.activeDropdown = this.activeDropdown === id ? null : id;
+    },
+    removeTag(tagText) {
+      const [type, value] = tagText.split(': ');
+
+      switch (type) {
+        case 'UI':
+          this.selected_ui = this.selected_ui.filter(item => item !== value);
+          break;
+        case 'Style':
+          this.selected_style = this.selected_style.filter(item => item !== value);
+          break;
+        case 'Color':
+          this.selected_color = this.selected_color.filter(item => item !== value);
+          break;
+        case 'Order':
+          this.selected_order = '';
+          break;
+      }
+
+      this.selectedOptions = this.selectedOptions.filter(opt => opt !== tagText);
     }
   }
 };
@@ -75,7 +119,7 @@ export default {
       <h3>Filtruj</h3>
 
       <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'ui' }">
-        <span class="anchor" @click="toggleDropdown('ui')">Wybierz UI</span>
+        <span class="anchor" @click="toggleDropdown('ui')">Element UI</span>
         <ul class="items">
           <li v-for="option in ui" :key="option.value">
             <input type="checkbox" :id="'ui-' + option.value" :value="option.value" v-model="selected_ui">
@@ -85,7 +129,7 @@ export default {
       </div>
 
       <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'style' }">
-        <span class="anchor" @click="toggleDropdown('style')">Wybierz styl</span>
+        <span class="anchor" @click="toggleDropdown('style')">Styl</span>
         <ul class="items">
           <li v-for="option in style" :key="option.value">
             <input type="checkbox" :id="'style-' + option.value" :value="option.value" v-model="selected_style">
@@ -95,7 +139,7 @@ export default {
       </div>
 
       <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'color' }">
-        <span class="anchor" @click="toggleDropdown('color')">Wybierz kolor</span>
+        <span class="anchor" @click="toggleDropdown('color')">Kolor</span>
         <ul class="items">
           <li v-for="option in color" :key="option.value">
             <input type="checkbox" :id="'color-' + option.value" :value="option.value" v-model="selected_color">
@@ -105,7 +149,7 @@ export default {
       </div>
 
       <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'order' }">
-        <span class="anchor" @click="toggleDropdown('order')">Wybierz kolejność</span>
+        <span class="anchor" @click="toggleDropdown('order')">Kolejność</span>
         <ul class="items">
           <li v-for="option in order" :key="option.value">
             <input type="radio" :id="'order-' + option.value" :value="option.value" v-model="selected_order">
@@ -115,7 +159,8 @@ export default {
       </div>
 
       <section class="selected-tags">
-        <TagView v-for="option in selectedOptions" :key="option" :text="option" />
+        <!-- ready tag -->
+        <TagView v-for="option in selectedOptions" :key="option" :text="option" @delete="removeTag" />
       </section>
     </div>
   </div>
@@ -188,6 +233,30 @@ export default {
   backdrop-filter: blur(50px);
   box-sizing: border-box;
   z-index: 100;
+  max-height: 200px;
+  /* Добавляем максимальную высоту */
+  overflow-y: auto;
+  /* Добавляем вертикальную прокрутку */
+
+  /* Стилизация скроллбара */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    backdrop-filter: blur(5px);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+  }
 }
 
 .dropdown-check-list ul.items li {
