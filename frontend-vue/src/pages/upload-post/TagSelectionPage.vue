@@ -30,7 +30,7 @@
      </div>
  
      <div class="buttons">
-       <button @click="$emit('goBack')" class="back-button">Powrót</button>
+       <button @click="$emit('goBack')" class="back-button">➔</button>
        <button @click="publish" class="publish-button">Publikuj</button>
      </div>
    </main>
@@ -73,13 +73,13 @@
 
  .tag {
    display: inline-block;
-   background: #ddd;
+   background: #494949;
    margin: 5px;
    padding: 5px 10px;
    border-radius: 20px;
    position: relative;
    transition: background 0.3s ease;
- }
+ }   
  
  .tag:hover {
    background: #bbb;

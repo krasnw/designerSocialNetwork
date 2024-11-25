@@ -4,7 +4,7 @@
     <form class="upload-post background" @submit.prevent="handleSubmit">
       <div
         class="file-upload"
-        :class="{ active: dragActive }"
+        :class="{ active: dragActive, 'error-shadow': showErrors && !selectedFile }"
         @dragover="handleDragOver"
         @dragleave="handleDragLeave"
         @drop="handleDrop"
@@ -33,18 +33,27 @@
 
       <label class="title-input">
         <h3>Tutył</h3>
-        <input v-model="title" type="text" placeholder="Wpisz tutył" />
+        <input
+          v-model="title"
+          type="text"
+          placeholder="Wpisz tutył"
+          :class="{ 'error-shadow': showErrors && !title }"
+        />
       </label>
       <label class="description-input">
         <h3>Opis</h3>
-        <textarea v-model="description" placeholder="Dodaj opis"></textarea>
+        <textarea
+          v-model="description"
+          placeholder="Dodaj opis"
+          :class="{ 'error-shadow': showErrors && !description }"
+        ></textarea>
       </label>
 
       <div class="button-continue">
         <button
-          type="submit"
+          type="button"
           class="submit-button"
-          :disabled="!isFormValid"
+          @click="handleSubmit"
         >
           ➔
         </button>
@@ -53,6 +62,7 @@
   </main>
   <TagSelectionPage v-else @goBack="showTagSelection = false" />
 </template>
+
 
 <script>
 import TagSelectionPage from "./TagSelectionPage.vue";
@@ -67,6 +77,7 @@ export default {
       selectedFile: null,
       dragActive: false,
       showTagSelection: false,
+      showErrors: false, // Used to toggle error states
     };
   },
   computed: {
@@ -99,11 +110,15 @@ export default {
     handleSubmit() {
       if (this.isFormValid) {
         this.showTagSelection = true;
+        this.showErrors = false; 
+      } else {
+        this.showErrors = true; 
       }
     },
   },
 };
 </script>
+
 
 
 <style scoped>
@@ -220,6 +235,11 @@ export default {
 .button-continue {
   display: flex;
   justify-content: flex-end;
+}
+
+.error-shadow {
+  box-shadow: 0 0 5px 2px red;
+  border: 1px red;
 }
 
 </style>
