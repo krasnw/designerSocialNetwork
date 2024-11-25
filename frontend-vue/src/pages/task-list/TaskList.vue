@@ -32,7 +32,7 @@ export default {
 
 <template>
   <main>
-    <h2 class="page-name">Task list page</h2>
+    <h2 class="page-name">Lista zleceń</h2>
     <section class="task-list">
       <article v-for="(task, index) in tasks" :key="index">
         <TaskView :username="task.username" :description="task.description"

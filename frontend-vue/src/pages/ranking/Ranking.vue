@@ -5,7 +5,7 @@ export default {
 </script>
 
 <template>
-  <h2>Ranking works</h2>
+  <h2 class="page-name">Tablica liderów</h2>
 </template>
 
 <style scoped></style>

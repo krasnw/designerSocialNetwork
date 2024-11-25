@@ -1,6 +1,6 @@
 <script>
 import NavigationBar from './components/NavigationBar.vue';
-import SideBar from './components/SideBar.vue';
+import SideBar from './components/Sidebar/SideBar.vue';
 
 export default {
   name: "App",
@@ -8,6 +8,17 @@ export default {
     NavigationBar,
     SideBar
   },
+  methods: {
+    showSidebar(routeName) {
+      const pagesWithoutSidebar = ['add-post', ''];
+      return !pagesWithoutSidebar.includes(routeName);
+    }
+  },
+  computed: {
+    currentRoute() {
+      return this.$route.name
+    }
+  }
 };
 </script>
 
@@ -20,6 +31,7 @@ export default {
       </transition>
     </router-view>
   </section>
+  <SideBar v-if="showSidebar(currentRoute)" :page="currentRoute" />
 </template>
 
 <style>
@@ -136,6 +148,14 @@ textarea:hover {
   background-color: rgba(255, 255, 255, 0.20);
 }
 
+select {
+  padding: 10px;
+  border: 0.5px solid white;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-family: var(--font);
+}
 
 
 /* Page styling */

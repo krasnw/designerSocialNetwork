@@ -5,7 +5,7 @@ export default {
 </script>
 
 <template>
-  <h2>Conversations works</h2>
+  <h2 class="page-name">Chaty</h2>
 </template>
 
 <style scoped></style>

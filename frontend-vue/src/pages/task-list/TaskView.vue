@@ -17,33 +17,35 @@ export default {
   },
   data() {
     return {
-      replay: false
+      reply: false
     };
   },
   methods: {
-    replayTask() {
-      this.replay = !this.replay;
+    replyTask() {
+      this.reply = !this.reply;
     }
   }
 };
 </script>
 
 <template>
-  <article class="background task" :class="{ 'task-with-replay': replay }">
+  <article class="background task" :class="{ 'task-with-reply': reply }">
     <span class="task-info">
       <img class="profile-picture" :src="userProfilePicture" alt="Profile Picture">
       <h4 class="username">{{ username }}</h4>
     </span>
     <p class="task-description">{{ description }}</p>
 
-    <textarea v-if="replay" class="replay-textarea" placeholder="Replay to the task"></textarea>
+    <transition name="fade">
+      <textarea v-show="reply" class="reply-textarea" placeholder="reply to the task"></textarea>
+    </transition>
 
     <span class="control-buttons">
-      <button class="delete-button button" v-if="!replay">Remove</button>
-      <button class="delete-button button" @click="replay = false" v-else>Cancel</button>
+      <button class="delete-button button" v-if="!reply">Usuń</button>
+      <button class="delete-button button" @click="reply = false" v-else>Anuluj</button>
 
-      <button @click="replayTask" class="accept-button button" v-if="!replay">Replay</button>
-      <button @click="replayTask" class="accept-button button" v-else>Send</button>
+      <button @click="replyTask" class="accept-button button" v-if="!reply">Odpowiedź</button>
+      <button @click="replyTask" class="accept-button button" v-else>Wyslij</button>
     </span>
   </article>
 </template>
@@ -54,20 +56,8 @@ export default {
   max-width: 925px;
   width: 80%;
   min-width: 550px;
-}
-
-.task-with-replay {
-  animation: incHeight 0.5s ease forwards;
-}
-
-@keyframes incHeight {
-  0% {
-    height: auto;
-  }
-
-  100% {
-    height: auto;
-  }
+  transition: all 0.3s ease;
+  overflow: hidden;
 }
 
 .username {
@@ -95,9 +85,11 @@ export default {
   margin-top: 16px;
 }
 
-.replay-textarea {
+.reply-textarea {
   margin-top: 16px;
   width: 100%;
+  height: 150px;
+  transition: all 0.3s ease;
 }
 
 .control-buttons {
@@ -115,5 +107,16 @@ export default {
 .accept-button {
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.60);
+}
+
+.fade-enter-active {
+  transition: all 0.5s ease;
+  max-height: 150px;
+}
+
+.fade-enter-from {
+  opacity: 0;
+  transform: translateY(-20px);
+  max-height: 0;
 }
 </style>

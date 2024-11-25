@@ -50,7 +50,7 @@ export default {
 
 <template>
   <main>
-    <h2 class="page-name">Feed works</h2>
+    <h2 class="page-name">Strona główna</h2>
     <PostView :username="testData.username" :userProfilePicture="testData.userProfilePicture"
       :postPictures="testData.postPictures" :title="testData.title" :description="testData.description"
       :tags="testData.tags" :shares="testData.shares" :likes="testData.likes" />

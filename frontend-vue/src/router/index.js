@@ -36,6 +36,16 @@ const routes = [
     name: "settings",
     component: () => import("@/pages/settings/Settings.vue"),
   },
+  {
+    path: "/login",
+    name: "login",
+    component: () => import("@/pages/login-page/LoginPage.vue"),
+  },
+  {
+    path: "/register",
+    name: "register",
+    component: () => import("@/pages/login-page/RegisterPage.vue"),
+  },
 ];
 
 export const router = createRouter({

@@ -97,6 +97,7 @@ export default {
   height: 100svh;
   padding: 12px;
   background-image: url('/src/assets/Images/noise.png');
+  border-right: 0.5px solid rgb(255 255 255 / 0.15);
 }
 
 .main-section {
