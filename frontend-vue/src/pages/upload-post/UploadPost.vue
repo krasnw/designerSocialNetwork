@@ -1,57 +1,49 @@
 <template>
-  <main v-if="!showTagSelection">
-    <h2 class="page-name">Dodaj nowy post</h2>
-    <form class="upload-post background" @submit.prevent="handleSubmit">
-      <div
-        class="file-upload"
-        :class="{ active: dragActive }"
-        @dragover="handleDragOver"
-        @dragleave="handleDragLeave"
-        @drop="handleDrop"
-      >
-        <input
-          type="file"
-          class="hidden-input"
-          @change="handleFileChange"
-          ref="fileInput"
-        />
-        <div class="file-content" @click="$refs.fileInput.click()">
-          <template v-if="selectedFile">
-            <p>{{ selectedFile.name }}</p>
-            <button type="button" class="remove-file" @click="removeFile">
-              Usuń
-            </button>
-          </template>
-          <template v-else>
-            <div class="placeholder">
-              <span>+</span>
-              <p>Przeciągnij obrazek lub wybierz plik</p>
+  <main>
+    <transition mode="out-in">
+      <div v-if="!showTagSelection">
+        <h2 class="page-name">Dodaj nowy post</h2>
+        <form class="upload-post background" @submit.prevent="handleSubmit">
+          <div class="file-upload" :class="{ active: dragActive }" @dragover="handleDragOver"
+            @dragleave="handleDragLeave" @drop="handleDrop">
+            <input type="file" class="hidden-input" @change="handleFileChange" ref="fileInput" />
+            <div class="file-content" @click="$refs.fileInput.click()">
+              <template v-if="selectedFile">
+                <p>{{ selectedFile.name }}</p>
+                <button type="button" class="remove-file" @click="removeFile">
+                  Usuń
+                </button>
+              </template>
+              <template v-else>
+                <div class="placeholder">
+                  <span>+</span>
+                  <p>Przeciągnij obrazek lub wybierz plik</p>
+                </div>
+              </template>
             </div>
-          </template>
-        </div>
+          </div>
+
+          <label class="title-input">
+            <h3>Tutył</h3>
+            <input v-model="title" type="text" placeholder="Wpisz tutył" />
+          </label>
+          <label class="description-input">
+            <h3>Opis</h3>
+            <textarea v-model="description" placeholder="Dodaj opis"></textarea>
+          </label>
+
+          <div class="button-continue">
+            <button type="submit" class="submit-button" :disabled="!isFormValid">
+              ➔
+            </button>
+          </div>
+        </form>
       </div>
 
-      <label class="title-input">
-        <h3>Tutył</h3>
-        <input v-model="title" type="text" placeholder="Wpisz tutył" />
-      </label>
-      <label class="description-input">
-        <h3>Opis</h3>
-        <textarea v-model="description" placeholder="Dodaj opis"></textarea>
-      </label>
+      <TagSelectionPage v-else @goBack="showTagSelection = false" />
 
-      <div class="button-continue">
-        <button
-          type="submit"
-          class="submit-button"
-          :disabled="!isFormValid"
-        >
-          ➔
-        </button>
-      </div>
-    </form>
+    </transition>
   </main>
-  <TagSelectionPage v-else @goBack="showTagSelection = false" />
 </template>
 
 <script>
@@ -71,7 +63,8 @@ export default {
   },
   computed: {
     isFormValid() {
-      return this.title && this.description && this.selectedFile;
+      // return this.title && this.description && this.selectedFile;
+      return true
     },
   },
   methods: {
@@ -133,6 +126,7 @@ export default {
   grid-area: 2 / 2 / 3 / 3;
   display: flex;
   flex-direction: column;
+
   textarea {
     width: 100%;
     height: 100%;
@@ -222,4 +216,14 @@ export default {
   justify-content: flex-end;
 }
 
+.v-enter-active,
+.v-leave-active {
+  transition: all 0.3s ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
+  transform: translateX(-100%);
+}
 </style>

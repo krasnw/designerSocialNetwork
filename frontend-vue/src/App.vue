@@ -151,16 +151,13 @@ textarea:hover {
 .move-enter-active,
 .move-leave-active {
   transition: all 0.3s ease;
-  position: absolute;
+  /* position: absolute; */
 }
 
-.move-enter-from {
-  opacity: 0;
-  transform: translateX(-100%);
-}
-
+.move-enter-from,
 .move-leave-to {
   opacity: 0;
+  /* margin-left: -100%; */
   transform: translateY(-100%);
 }
 </style>

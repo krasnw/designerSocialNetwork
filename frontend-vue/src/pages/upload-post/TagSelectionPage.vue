@@ -1,100 +1,134 @@
 <template>
-   <main>
-     <h2 class="page-name">Dodaj nowy post</h2>
-     <div class="dropdown-section">
-       <label v-for="(options, index) in tagOptions" :key="index">
-         <select v-model="selectedTags[index]" @change="addTag(index)">
-           <option disabled value="">Wybierz...</option>
-           <option v-for="option in options" :key="option">{{ option }}</option>
-         </select>
-       </label>
-     </div>
- 
-     <div class="tags-display">
-       <div
-         v-for="(tag, index) in tags"
-         :key="index"
-         class="tag"
-         @mouseenter="hoveredIndex = index"
-         @mouseleave="hoveredIndex = null"
-       >
-         {{ tag }}
-         <span
-           v-if="hoveredIndex === index"
-           class="remove-icon"
-           @click="removeTag(index)"
-         >
-           ✖
-         </span>
-       </div>
-     </div>
- 
-     <div class="buttons">
-       <button @click="$emit('goBack')" class="back-button">Powrót</button>
-       <button @click="publish" class="publish-button">Publikuj</button>
-     </div>
-   </main>
- </template>
- 
- <script>
- export default {
-   name: "TagSelectionPage",
-   data() {
-     return {
-       tagOptions: [
-         ["Element UI", "Styl", "Kolor"],
-         ["Landing", "Block", "Layout", "Flat"],
-         ["Printing", "Font"],
-       ],
-       selectedTags: ["", "", ""],
-       tags: [],
-       hoveredIndex: null,
-     };
-   },
-   methods: {
-     addTag(index) {
-       const newTag = this.selectedTags[index];
-       if (newTag && !this.tags.includes(newTag)) {
-         this.tags.push(newTag);
-         this.selectedTags[index] = "";
-       }
-     },
-     removeTag(index) {
-       this.tags.splice(index, 1);
-     },
-     publish() {
-       alert("Post opublikowany!");
-     },
-   },
- };
- </script>
- 
- <style scoped>
+  <div class="tag-sel-page">
+    <h2 class="page-name">Dodaj nowy post</h2>
+    <div class="dropdown-section">
+      <label v-for="(options, index) in tagOptions" :key="index">
+        <select v-model="selectedTags[index]" @change="addTag(index)">
+          <option disabled value="">Wybierz...</option>
+          <option v-for="option in options" :key="option">{{ option }}</option>
+        </select>
+      </label>
+    </div>
 
- .tag {
-   display: inline-block;
-   background: #ddd;
-   margin: 5px;
-   padding: 5px 10px;
-   border-radius: 20px;
-   position: relative;
-   transition: background 0.3s ease;
- }
- 
- .tag:hover {
-   background: #bbb;
- }
- 
- .remove-icon {
-   margin-left: 10px;
-   cursor: pointer;
- }
- 
- .buttons {
-   margin-top: 20px;
-   display: flex;
-   justify-content: space-between;
- }
+    <div class="tags-display">
+      <div v-for="(tag, index) in tags" :key="index" class="tag">
+        {{ tag }}
+        <span class="remove-icon" @click="removeTag(index)">
+          ✖
+        </span>
+      </div>
+    </div>
+
+    <div class="buttons">
+      <button @click="$emit('goBack')" class="back-button">Powrót</button>
+      <button @click="publish" class="publish-button">Publikuj</button>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  name: "TagSelectionPage",
+  data() {
+    return {
+      tagOptions: [
+        ["Element UI", "Styl", "Kolor"],
+        ["Landing", "Block", "Layout", "Flat"],
+        ["Printing", "Font"],
+      ],
+      selectedTags: ["", "", ""],
+      tags: [],
+    };
+  },
+  methods: {
+    addTag(index) {
+      const newTag = this.selectedTags[index];
+      if (newTag && !this.tags.includes(newTag)) {
+        this.tags.push(newTag);
+        this.selectedTags[index] = "";
+      }
+    },
+    removeTag(index) {
+      this.tags.splice(index, 1);
+    },
+    publish() {
+      alert("Post opublikowany!");
+    },
+  },
+};
+</script>
+
+<style scoped>
+.tag-sel-page * {
+  color: black;
+}
+
+.tag {
+  display: inline-block;
+  background: #ddd;
+  margin: 5px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  position: relative;
+
+}
+
+.tag:hover {
+  background: #bbb;
+}
+
+.remove-icon {
+  opacity: 0;
+  margin-left: -10px;
+}
+
+
+.tag:hover>.remove-icon {
+  opacity: 1;
+  margin-left: 10px;
+}
+
+@keyframes hid {
+
+  from {
+    display: initial;
+  }
+
+  to {
+    display: none;
+    opacity: 0;
+    margin-left: -10px;
+  }
+
+}
+
+
+
+@keyframes appear {
+
+  /* from {
+    opacity: 0;
+    margin-left: -10px;
+  } */
+
+  to {
+    display: initial;
+    opacity: 1;
+    margin-left: 10px;
+  }
+
+}
+
+
+.remove-icon {
+  cursor: pointer;
+}
+
+.buttons {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+}
 
 
 .upload-post {
@@ -123,6 +157,7 @@
   grid-area: 2 / 2 / 3 / 3;
   display: flex;
   flex-direction: column;
+
   textarea {
     width: 100%;
     height: 100%;
@@ -240,7 +275,4 @@
   display: flex;
   justify-content: flex-end;
 }
-
-
- </style>
- 
+</style>
