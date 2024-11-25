@@ -53,7 +53,6 @@ export default {
 
 
     <section v-if="!hidden" class="sidebar">
-
       <ProfileInfo />
 
       <!-- cases for other pages -->

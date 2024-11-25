@@ -33,7 +33,16 @@ export default {
     },
     deleteError() {
       this.error = null;
-    }
+    },
+
+
+    // testing methods
+    addJWT() {
+      localStorage.setItem('JWT', 'test');
+      this.$router.push({ name: 'feed' });
+      // Добавляем событие при успешной авторизации
+      window.dispatchEvent(new Event('loginStatusChanged'));
+    },
   }
 };
 </script>
@@ -54,6 +63,8 @@ export default {
           <h3>Ups... coś poszło nie tak</h3>
           <p class="background">{{ error }}</p>
           <button @click="deleteError" id="deleteErr">Zamknij</button>
+
+          <button class="button" @click="addJWT">Add or remove JWT</button>
         </article>
       </transition>
     </section>

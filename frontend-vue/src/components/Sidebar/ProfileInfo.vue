@@ -3,25 +3,35 @@ export default {
   name: "ProfileInfo",
   data() {
     return {
-      isLoggedIn: true,
+      isLoggedIn: localStorage.getItem('JWT') !== null,
       user: {
         name: 'Paweł Topski',
         image: 'https://placehold.co/600x600',
       }
     }
   },
-  computed: {
-    isLoggedIn() {
-      return localStorage.getItem('JWT') !== null;
-    }
-  },
   methods: {
+    checkLoginStatus() {
+      this.isLoggedIn = localStorage.getItem('JWT') !== null;
+      // Принудительно вызываем обновление компонента
+      this.$forceUpdate();
+    },
     goToLogin() {
       this.$router.push({ name: 'login' });
     },
     goToRegister() {
       this.$router.push({ name: 'register' });
     }
+  },
+  mounted() {
+    // Добавляем слушатель для нового события
+    window.addEventListener('loginStatusChanged', this.checkLoginStatus);
+    window.addEventListener('storage', this.checkLoginStatus);
+  },
+  beforeDestroy() {
+    // Удаляем оба слушателя
+    window.removeEventListener('loginStatusChanged', this.checkLoginStatus);
+    window.removeEventListener('storage', this.checkLoginStatus);
   }
 };
 </script>
