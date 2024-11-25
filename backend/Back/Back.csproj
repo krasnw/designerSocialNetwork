@@ -5,6 +5,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <UserSecretsId>cd44ae41-e80b-41dd-9160-6884325640f1</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,6 +13,7 @@
         <PackageReference Include="DotNetEnv" Version="3.1.1" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.8" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.4" />
+        <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.6" />
         <PackageReference Include="Npgsql" Version="8.0.*" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.2" />
@@ -24,13 +26,13 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Models\" />
-    </ItemGroup>
-
-    <ItemGroup>
       <None Update=".env">
         <DependentUpon>.dockerignore</DependentUpon>
       </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Data\Stored\" />
     </ItemGroup>
 
 </Project>
