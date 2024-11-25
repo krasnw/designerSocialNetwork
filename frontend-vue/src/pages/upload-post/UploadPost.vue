@@ -1,66 +1,50 @@
 <template>
-  <main v-if="!showTagSelection">
-    <h2 class="page-name">Dodaj nowy post</h2>
-    <form class="upload-post background" @submit.prevent="handleSubmit">
-      <div
-        class="file-upload"
-        :class="{ active: dragActive, 'error-shadow': showErrors && !selectedFile }"
-        @dragover="handleDragOver"
-        @dragleave="handleDragLeave"
-        @drop="handleDrop"
-      >
-        <input
-          type="file"
-          class="hidden-input"
-          @change="handleFileChange"
-          ref="fileInput"
-        />
-        <div class="file-content" @click="$refs.fileInput.click()">
-          <template v-if="selectedFile">
-            <p>{{ selectedFile.name }}</p>
-            <button type="button" class="remove-file" @click="removeFile">
-              Usuń
-            </button>
-          </template>
-          <template v-else>
-            <div class="placeholder">
-              <span>+</span>
-              <p>Przeciągnij obrazek lub wybierz plik</p>
+  <main>
+    <transition mode="out-in">
+      <div v-if="!showTagSelection">
+        <h2 class="page-name">Dodaj nowy post</h2>
+        <form class="upload-post background" @submit.prevent="handleSubmit">
+          <div class="file-upload" :class="{ active: dragActive, 'error-shadow': showErrors && !selectedFile }"
+            @dragover="handleDragOver" @dragleave="handleDragLeave" @drop="handleDrop">
+            <input type="file" class="hidden-input" @change="handleFileChange" ref="fileInput" />
+            <div class="file-content" @click="$refs.fileInput.click()">
+              <template v-if="selectedFile">
+                <p>{{ selectedFile.name }}</p>
+                <button type="button" class="remove-file" @click="removeFile">
+                  Usuń
+                </button>
+              </template>
+              <template v-else>
+                <div class="placeholder">
+                  <span>+</span>
+                  <p>Przeciągnij obrazek lub wybierz plik</p>
+                </div>
+              </template>
             </div>
-          </template>
-        </div>
+          </div>
+
+          <label class="title-input">
+            <h3>Tutył</h3>
+            <input v-model="title" type="text" placeholder="Wpisz tutył"
+              :class="{ 'error-shadow': showErrors && !title }" />
+          </label>
+          <label class="description-input">
+            <h3>Opis</h3>
+            <textarea v-model="description" placeholder="Dodaj opis"></textarea>
+          </label>
+
+          <div class="button-continue">
+            <button type="button" class="submit-button" @click="handleSubmit">
+              ➔
+            </button>
+          </div>
+        </form>
       </div>
 
-      <label class="title-input">
-        <h3>Tutył</h3>
-        <input
-          v-model="title"
-          type="text"
-          placeholder="Wpisz tutył"
-          :class="{ 'error-shadow': showErrors && !title }"
-        />
-      </label>
-      <label class="description-input">
-        <h3>Opis</h3>
-        <textarea
-          v-model="description"
-          placeholder="Dodaj opis"
-          :class="{ 'error-shadow': showErrors && !description }"
-        ></textarea>
-      </label>
+      <TagSelectionPage v-else @goBack="showTagSelection = false" />
 
-      <div class="button-continue">
-        <button
-          type="button"
-          class="submit-button"
-          @click="handleSubmit"
-        >
-          ➔
-        </button>
-      </div>
-    </form>
+    </transition>
   </main>
-  <TagSelectionPage v-else @goBack="showTagSelection = false" />
 </template>
 
 
@@ -83,6 +67,7 @@ export default {
   computed: {
     isFormValid() {
       return this.title && this.description && this.selectedFile;
+      return true
     },
   },
   methods: {
@@ -110,9 +95,9 @@ export default {
     handleSubmit() {
       if (this.isFormValid) {
         this.showTagSelection = true;
-        this.showErrors = false; 
+        this.showErrors = false;
       } else {
-        this.showErrors = true; 
+        this.showErrors = true;
       }
     },
   },
@@ -148,6 +133,7 @@ export default {
   grid-area: 2 / 2 / 3 / 3;
   display: flex;
   flex-direction: column;
+
   textarea {
     width: 100%;
     height: 100%;
@@ -237,9 +223,19 @@ export default {
   justify-content: flex-end;
 }
 
+.v-enter-active,
+.v-leave-active {
+  transition: all 0.3s ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+
 .error-shadow {
   box-shadow: 0 0 5px 2px red;
   border: 1px red;
 }
-
 </style>
