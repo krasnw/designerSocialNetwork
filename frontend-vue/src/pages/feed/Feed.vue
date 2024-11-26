@@ -9,19 +9,13 @@ export default {
     return {
       posts: [
         {
+          id: 1,
           username: 'Takumi Fujiwara',
           userProfilePicture: 'https://placehold.co/300x300',
           postPictures: [
             'https://placehold.co/600x500',
             'https://placehold.co/600x500',
             'https://placehold.co/600x500',
-            'https://placehold.co/600x500',
-            'https://placehold.co/600x500',
-            'https://placehold.co/600x500',
-            'https://placehold.co/600x500',
-            'https://placehold.co/600x500',
-            'https://placehold.co/600x500',
-            'https://placehold.co/600x500'
           ],
           title: 'Parowanie czcionek',
           description: `Oto kilka par czcionek, które możesz wykorzystać w swoim projekcie. \n\nNie zapomnij zasubskrybować mojego kanału i nacisnąć przycisk Lubię to`,
@@ -31,6 +25,7 @@ export default {
           isPrivate: true
         },
         {
+          id: 2,
           username: 'Paweł Topski',
           userProfilePicture: 'https://placehold.co/300x300',
           postPictures: [
@@ -49,6 +44,7 @@ export default {
           isPrivate: false
         },
         {
+          id: 3,
           username: 'Jan Kowalski',
           userProfilePicture: 'https://placehold.co/300x300',
           postPictures: [

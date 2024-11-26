@@ -57,8 +57,17 @@ export default {
         { value: 'najnowsze', text: 'Najnowsze' },
         { value: 'polubione', text: 'Polubione' }
       ],
-      activeDropdown: null
+      activeDropdown: null,
+      activeToggle: 'public', // добавляем новое состояние (public/purchased)
     };
+  },
+  mounted() {
+    // Добавляем слушатель при монтировании компонента
+    window.addEventListener('click', this.handleClickOutside);
+  },
+  beforeDestroy() {
+    // Удаляем слушатель при уничтожении компонента
+    window.removeEventListener('click', this.handleClickOutside);
   },
   watch: {
     selected_ui(newVal) {
@@ -86,8 +95,17 @@ export default {
         this.selectedOptions.push(`${type}: ${value}`);
       });
     },
-    toggleDropdown(id) {
+    toggleDropdown(id, event) {
+      event.stopPropagation();
       this.activeDropdown = this.activeDropdown === id ? null : id;
+    },
+    handleClickOutside(event) {
+      if (this.activeDropdown) {
+        const dropdownEl = this.$refs[this.activeDropdown];
+        if (dropdownEl && !dropdownEl.contains(event.target)) {
+          this.activeDropdown = null;
+        }
+      }
     },
     removeTag(tagText) {
       const [type, value] = tagText.split(': ');
@@ -108,7 +126,10 @@ export default {
       }
 
       this.selectedOptions = this.selectedOptions.filter(opt => opt !== tagText);
-    }
+    },
+    toggleOption(option) {
+      this.activeToggle = option;
+    },
   }
 };
 </script>
@@ -118,8 +139,17 @@ export default {
     <div class="filter">
       <h3>Filtruj</h3>
 
-      <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'ui' }">
-        <span class="anchor" @click="toggleDropdown('ui')">Element UI</span>
+      <div class="toggle-type">
+        <div class="toggle-option" :class="{ active: activeToggle === 'public' }" @click="toggleOption('public')">
+          Publiczne
+        </div>
+        <div class="toggle-option" :class="{ active: activeToggle === 'purchased' }" @click="toggleOption('purchased')">
+          Wykupione
+        </div>
+      </div>
+
+      <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'ui' }" ref="ui">
+        <span class="anchor" @click="toggleDropdown('ui', $event)">Element UI</span>
         <ul class="items">
           <li v-for="option in ui" :key="option.value">
             <input type="checkbox" :id="'ui-' + option.value" :value="option.value" v-model="selected_ui">
@@ -128,8 +158,8 @@ export default {
         </ul>
       </div>
 
-      <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'style' }">
-        <span class="anchor" @click="toggleDropdown('style')">Styl</span>
+      <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'style' }" ref="style">
+        <span class="anchor" @click="toggleDropdown('style', $event)">Styl</span>
         <ul class="items">
           <li v-for="option in style" :key="option.value">
             <input type="checkbox" :id="'style-' + option.value" :value="option.value" v-model="selected_style">
@@ -138,8 +168,8 @@ export default {
         </ul>
       </div>
 
-      <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'color' }">
-        <span class="anchor" @click="toggleDropdown('color')">Kolor</span>
+      <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'color' }" ref="color">
+        <span class="anchor" @click="toggleDropdown('color', $event)">Kolor</span>
         <ul class="items">
           <li v-for="option in color" :key="option.value">
             <input type="checkbox" :id="'color-' + option.value" :value="option.value" v-model="selected_color">
@@ -148,8 +178,8 @@ export default {
         </ul>
       </div>
 
-      <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'order' }">
-        <span class="anchor" @click="toggleDropdown('order')">Kolejność</span>
+      <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'order' }" ref="order">
+        <span class="anchor" @click="toggleDropdown('order', $event)">Kolejność</span>
         <ul class="items">
           <li v-for="option in order" :key="option.value">
             <input type="radio" :id="'order-' + option.value" :value="option.value" v-model="selected_order">
@@ -274,5 +304,34 @@ export default {
 
 .dropdown-check-list.visible .items {
   display: block;
+}
+
+.toggle-type {
+  display: flex;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  border: 1px solid white;
+  overflow: hidden;
+}
+
+.toggle-option {
+  flex: 1;
+  padding: 8px 13px;
+  margin: 2px;
+  text-align: center;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+.toggle-option.active {
+  background: rgba(255, 255, 255, 0.1);
+
+  color: white;
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px white;
 }
 </style>

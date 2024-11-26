@@ -18,25 +18,26 @@ export default {
 
 <style scoped>
 .search-container {
-  position: relative;
+  border: 0.5px solid white;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .search {
   margin: 0;
   padding: 10px 20px;
-  border: 0.5px solid white;
-  border-radius: 10px;
-  width: fit-content;
+  width: 100%;
   box-shadow: none;
+  border: none;
+  background-color: transparent;
   font-weight: 600;
   font-size: 14px;
-  width: 310px;
-  background-color: rgba(255, 255, 255, 0.15);
 }
 
 .search-icon {
-  position: absolute;
-  right: 20px;
-  top: 30%;
+  margin: 0 21px;
 }
 </style>
