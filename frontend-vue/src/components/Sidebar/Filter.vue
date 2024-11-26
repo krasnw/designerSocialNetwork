@@ -65,15 +65,15 @@ export default {
       this.updateSelectedOptions('UI', newVal);
     },
     selected_style(newVal) {
-      this.updateSelectedOptions('Style', newVal);
+      this.updateSelectedOptions('Styl', newVal);
     },
     selected_color(newVal) {
-      this.updateSelectedOptions('Color', newVal);
+      this.updateSelectedOptions('Kolor', newVal);
     },
     selected_order(newVal) {
       if (newVal) {
-        this.selectedOptions = this.selectedOptions.filter(opt => !opt.startsWith('Order:'));
-        this.selectedOptions.push(`Order: ${newVal}`);
+        this.selectedOptions = this.selectedOptions.filter(opt => !opt.startsWith('Kolejność:'));
+        this.selectedOptions.push(`Kolejność: ${newVal}`);
       }
     }
   },
@@ -96,13 +96,13 @@ export default {
         case 'UI':
           this.selected_ui = this.selected_ui.filter(item => item !== value);
           break;
-        case 'Style':
+        case 'Styl':
           this.selected_style = this.selected_style.filter(item => item !== value);
           break;
-        case 'Color':
+        case 'Kolor':
           this.selected_color = this.selected_color.filter(item => item !== value);
           break;
-        case 'Order':
+        case 'Kolejność':
           this.selected_order = '';
           break;
       }

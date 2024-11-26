@@ -12,16 +12,6 @@ export default {
       required: true
     }
   },
-  // data() {
-  //   return {
-  //     post: {
-  //       title: 'Post title lorem ipsum dolor sit amet. Post title lorem ipsum dolor sit amet.',
-  //       image: 'https://placehold.co/600x500',
-  //       like: 2334,
-  //       isLiked: false
-  //     }
-  //   }
-  // },
   computed: {
     formattedLikes() {
       const likes = this.post.like;

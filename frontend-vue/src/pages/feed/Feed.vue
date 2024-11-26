@@ -1,46 +1,68 @@
 <script>
 import PostView from '@/components/PostView.vue';
-import PostPreview from '../profile/PostPreview.vue';
 
 export default {
   components: {
-    PostPreview,
     PostView
   },
   data() {
     return {
-      testData: {
-        username: 'John Doe',
-        userProfilePicture: 'https://placehold.co/600x500',
-        postPitures: [
-          'https://placehold.co/600x500',
-          'https://placehold.co/600x500'
-        ],
-        title: 'Sample Post Title',
-        description: 'This is a sample description for the post.',
-        tags: ['tag1', 'tag2', 'tag3'],
-        shares: 10,
-        likes: 150
-      },
       posts: [
         {
-          title: 'Post title lorem ipsum dolor sit amet. Post title lorem ipsum dolor sit amet.',
-          image: 'https://placehold.co/600x600',
-          like: 3442,
-          isLiked: true
+          username: 'Takumi Fujiwara',
+          userProfilePicture: 'https://placehold.co/300x300',
+          postPictures: [
+            'https://placehold.co/600x500',
+            'https://placehold.co/600x500',
+            'https://placehold.co/600x500',
+            'https://placehold.co/600x500',
+            'https://placehold.co/600x500',
+            'https://placehold.co/600x500',
+            'https://placehold.co/600x500',
+            'https://placehold.co/600x500',
+            'https://placehold.co/600x500',
+            'https://placehold.co/600x500'
+          ],
+          title: 'Parowanie czcionek',
+          description: `Oto kilka par czcionek, które możesz wykorzystać w swoim projekcie. \n\nNie zapomnij zasubskrybować mojego kanału i nacisnąć przycisk Lubię to`,
+          tags: ['Czcionka', 'Flat', 'Układ'],
+          shares: 2739,
+          likes: 35610,
+          isPrivate: true
         },
         {
-          title: 'Post title lorem ipsum dolor sit amet. Post title lorem ipsum dolor sit amet.',
-          image: 'https://placehold.co/600x500',
-          like: 2334,
-          isLiked: false
+          username: 'Paweł Topski',
+          userProfilePicture: 'https://placehold.co/300x300',
+          postPictures: [
+            'https://placehold.co/600x500',
+            'https://placehold.co/600x500'
+          ],
+          title: 'Przycisk w stylu Glassmorphism',
+          description: `Very long text for the description. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla nec purus feugiat, molestie ipsum et, ultricies turpis. Incididunt quis amet mollit aute id qui veniam ad qui incididunt deserunt ipsum irure deserunt. Fugiat excepteur dolore qui fugiat nulla tempor tempor velit magna ut. Amet Lorem non velit consectetur veniam excepteur reprehenderit cillum laborum sit dolor commodo mollit.
+
+        Minim consectetur consequat in esse incididunt quis voluptate sit anim quis minim sint dolore dolor. Ex non eiusmod laboris dolor. Aliquip dolore incididunt qui aliqua excepteur. Anim adipisicing exercitation nulla mollit sint officia laboris. Id exercitation ipsum ut laboris enim ut. In commodo dolor nostrud consectetur enim minim velit excepteur nulla velit cillum.
+
+        Dolore ad esse nostrud nostrud officia commodo. Pariatur incididunt veniam non quis. Qui tempor veniam ullamco sit magna dolore quis est excepteur ex dolore dolore sit. Laboris non sint deserunt laboris est et exercitation Lorem voluptate voluptate eiusmod.`,
+          tags: ['Flat', 'Czerwony', 'Glassmorphism', 'Przycisk'],
+          shares: 10,
+          likes: 150,
+          isPrivate: false
         },
         {
-          title: 'Post title lorem ipsum dolor sit amet. Post title lorem ipsum dolor sit amet.',
-          image: 'https://placehold.co/600x500',
-          like: 599332,
-          isLiked: true
-        }
+          username: 'Jan Kowalski',
+          userProfilePicture: 'https://placehold.co/300x300',
+          postPictures: [
+            // 'https://placehold.co/600x500',
+            'https://placehold.co/600x500'
+          ],
+          title: 'Sample Post Title',
+          description: `Long text for the description. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla nec purus feugiat, molestie ipsum et, ultricies turpis. 
+          Incididunt quis amet mollit aute id qui veniam ad qui incididunt deserunt ipsum irure deserunt.`,
+          tags: ['Ciemny', 'Neomorphism', 'Input'],
+          shares: 1345,
+          likes: 15345,
+          isPrivate: false
+        },
       ]
     }
   },
@@ -51,12 +73,9 @@ export default {
 <template>
   <main>
     <h2 class="page-name">Strona główna</h2>
-    <PostView :username="testData.username" :userProfilePicture="testData.userProfilePicture"
-      :postPictures="testData.postPictures" :title="testData.title" :description="testData.description"
-      :tags="testData.tags" :shares="testData.shares" :likes="testData.likes" />
     <section class="posts">
-      <article v-for="(post, index) in posts" :key="index">
-        <PostPreview :post="post" />
+      <article v-for="post in posts">
+        <PostView :post="post" />
       </article>
     </section>
   </main>
