@@ -9,7 +9,7 @@ DotNetEnv.Env.Load();
 
 // Connect to database
 //var db = DatabaseService.GetInstance(Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"));
-var db = DatabaseService.GetInstance("Host=localhost;Port=5433;Username=api_user;Password=api_user_password;" +
+var db = DatabaseService.GetInstance("Host=database;Port=5432;Username=api_user;Password=api_user_password;" +
                                      "Database=api_database;SearchPath=api_schema;");
 
 // Add services to the container.
