@@ -10,35 +10,34 @@ public class UserService
 
     private static DatabaseService _databaseService = DatabaseService.GetInstance();
 
-    public string SignUp(string username, string email, string password, string firstName, string lastName,
-        string phoneNumber)
+    public string SignUp(string username, string email, string password, string firstName, string middleName,
+        string lastName, string phoneNumber)
     {
-        ValidateSignUpData(username, email, password, firstName, lastName, phoneNumber);
+        ValidateSignUpData(username, email, password, firstName, middleName, lastName, phoneNumber);
 
-        /*-- User block
-        CREATE TYPE api_schema.account_level AS ENUM ('user', 'admin');
-        CREATE TYPE api_schema.account_status AS ENUM ('active', 'frozen');
-        CREATE TABLE api_schema."user" (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(50) NOT NULL,                                  | provided unique
-            email VARCHAR(50) NOT NULL,                                     | provided unique
-            user_password CHAR(64) NOT NULL, -- SHA-256 hash                | provided
-            first_name VARCHAR(50) NOT NULL,                                | provided
-            last_name VARCHAR(50) NOT NULL,                                 | provided
-            *phone_number VARCHAR(25) NOT NULL,                              | provided
-            join_date DATE NOT NULL,                                        | generated
-            *freeze_date DATE,                                               | unset
-            account_status account_status NOT NULL,                         | default 'active'
-            account_level account_level NOT NULL,                           | default 'user'
-            access_fee INTEGER NOT NULL                                     | must be unset by default
-        );*/
+        // CREATE TYPE api_schema.account_level AS ENUM ('user', 'admin');
+        // CREATE TYPE api_schema.account_status AS ENUM ('active', 'frozen');
+        // CREATE TABLE api_schema."user" (
+        //     id SERIAL PRIMARY KEY,
+        //     username VARCHAR(50) NOT NULL UNIQUE,
+        //     email VARCHAR(50) NOT NULL UNIQUE,
+        //     user_password CHAR(64) NOT NULL, -- SHA-256 hash
+        //     first_name VARCHAR(50) NOT NULL,
+        //     middle_name VARCHAR(50) NOT NULL
+        //     last_name VARCHAR(50) NOT NULL,
+        //     phone_number VARCHAR(25) NOT NULL UNIQUE,
+        //     join_date DATE NOT NULL,
+        //     account_status account_status NOT NULL,
+        //     account_level account_level NOT NULL,
+        //     access_fee INTEGER NOT NULL
+        //     );
 
         string joinDate = DateTime.Now.ToString("yyyy-MM-dd");
         float accessFee = 0.0f; // 0 means not set
         string accountStatus = "active";
         string accountLevel = "user";
 
-        User user = new(username, email, password, firstName, lastName, phoneNumber,
+        User user = new(username, email, password, firstName, middleName, lastName, phoneNumber,
             accessFee, accountStatus, accountLevel);
 
         if (!IsUnique(user)) return "User already exists";
@@ -72,8 +71,8 @@ public class UserService
         return !reader.HasRows;
     }
 
-    private void ValidateSignUpData(string username, string email, string password, string firstName, string lastName,
-        string phoneNumber)
+    private void ValidateSignUpData(string username, string email, string password, string firstName, string middleName,
+        string lastName, string phoneNumber)
     {
         if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password) ||
             string.IsNullOrEmpty(firstName) || string.IsNullOrEmpty(lastName) || string.IsNullOrEmpty(phoneNumber))
@@ -103,7 +102,7 @@ public class UserService
         }
         
         var nameRegex = new Regex(@"^[a-zA-Z]{1,50}$");
-        if (!nameRegex.IsMatch(firstName) || !nameRegex.IsMatch(lastName))
+        if (!nameRegex.IsMatch(firstName) || !nameRegex.IsMatch(middleName) || !nameRegex.IsMatch(lastName))
         {
             throw new ArgumentException("First and last names must be between 1 and 50 characters long" +
                                         " and contain only letters.");
@@ -148,6 +147,19 @@ public class UserService
     public bool IsLoggedIn(string username)
     {
         return _loggedInUsers.Contains(username);
+    }
+    
+    public User? GetUser(string username)
+    {
+        if (string.IsNullOrEmpty(username)) return null;
+        string query = $"SELECT * FROM api_schema.\"user\" WHERE username = '{username}'";
+        using var reader = _databaseService.ExecuteQuery(query);
+        if (!reader.HasRows) return null;
+        
+        reader.Read();
+        
+        return new User(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3),
+            reader.GetString(4), reader.GetString(5), reader.GetString(6), reader.GetFloat(7), reader.GetString(8), reader.GetString(9));
     }
     
 }

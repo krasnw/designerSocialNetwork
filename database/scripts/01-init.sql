@@ -32,14 +32,14 @@ CREATE TYPE api_schema.account_level AS ENUM ('user', 'admin');
 CREATE TYPE api_schema.account_status AS ENUM ('active', 'frozen');
 CREATE TABLE api_schema."user" (
     id SERIAL PRIMARY KEY,
-    username VARCHAR(50) NOT NULL,
-    email VARCHAR(50) NOT NULL,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(50) NOT NULL UNIQUE,
     user_password CHAR(64) NOT NULL, -- SHA-256 hash
     first_name VARCHAR(50) NOT NULL,
+    middle_name VARCHAR(50) NOT NULL
     last_name VARCHAR(50) NOT NULL,
-    phone_number VARCHAR(25) NOT NULL,
+    phone_number VARCHAR(25) NOT NULL UNIQUE,
     join_date DATE NOT NULL,
-    freeze_date DATE,
     account_status account_status NOT NULL,
     account_level account_level NOT NULL,
     access_fee INTEGER NOT NULL
@@ -49,7 +49,7 @@ CREATE TABLE api_schema."user" (
 -- Outer payment block
 CREATE TABLE api_schema.payment_method (
     id SERIAL PRIMARY KEY,
-    method_name VARCHAR(50) NOT NULL
+    method_name VARCHAR(50) NOT NULL UNIQUE
 );
 
 CREATE TABLE api_schema.currency_transaction (
@@ -99,7 +99,7 @@ CREATE TABLE api_schema.image_container (
 
 CREATE TABLE api_schema.image (
     id SERIAL PRIMARY KEY,
-    image_file_path VARCHAR(100) NOT NULL,
+    image_file_path VARCHAR(100) NOT NULL UNIQUE,
     container_id INTEGER REFERENCES image_container(id),
     user_id INTEGER REFERENCES "user"(id)
 );
@@ -108,7 +108,7 @@ CREATE TABLE api_schema.image (
 -- Post block
 CREATE TABLE api_schema.tags (
     id SERIAL PRIMARY KEY,
-    tag_name VARCHAR(20) NOT NULL
+    tag_name VARCHAR(20) NOT NULL UNIQUE
 );
 
 CREATE TYPE api_schema.access_level AS ENUM ('public', 'private', 'protecteed');
@@ -117,7 +117,7 @@ CREATE TABLE api_schema.post (
     user_id INTEGER REFERENCES "user"(id),
     post_name VARCHAR(50) NOT NULL,
     post_text TEXT NOT NULL,
-    container_id INTEGER REFERENCES image_container(id),
+    container_id INTEGER REFERENCES image_container(id) UNIQUE,
     post_date DATE NOT NULL,
     likes INTEGER NOT NULL,
     access_level access_level NOT NULL
