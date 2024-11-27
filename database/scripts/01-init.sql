@@ -36,7 +36,7 @@ CREATE TABLE api_schema."user" (
     email VARCHAR(50) NOT NULL UNIQUE,
     user_password CHAR(64) NOT NULL, -- SHA-256 hash
     first_name VARCHAR(50) NOT NULL,
-    middle_name VARCHAR(50) NOT NULL
+    middle_name VARCHAR(50),
     last_name VARCHAR(50) NOT NULL,
     phone_number VARCHAR(25) NOT NULL UNIQUE,
     join_date DATE NOT NULL,

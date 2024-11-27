@@ -26,7 +26,7 @@ public class AuthController(AuthService authService, UserService userService) : 
         try
         {
             var isSignedUp = userService.SignUp(request.Username, request.Email, request.Password,
-                request.FirstName, request.MiddleName, request.LastName, request.PhoneNumber);
+                request.FirstName, request.LastName, request.PhoneNumber, request.MiddleName);
             
             if(isSignedUp != "") return BadRequest("User already exists");
             var token = authService.GenerateToken(request.Username);

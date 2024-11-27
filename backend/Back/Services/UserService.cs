@@ -10,8 +10,8 @@ public class UserService
 
     private static DatabaseService _databaseService = DatabaseService.GetInstance();
 
-    public string SignUp(string username, string email, string password, string firstName, string middleName,
-        string lastName, string phoneNumber)
+    public string SignUp(string username, string email, string password, string firstName,
+        string lastName, string phoneNumber, string? middleName = null)
     {
         ValidateSignUpData(username, email, password, firstName, middleName, lastName, phoneNumber);
 
@@ -37,17 +37,17 @@ public class UserService
         string accountStatus = "active";
         string accountLevel = "user";
 
-        User user = new(username, email, password, firstName, middleName, lastName, phoneNumber,
-            accessFee, accountStatus, accountLevel);
+        User user = new(username, email, password, firstName, lastName, phoneNumber,
+            accessFee, accountStatus, accountLevel, middleName);
 
         if (!IsUnique(user)) return "User already exists";
 
         password = BCrypt.Net.BCrypt.HashPassword(password);
         Console.WriteLine("Hashed password: " + password);
 
-        var query = $"INSERT INTO api_schema.\"user\" (username, email, user_password, first_name, last_name, phone_number, " +
+        var query = $"INSERT INTO api_schema.\"user\" (username, email, user_password, first_name, middle_name, last_name, phone_number, " +
                     "join_date, access_fee, account_status, account_level) " +
-                    $"VALUES ('{username}', '{email}', '{password}', '{firstName}', '{lastName}', " +
+                    $"VALUES ('{username}', '{email}', '{password}', '{firstName}', '{middleName}', '{lastName}', " +
                     $"'{phoneNumber}', '{joinDate}', {accessFee}, '{accountStatus}', '{accountLevel}')";
         
         try
@@ -71,7 +71,7 @@ public class UserService
         return !reader.HasRows;
     }
 
-    private void ValidateSignUpData(string username, string email, string password, string firstName, string middleName,
+    private void ValidateSignUpData(string username, string email, string password, string firstName, string? middleName,
         string lastName, string phoneNumber)
     {
         if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password) ||
@@ -102,9 +102,14 @@ public class UserService
         }
         
         var nameRegex = new Regex(@"^[a-zA-Z]{1,50}$");
-        if (!nameRegex.IsMatch(firstName) || !nameRegex.IsMatch(middleName) || !nameRegex.IsMatch(lastName))
+        if (!nameRegex.IsMatch(firstName) || !nameRegex.IsMatch(lastName))
         {
-            throw new ArgumentException("First and last names must be between 1 and 50 characters long" +
+            if (middleName != null && !nameRegex.IsMatch(middleName))
+            {
+                throw new ArgumentException("First, middle and last names must be between 1 and 50 characters long" +
+                                            " and contain only letters.");
+            }
+            throw new ArgumentException("First, middle and last names must be between 1 and 50 characters long" +
                                         " and contain only letters.");
         }
 
@@ -158,8 +163,7 @@ public class UserService
         
         reader.Read();
         
-        return new User(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3),
-            reader.GetString(4), reader.GetString(5), reader.GetString(6), reader.GetFloat(7), reader.GetString(8), reader.GetString(9));
+        return new User(reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(5), reader.GetString(6), reader.GetFloat(7), reader.GetString(8), reader.GetString(9), reader.GetString(4));
     }
     
 }
