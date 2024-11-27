@@ -34,24 +34,26 @@
 # WORKDIR /app
 # COPY --from=publish /app/publish .
 # ENTRYPOINT ["dotnet", "Back.dll"]
+version: "3.8"
 
 services:
     database:
-        image: postgres:latest
+        build:
+            context: ./database
+            dockerfile: Dockerfile
         container_name: postgres_db
         environment:
             POSTGRES_USER: api_user
             POSTGRES_PASSWORD: api_user_password
             POSTGRES_DB: api_database
         volumes:
-            - ./database:/docker-entrypoint-initdb.d/
             - postgres_data:/var/lib/postgresql/data
         ports:
             - "5433:5432"
         networks:
             - api-network
         healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U api_user"]
+            test: ["CMD-SHELL", "pg_isready -d api_database -U api_user"]
             interval: 10s
             timeout: 5s
             retries: 5
@@ -60,8 +62,6 @@ services:
         build:
             context: ./backend/Back
             dockerfile: Dockerfile
-        env_file:
-            - ./backend/Back/.env
         environment:
             - ASPNETCORE_ENVIRONMENT=Development
             - ConnectionStrings__DefaultConnection=Host=database;Port=5432;Database=api_database;Username=api_user;Password=api_user_password
