@@ -1,17 +1,16 @@
 INSERT INTO api_schema."user" 
-(username, email, user_password, first_name, last_name, phone_number, join_date, freeze_date, account_status, account_level, access_fee) 
+(username, email, user_password, first_name, last_name, phone_number, join_date, account_status, account_level, access_fee) 
 VALUES
-('user1', 'user1@example.com', 'pass1', 'Jan', 'Kowalski', '123-456-7890', '2024-01-01', NULL, 'active', 'user', 10),
-('user2', 'user2@example.com', 'pass2', 'Anna', 'Nowak', '123-456-7891', '2024-02-01', NULL, 'active', 'user', 20),
-('user3', 'user3@example.com', 'pass3', 'Marek', 'Wójcik', '123-456-7892', '2024-03-01', NULL, 'active', 'admin', 30),
-('user4', 'user4@example.com', 'pass4', 'Katarzyna', 'Jankowska', '123-456-7893', '2024-04-01', '2024-07-01', 'frozen', 'user', 40),
-('user5', 'user5@example.com', 'pass5', 'Piotr', 'Kaczmarek', '123-456-7894', '2024-05-01', NULL, 'active', 'user', 50),
-('user6', 'user6@example.com', 'pass6', 'Agnieszka', 'Zielińska', '123-456-7895', '2024-06-01', NULL, 'active', 'user', 60),
-('user7', 'user7@example.com', 'pass7', 'Tomasz', 'Pawlowski', '123-456-7896', '2024-07-01', '2024-10-16', 'frozen', 'user', 70),
-('admin1', 'admin1@example.com', 'pass8', 'Ewa', 'Woźniak', '123-456-7897', '2024-08-01', NULL, 'active', 'admin', 80),
-('user9', 'user9@example.com', 'pass9', 'Michał', 'Mazur', '123-456-7898', '2024-09-01', NULL, 'active', 'user', 90),
-('admin2', 'admin2@example.com', 'pass10', 'Joanna', 'Szymańska', '123-456-7899', '2024-10-01', NULL, 'active', 'admin', 100);
-
+('user1', 'user1@example.com', '$2b$12$8UG9xihkkW/VtEzS/n4HB.Tp9eaUh4Qo6Z1hpu/dFB5grWQX2Shm.', 'Jan', 'Kowalski', '123-456-7890', '2024-01-01', 'active', 'user', 10),
+('user2', 'user2@example.com', '$2b$12$KUxOZK5MrhmhPJReda8Rq.Cojxm9fZMqvOpEhfI7bAWGbsAsdVVOK', 'Anna', 'Nowak', '123-456-7891', '2024-02-01', 'active', 'user', 20),
+('user3', 'user3@example.com', '$2b$12$QSLvy0lErSHHd4AQUnoDkewfIhXgL9MVZMqbvbRMxtPN5ugD9HZD.', 'Marek', 'Wójcik', '123-456-7892', '2024-03-01', 'active', 'admin', 30),
+('user4', 'user4@example.com', '$2b$12$/c3vkgR93VHl7UQVYVGVBO7eSS8eZE1HZxIpq.le89MLwH9vmtTNy', 'Katarzyna', 'Jankowska', '123-456-7893', '2024-04-01', 'frozen', 'user', 40),
+('user5', 'user5@example.com', '$2b$12$X7..8Kln2qjRqMsML/wyGuQ83qWqdsHGKHAZRXwOr4aM3S2Y3GEb2', 'Piotr', 'Kaczmarek', '123-456-7894', '2024-05-01', 'active', 'user', 50),
+('user6', 'user6@example.com', '$2b$12$KrCdxUbDqocNwtatcBKRre.guqpz6eoikJ1lCUNRh.EdAXrPH1hIm', 'Agnieszka', 'Zielińska', '123-456-7895', '2024-06-01', 'active', 'user', 60),
+('user7', 'user7@example.com', '$2b$12$2uiTCG5bDKMplmLSq99PVO1v6EwqZJjw8Tyv6SBmhtxyEEOpjn/im', 'Tomasz', 'Pawlowski', '123-456-7896', '2024-07-01', 'frozen', 'user', 70),
+('admin1', 'admin1@example.com', '$2b$12$FCn4zsA2YQKTWtHtzqV4nuum0bQZ65YPnAzKr5gsAlm3tHsd5vooO', 'Ewa', 'Woźniak', '123-456-7897', '2024-08-01', 'active', 'admin', 80),
+('user9', 'user9@example.com', '$2b$12$aEYTtqGca3UNHJJrAloXwu4jt2qnxEOuiPYvgTDjJt4gyr40s9Pra', 'Michał', 'Mazur', '123-456-7898', '2024-09-01', 'active', 'user', 90),
+('admin2', 'admin2@example.com', '$2b$12$XpD6cuyZta5OIVe1Rcq.SuZZjiIdwSxi3an021cLPYx5gl2D0jGdq', 'Joanna', 'Szymańska', '123-456-7899', '2024-10-01', 'active', 'admin', 100);
 
 INSERT INTO api_schema.payment_method (method_name) 
 VALUES 

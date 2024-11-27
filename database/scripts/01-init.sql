@@ -117,7 +117,7 @@ CREATE TABLE api_schema.post (
     user_id INTEGER REFERENCES "user"(id),
     post_name VARCHAR(50) NOT NULL,
     post_text TEXT NOT NULL,
-    container_id INTEGER REFERENCES image_container(id) UNIQUE,
+    container_id INTEGER REFERENCES image_container(id),
     post_date DATE NOT NULL,
     likes INTEGER NOT NULL,
     access_level access_level NOT NULL
