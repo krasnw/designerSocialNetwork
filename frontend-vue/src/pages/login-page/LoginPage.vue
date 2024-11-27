@@ -1,13 +1,21 @@
 <script>
+import Spinner from '@/assets/Icons/Spinner.vue';
+import { authService } from '@/services/auth';
+
+
 export default {
   name: "LoginPage",
+  components: {
+    Spinner
+  },
   data() {
     return {
       username: '',
       password: '',
       error: null,
       usernameError: false,
-      passwordError: false
+      passwordError: false,
+      isLoading: false
     };
   },
   methods: {
@@ -18,7 +26,7 @@ export default {
         this.passwordError = this.password.trim() === '';
       }
     },
-    handleLogin(e) {
+    async handleLogin(e) {
       e.preventDefault();
       this.validateField('username');
       this.validateField('password');
@@ -29,6 +37,23 @@ export default {
       }
 
       // Здесь логика отправки данных на сервер
+      try {
+        this.isLoading = true;
+        await authService.login({
+          username: this.username,
+          password: this.password
+        });
+
+        // Отправляем событие об успешной авторизации
+        window.dispatchEvent(new Event('loginStatusChanged'));
+
+        // Редирект на главную
+        this.$router.push({ name: 'feed' });
+      } catch (error) {
+        this.error = error.message;
+      } finally {
+        this.isLoading = false;
+      }
       this.error = null;
     },
     deleteError() {
@@ -56,7 +81,9 @@ export default {
           @blur="validateField('username')" />
         <input type="password" v-model="password" class="input" :class="{ 'error': passwordError }" placeholder="Hasło"
           @blur="validateField('password')" />
-        <button type="submit" class="button">Zaloguj się</button>
+        <button type="submit" class="button">Zaloguj się
+          <Spinner v-if="isLoading" class="spinner" />
+        </button>
       </form>
       <transition name="slide-fade">
         <article class="error-garbage" v-show="error">
@@ -97,6 +124,24 @@ export default {
   font-weight: 600;
   font-size: 14px;
   color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.spinner {
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .button:hover {
