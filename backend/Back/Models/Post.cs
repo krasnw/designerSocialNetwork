@@ -1,30 +1,38 @@
-﻿namespace Back.Models;
+﻿using System.Runtime.InteropServices.JavaScript;
+
+namespace Back.Models;
 
 public class Post(
     long id,
+    User author,
     string title,
     string content,
-    User author,
     ImageContainer images,
-    Post.AccessLevel access,
-    string[] tags)
+    DateOnly createdAt,
+    long likes,
+    string access,
+    List<Tag> tags,
+    List<Rating> ratings
+)
 {
     // Enum for post access level
-    public enum AccessLevel
+
+    public long Id { get; set; } = id;
+    public string Title { get; set; } = title;
+    public string Content { get; set; } = content;
+    public User Author { get; set; } = author;
+    public ImageContainer Images { get; set; } = images;
+    public long Likes { get; set; } = likes;
+    public DateOnly CreatedAt { get; init; } = createdAt;
+    public string Access { get; set; } = access;
+    public List<Tag> Tags { get; set; } = tags;
+    public List<Rating> Ratings { get; set; } = ratings;
+
+    public override string ToString()
     {
-        Public,
-        Protected,
-        Private
+        return $"Post ID: {Id}, User: {Author.Username}, Title: {Title}, Content: {Content}, " +
+               $"Likes: {Likes}, Access Level: {Access}, " +
+               $"Tags: {string.Join(", ", Tags.Select(tag => tag.Name))}, " +
+               $"Ratings: {string.Join(", ", Ratings.Select(rating => rating.Place))}";
     }
-    
-    long Id { get; set; } = id;
-    string Title { get; set; } = title;
-    string Content { get; set; } = content;
-    User Author { get; set; } = author;
-    DateTime CreatedAt { get; set; } = DateTime.Now;
-    ImageContainer Images { get; set; } = images;
-    long Likes { get; set; } = 0;
-    AccessLevel Access { get; set; } = access;
-    string[] Tags { get; set; } = tags;
-    Rating[]? Ratings { get; set; }
 }

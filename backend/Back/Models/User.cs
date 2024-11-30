@@ -7,7 +7,7 @@ public class User(
     string firstName,
     string lastName,
     string phoneNumber,
-    float accessFee,
+    decimal accessFee,
     string accountStatus,
     string accountLevel,
     string? middleName = null)
@@ -26,6 +26,7 @@ public class User(
     public string Token { get; set; } = "";
     public DateTime LastLoginTime { get; set; } = DateTime.MinValue;
     public string LastLoginIP { get; set; } = "";
+    public decimal AccessFee { get; set; } = accessFee;
     
     public class LoginRequest
     {
