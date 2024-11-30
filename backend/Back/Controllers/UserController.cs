@@ -15,21 +15,21 @@ public class UserController : ControllerBase
         _userService = userService;
     }
     
-    // [Authorize]
-    // [HttpGet("profile/me")]
-    // public IActionResult GetMyProfile()
-    // {
-    //     var user = _userService.GetUser(User.Identity?.Name);
-    //     return user != null ? Ok(user) : NotFound();
-    // }
-    //
+    [Authorize]
+    [HttpGet("profile/me")]
+    public IActionResult GetMyProfile()
+    {
+        var user = UserService.GetUser(User.Identity?.Name);
+        return user != null ? Ok(user) : NotFound();
+    }
+    
     // [HttpGet("profile/{id}")]
     // public IActionResult GetUser(int id)
     // {
     //     var user = _userService.GetUser(id);
     //     return user != null ? Ok(user) : NotFound();
     // }
-    //
+    
     // [HttpPost("users")]
     // public IActionResult CreateUser([FromBody] User user)
     // {
