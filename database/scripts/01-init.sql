@@ -42,7 +42,7 @@ CREATE TABLE api_schema."user" (
     join_date DATE NOT NULL,
     account_status account_status NOT NULL,
     account_level account_level NOT NULL,
-    access_fee INTEGER NOT NULL
+    access_fee DECIMAL NOT NULL
 );
 -- end of user block
 
@@ -103,12 +103,17 @@ CREATE TABLE api_schema.image (
     container_id INTEGER REFERENCES image_container(id),
     user_id INTEGER REFERENCES "user"(id)
 );
+
+ALTER TABLE api_schema.image_container 
+ADD COLUMN main_image_id INTEGER REFERENCES api_schema.image(id) ON DELETE SET NULL ON UPDATE CASCADE;
 -- end of image block
 
 -- Post block
+CREATE TYPE api_schema.tag_type AS ENUM ('UI element', 'Style', 'Color');
 CREATE TABLE api_schema.tags (
     id SERIAL PRIMARY KEY,
-    tag_name VARCHAR(20) NOT NULL UNIQUE
+    tag_name VARCHAR(20) NOT NULL UNIQUE,
+    tag_type tag_type NOT NULL
 );
 
 CREATE TYPE api_schema.access_level AS ENUM ('public', 'private', 'protecteed');
@@ -226,7 +231,8 @@ CREATE TABLE api_schema.user_rating (
 CREATE TABLE api_schema.popular_list (
     id SERIAL PRIMARY KEY,
     list_id INTEGER REFERENCES rating_list(id),
-    list_file_path VARCHAR(100) NOT NULL
+    list_file_path VARCHAR(100) NOT NULL,
+    tag_id INTEGER REFERENCES tags(id)
 );
 
 CREATE TABLE api_schema.post_popularity (
