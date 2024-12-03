@@ -56,12 +56,13 @@
               </button>
             </div>
           </div>
-          <TagSelectionPage v-else :goBack="() => showTagSelection = false" />
+          <TagSelectionPage v-else :goBack="() => showTagSelection = false" :publish="publish"
+            :getGatherCallback="(fn) => tagInputGather = fn" />
         </transition>
+
       </div>
 
     </form>
-
 
 
 
@@ -84,6 +85,7 @@ export default {
       showTagSelection: false,
       showErrors: false, // Used to toggle error states
       mainPhotoIndex: 0,
+      tagInputGather: () => { }
     };
   },
   computed: {
@@ -138,6 +140,39 @@ export default {
       } else {
         this.showErrors = true;
       }
+    },
+    publish() {
+      console.log(this.title);
+      console.log(this.description)
+      const tagInput = this.tagInputGather()
+
+      console.log(tagInput.selected_options)
+      console.log(tagInput.selected_access)
+
+      var data = new FormData()
+
+      const other_files = this.selectedFiles.filter((_, i) => i != this.mainPhotoIndex)
+
+
+      data.append('title', this.title)
+      data.append('description', this.description)
+      for (const file of other_files) {
+        data.append('images', file)
+      }
+      data.append('mainImage', this.selectedFiles[this.mainPhotoIndex])
+
+      data.append("access", tagInput.selected_access)
+
+      for(const option of tagInput.selected_options){
+        data.append('tags', option)
+      }
+
+      fetch('/add-t', {
+        method: 'POST',
+        body: data
+      })
+
+      this.$router.push({ path: 'feed' })
     },
   },
 };

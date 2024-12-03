@@ -87,17 +87,26 @@
 
     <div class="buttons bottom">
       <button @click="goBack?.()" class="back-button"><span class="rotate-arrow">➔</span></button>
-      <button @click="publish" class="publish-button">Publikuj</button>
+      <button @click="publish?.()" class="publish-button">Publikuj</button>
     </div>
   </div>
 </template>
 
 <script>
-import TagView from "@/components/TagView.vue";
+import TagView from "@/components/TagViewMk.vue";
+
 export default {
   name: "TagSelectionPage",
   props: {
     goBack: {
+      type: Function,
+      required: false,
+    },
+    publish: {
+      type: Function,
+      required: false,
+    },
+    getGatherCallback: {
       type: Function,
       required: false,
     },
@@ -113,7 +122,7 @@ export default {
       // ],
       // selectedTags: ["", "", ""],
       // tags: [],
-
+      GatherCallback: null,
 
       selectedOptions: new Map(
         [
@@ -184,11 +193,27 @@ export default {
     toggleDropdown(id) {
       this.activeDropdown = this.activeDropdown === id ? null : id;
     },
+    gather() {
 
-    publish() {
-      alert("Post opublikowany!");
-    },
+      const options = []
+
+      for (const [type, optionObj] of this.selectedOptions) {
+        for (const value of optionObj.list) {
+          options.push(`${type}_${value}`)
+        }
+      }
+
+
+      return {
+        selected_options: options,
+        selected_access: this.selected_access,
+      }
+    }
   },
+  mounted() {
+    console.log(`the component is now mounted.`)
+    this.getGatherCallback?.(this.gather);
+  }
 };
 </script>
 
