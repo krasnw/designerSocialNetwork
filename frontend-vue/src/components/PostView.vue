@@ -50,7 +50,12 @@ export default {
     splideOptions() {
       return {
         rewind: true,
-        arrows: false,
+        arrows: (localStorage.getItem('allowArrow') === 'true') ? this.post.postPictures.length > 1 : false,
+        wheel: localStorage.getItem('allowWheel') === 'true',
+        waitForTransition: localStorage.getItem('allowWheel') === 'true',
+        releaseWheel: false,
+        lazyLoad: 'nearby',
+        preloadPages: 1,
         gap: '20px',
         pagination: this.post.postPictures.length > 1, // скрываем пагинацию если картинка одна
       }
@@ -73,7 +78,7 @@ export default {
         <div class="divider-horizontal"></div>
         <span class="post-sub-content">
           <p style="white-space: pre-wrap">{{ post.description }}</p>
-          <span class="tags">
+          <span class="tags no-select">
             <span v-for="(tag, index) in post.tags" :key="index">{{ tag }}</span>
           </span>
         </span>
@@ -86,7 +91,7 @@ export default {
         <p>{{ post.username }}</p>
       </span>
 
-      <div class="stats">
+      <div class="stats no-select">
         <span v-if="post.isPrivate">
           <Lock />Prywatne
         </span>

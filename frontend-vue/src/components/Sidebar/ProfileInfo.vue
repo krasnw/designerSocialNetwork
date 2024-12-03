@@ -21,6 +21,9 @@ export default {
     },
     goToRegister() {
       this.$router.push({ name: 'register' });
+    },
+    goToProfile() {
+      this.$router.push({ name: 'myProfile' });
     }
   },
   mounted() {
@@ -40,7 +43,7 @@ export default {
   <span class="wrapper">
 
     <article class="sidebar-profile" v-if="isLoggedIn">
-      <div class="username-wrapper">
+      <div class="username-wrapper" @click="goToProfile">
         <p class="username">{{ user.name }}</p>
       </div>
       <img :src="user.image" alt="Profile picture" />
@@ -88,6 +91,7 @@ export default {
   border-radius: 7px;
   border: 0.5px solid white;
   padding: 12px 50px;
+  cursor: pointer;
 }
 
 .username {

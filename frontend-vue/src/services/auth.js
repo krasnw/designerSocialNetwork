@@ -11,17 +11,37 @@ export const authService = {
         body: JSON.stringify(credentials),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.message || "Ошибка авторизации");
+        throw new Error("Nieprawidłowa nazwa użytkownika lub hasło");
       }
 
-      // Сохраняем JWT в localStorage
-      localStorage.setItem("JWT", data.token);
-      return data;
+      const token = await response.text();
+      localStorage.setItem("JWT", token);
+      return token;
     } catch (error) {
-      throw error;
+      throw new Error("Błąd podczas logowania: " + error.message);
+    }
+  },
+
+  async register(userData) {
+    try {
+      const response = await fetch(`${API_URL}/Auth/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Błąd podczas rejestracji");
+      }
+
+      const token = await response.text();
+      localStorage.setItem("JWT", token);
+      return token;
+    } catch (error) {
+      throw new Error("Błąd podczas rejestracji: " + error.message);
     }
   },
 };

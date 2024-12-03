@@ -36,7 +36,6 @@ export default {
         return;
       }
 
-      // Здесь логика отправки данных на сервер
       try {
         this.isLoading = true;
         await authService.login({
@@ -44,30 +43,17 @@ export default {
           password: this.password
         });
 
-        // Отправляем событие об успешной авторизации
         window.dispatchEvent(new Event('loginStatusChanged'));
-
-        // Редирект на главную
         this.$router.push({ name: 'feed' });
       } catch (error) {
         this.error = error.message;
       } finally {
         this.isLoading = false;
       }
-      this.error = null;
     },
     deleteError() {
       this.error = null;
-    },
-
-
-    // testing methods
-    addJWT() {
-      localStorage.setItem('JWT', 'test');
-      this.$router.push({ name: 'feed' });
-      // Добавляем событие при успешной авторизации
-      window.dispatchEvent(new Event('loginStatusChanged'));
-    },
+    }
   }
 };
 </script>
@@ -90,8 +76,6 @@ export default {
           <h3>Ups... coś poszło nie tak</h3>
           <p class="background">{{ error }}</p>
           <button @click="deleteError" id="deleteErr">Zamknij</button>
-
-          <button class="button" @click="addJWT">Add or remove JWT</button>
         </article>
       </transition>
     </section>
@@ -128,20 +112,6 @@ export default {
   justify-content: center;
   align-items: center;
   gap: 10px;
-}
-
-.spinner {
-  animation: spin 2s linear infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
 }
 
 .button:hover {

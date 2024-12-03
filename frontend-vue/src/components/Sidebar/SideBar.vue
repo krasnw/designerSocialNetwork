@@ -3,6 +3,7 @@ import SideBarArrow from '@/assets/Icons/SideBarArrow.vue';
 import ProfileInfo from './ProfileInfo.vue';
 import Filter from './Filter.vue';
 import Search from './Search.vue';
+import UserInfoAndStats from './UserInfoAndStats.vue';
 
 
 export default {
@@ -10,6 +11,7 @@ export default {
   components: {
     SideBarArrow,
     ProfileInfo,
+    UserInfoAndStats,
     Filter,
     Search
   },
@@ -20,10 +22,18 @@ export default {
     }
   },
   data() {
+    const sidebarAlwaysOpen = localStorage.getItem('sidebarAlwaysOpen') === 'true';
     return {
-      hidden: JSON.parse(localStorage.getItem('sidebarHidden')) || false,
-      rotated: JSON.parse(localStorage.getItem('sidebarRotated')) || true,
+      hidden: sidebarAlwaysOpen ? false : (JSON.parse(localStorage.getItem('sidebarHidden')) || false),
+      rotated: sidebarAlwaysOpen ? true : (JSON.parse(localStorage.getItem('sidebarRotated')) || true),
+      alwaysOpen: sidebarAlwaysOpen
     };
+  },
+  created() {
+    window.addEventListener('sidebarSettingChanged', this.handleSidebarSetting);
+  },
+  beforeUnmount() {
+    window.removeEventListener('sidebarSettingChanged', this.handleSidebarSetting);
   },
   watch: {
     hidden(newValue) {
@@ -37,7 +47,19 @@ export default {
     toggleSidebar() {
       this.hidden = !this.hidden;
       this.rotated = !this.rotated;
+      this.$emit('sidebarStateChanged', this.hidden);
     },
+    handleSidebarSetting() {
+      this.alwaysOpen = localStorage.getItem('sidebarAlwaysOpen') === 'true';
+      if (this.alwaysOpen) {
+        this.hidden = false;
+        this.rotated = true;
+        this.$emit('sidebarStateChanged', false);
+      }
+    }
+  },
+  mounted() {
+    this.$emit('sidebarStateChanged', this.hidden);
   },
 };
 </script>
@@ -45,7 +67,7 @@ export default {
 <template>
   <aside :style="{ width: hidden ? '10px' : '350px' }" class="sidebar-wrapper">
 
-    <button class="arrow-button" @click="toggleSidebar">
+    <button class="arrow-button" @click="toggleSidebar" v-if="!alwaysOpen">
       <span :class="{ rotated: rotated }">
         <SideBarArrow />
       </span>
@@ -53,15 +75,16 @@ export default {
 
 
     <section v-if="!hidden" class="sidebar">
-      <ProfileInfo />
+      <UserInfoAndStats v-if="page === 'myProfile' || page === 'userProfile'" :page="page" />
+      <ProfileInfo v-else />
 
       <!-- cases for other pages -->
       <div v-if="page === 'feed'" class="wrap">
         <Search />
         <Filter />
       </div>
-      <div v-else-if="page === 'profile'">
-        <h2>Profile</h2>
+      <div v-else-if="page === 'myProfile' || page === 'userProfile'" class="wrap">
+        <Filter />
       </div>
       <div v-else-if="page === 'add-post'">
         <h2>Ranking</h2>
@@ -136,6 +159,7 @@ export default {
   max-height: 100svh;
   /* Добавляем максимальную высоту */
   overflow-y: auto;
+  overflow-x: hidden;
   /* Добавляем вертикальную прокрутку */
 
   /* Стилизация скроллбара */

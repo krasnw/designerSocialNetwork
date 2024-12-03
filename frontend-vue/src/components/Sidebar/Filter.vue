@@ -1,10 +1,12 @@
 <script>
+import ReloadIcon from '@/assets/Icons/ReloadIcon.vue';
 import TagView from '../TagView.vue';
 
 export default {
   name: "Filter",
   components: {
     TagView,
+    ReloadIcon,
   },
   data() {
     return {
@@ -21,14 +23,7 @@ export default {
         { value: 'checkbox', text: 'Checkbox' },
         { value: 'radio', text: 'Radio' },
         { value: 'toggle', text: 'Toggle' },
-        { value: 'alert', text: 'Alert' },
-        { value: 'tooltip', text: 'Tooltip' },
-        { value: 'dropdown', text: 'Dropdown' },
-        { value: 'table', text: 'Table' },
-        { value: 'card', text: 'Card' },
-        { value: 'icon', text: 'Icon' },
         { value: 'loader', text: 'Loader' },
-        { value: 'tag', text: 'Tag' },
         { value: 'calendar', text: 'Calendar' },
         { value: 'menu', text: 'Menu' },
         { value: 'sidebar', text: 'Sidebar' },
@@ -58,7 +53,10 @@ export default {
         { value: 'polubione', text: 'Polubione' }
       ],
       activeDropdown: null,
-      activeToggle: 'public', // добавляем новое состояние (public/purchased)
+      activeToggle: 'public',
+      isLoading: false,
+      isTagNumChanged: false,
+      isSpinning: false,
     };
   },
   mounted() {
@@ -84,6 +82,14 @@ export default {
         this.selectedOptions = this.selectedOptions.filter(opt => !opt.startsWith('Kolejność:'));
         this.selectedOptions.push(`Kolejność: ${newVal}`);
       }
+    },
+    selectedOptions: {
+      handler(newVal, oldVal) {
+        if (newVal.length !== oldVal.length) {
+          this.isTagNumChanged = true;
+        }
+      },
+      deep: true
     }
   },
   methods: {
@@ -130,28 +136,49 @@ export default {
     toggleOption(option) {
       this.activeToggle = option;
     },
+    toggleCheckbox(event, id) {
+      // Добавляем проверку, что клик не по label и не по самому checkbox
+      if (event.target.tagName !== 'LABEL' && event.target.type !== 'checkbox' && event.target.type !== 'radio') {
+        const checkbox = document.getElementById(id);
+        if (checkbox) {
+          checkbox.checked = !checkbox.checked;
+          checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    },
+    handleReload() {
+      this.isSpinning = true;
+      setTimeout(() => {
+        this.isSpinning = false;
+        this.isTagNumChanged = false;
+      }, 3000);
+    },
   }
 };
 </script>
 
 <template>
-  <div class="filter-wrapper">
+  <div class="filter-wrapper no-select">
     <div class="filter">
-      <h3>Filtruj</h3>
+      <div class="filter-header">
+        <h3>Filtruj</h3>
+        <ReloadIcon v-if="isTagNumChanged" @click="handleReload" :class="{ 'spin-animation': isSpinning }"
+          class="reload-icon" />
+      </div>
 
       <div class="toggle-type">
         <div class="toggle-option" :class="{ active: activeToggle === 'public' }" @click="toggleOption('public')">
           Publiczne
         </div>
         <div class="toggle-option" :class="{ active: activeToggle === 'purchased' }" @click="toggleOption('purchased')">
-          Wykupione
+          Płatne
         </div>
       </div>
 
       <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'ui' }" ref="ui">
         <span class="anchor" @click="toggleDropdown('ui', $event)">Element UI</span>
         <ul class="items">
-          <li v-for="option in ui" :key="option.value">
+          <li v-for="option in ui" :key="option.value" @click="toggleCheckbox($event, 'ui-' + option.value)">
             <input type="checkbox" :id="'ui-' + option.value" :value="option.value" v-model="selected_ui">
             <label :for="'ui-' + option.value">{{ option.text }}</label>
           </li>
@@ -161,7 +188,7 @@ export default {
       <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'style' }" ref="style">
         <span class="anchor" @click="toggleDropdown('style', $event)">Styl</span>
         <ul class="items">
-          <li v-for="option in style" :key="option.value">
+          <li v-for="option in style" :key="option.value" @click="toggleCheckbox($event, 'style-' + option.value)">
             <input type="checkbox" :id="'style-' + option.value" :value="option.value" v-model="selected_style">
             <label :for="'style-' + option.value">{{ option.text }}</label>
           </li>
@@ -171,7 +198,7 @@ export default {
       <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'color' }" ref="color">
         <span class="anchor" @click="toggleDropdown('color', $event)">Kolor</span>
         <ul class="items">
-          <li v-for="option in color" :key="option.value">
+          <li v-for="option in color" :key="option.value" @click="toggleCheckbox($event, 'color-' + option.value)">
             <input type="checkbox" :id="'color-' + option.value" :value="option.value" v-model="selected_color">
             <label :for="'color-' + option.value">{{ option.text }}</label>
           </li>
@@ -181,7 +208,7 @@ export default {
       <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'order' }" ref="order">
         <span class="anchor" @click="toggleDropdown('order', $event)">Kolejność</span>
         <ul class="items">
-          <li v-for="option in order" :key="option.value">
+          <li v-for="option in order" :key="option.value" @click="toggleCheckbox($event, 'order-' + option.value)">
             <input type="radio" :id="'order-' + option.value" :value="option.value" v-model="selected_order">
             <label :for="'order-' + option.value">{{ option.text }}</label>
           </li>
@@ -259,7 +286,7 @@ export default {
   border-radius: 0 0 10px 10px;
   position: absolute;
   width: 100%;
-  background: rgba(0, 0, 0, 0.7);
+  background: #aaad;
   backdrop-filter: blur(50px);
   box-sizing: border-box;
   z-index: 100;
@@ -295,12 +322,27 @@ export default {
   display: flex;
   align-items: center;
   gap: 10px;
+  cursor: pointer;
+  transition: background 0.2s ease;
 
   input[type="checkbox"],
   input[type="radio"] {
     margin: 0;
   }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  label {
+    cursor: pointer;
+  }
 }
+
+/* Удалить или закомментировать старый hover стиль */
+/* .dropdown-check-list ul.items :hover {
+  background: rgba(255, 255, 255, 0.1);
+} */
 
 .dropdown-check-list.visible .items {
   display: block;
@@ -333,5 +375,20 @@ export default {
   color: white;
   border-radius: 7px;
   box-shadow: inset 0 0 0 1px white;
+}
+
+.filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.reload-icon {
+  cursor: pointer;
+  color: white;
+}
+
+.spin-animation {
+  animation: spin 1s linear infinite;
 }
 </style>

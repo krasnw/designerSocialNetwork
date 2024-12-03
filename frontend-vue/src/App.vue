@@ -8,13 +8,28 @@ export default {
     NavigationBar,
     SideBar
   },
+  data() {
+    return {
+      isSidebarHidden: JSON.parse(localStorage.getItem('sidebarHidden') || 'false')
+    }
+  },
   methods: {
     showSidebar(routeName) {
       const pagesWithoutSidebar = ['add-post', ''];
       return !pagesWithoutSidebar.includes(routeName);
+    },
+    handleSidebarState(hidden) {
+      this.isSidebarHidden = hidden;
     }
   },
   computed: {
+    mainContentStyle() {
+      const sidebarWidth = this.isSidebarHidden ? '0px' : '340px';
+      return {
+        width: `calc(100% - ${this.showSidebar(this.currentRoute) ? sidebarWidth : '0px'})`,
+        paddingLeft: '100px',
+      }
+    },
     currentRoute() {
       return this.$route.name
     }
@@ -24,14 +39,14 @@ export default {
 
 <template>
   <NavigationBar />
-  <section class="main-content">
+  <section class="main-content" :style="mainContentStyle">
     <router-view v-slot="{ Component }">
       <transition name="move" mode="out-in">
         <component :is="Component" />
       </transition>
     </router-view>
   </section>
-  <SideBar v-if="showSidebar(currentRoute)" :page="currentRoute" />
+  <SideBar v-if="showSidebar(currentRoute)" :page="currentRoute" @sidebar-state-changed="handleSidebarState" />
 </template>
 
 <style>
@@ -55,7 +70,7 @@ html {
 body {
   margin: 0;
   padding: 0;
-  background-image: url('assets/Images/main_bg.jpg');
+  background-image: url('assets/Images/main_bg3.png');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -96,6 +111,9 @@ h6 {
   color: rgba(255, 255, 255, 0.9);
   margin-top: 50px;
   margin-bottom: 30px;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .background {
@@ -115,6 +133,9 @@ h6 {
   backdrop-filter: blur(40px);
   box-shadow: 5px 5px 25px 0px rgba(0, 0, 0, 0.25);
   cursor: pointer;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 input,
@@ -157,16 +178,39 @@ select {
   font-family: var(--font);
 }
 
+.spinner {
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.no-select {
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.error-wrap {
+  padding: 20px;
+  width: fit-content;
+  max-width: 400px;
+}
 
 /* Page styling */
 .main-content {
-  margin-left: 100px;
   z-index: 0;
   max-height: 100svh;
-  /* Добавляем максимальную высоту */
   overflow-y: auto;
   overflow-x: hidden;
-  /* Добавляем вертикальную прокрутку */
+  transition: width 0.3s;
 
   /* Стилизация скроллбара */
   &::-webkit-scrollbar {

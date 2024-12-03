@@ -1,12 +1,19 @@
 <script>
+import Spinner from '@/assets/Icons/Spinner.vue';
+import { authService } from '@/services/auth';
+
 export default {
   name: "RegisterPage",
+  components: {
+    Spinner
+  },
   data() {
     return {
       username: '',
       email: '',
+      phoneNumber: '',
       firstName: '',
-      middleName: '',
+      // middleName: '',
       lastName: '',
       password: '',
       passwordRepeat: '',
@@ -14,12 +21,14 @@ export default {
         username: null,
         email: null,
         firstName: null,
-        middleName: null,
+        // middleName: null,
         lastName: null,
         password: null,
-        passwordRepeat: null
+        passwordRepeat: null,
+        phoneNumber: null
       },
-      serverError: null
+      serverError: null,
+      isLoading: false,
     };
   },
   methods: {
@@ -43,9 +52,19 @@ export default {
           if (this.lastName.trim() === '') return 'Nazwisko jest wymagane';
           return null;
         },
+        phoneNumber: () => {
+          if (this.phoneNumber.trim() === '') return 'Numer telefonu jest wymagany';
+          // example of phone number validation +48123123123
+          if (!/^\+\d{1,3}\d{9}$/.test(this.phoneNumber)) return 'Nieprawidłowy format numeru telefonu';
+          return null;
+        },
         password: () => {
           if (this.password.trim() === '') return 'Hasło jest wymagane';
-          if (this.password.length < 6) return 'Hasło musi mieć min. 6 znaków';
+          if (this.password.length < 6) return 'Hasło musi mieć min. 8 znaków';
+          // password must have number
+          if (!/\d/.test(this.password)) return 'Hasło musi zawierać cyfrę';
+          // password must have uppercase letter
+          if (!/[A-Z]/.test(this.password)) return 'Hasło musi zawierać wielką literę';
           return null;
         },
         passwordRepeat: () => {
@@ -60,25 +79,34 @@ export default {
     },
 
     validateAll() {
-      ['username', 'email', 'firstName', 'lastName', 'password', 'passwordRepeat'].forEach(field => {
+      ['username', 'email', 'firstName', 'lastName', 'password', 'passwordRepeat', 'phoneNumber'].forEach(field => {
         this.validateField(field);
       });
       return !Object.values(this.errors).some(error => error !== null);
     },
 
-    handleRegister(e) {
+    async handleRegister(e) {
       e.preventDefault();
       if (!this.validateAll()) return;
 
-      // Здесь будет логика отправки данных на сервер
-      // Пример обработки серверной ошибки:
-      // if (serverResponse.error) {
-      //   if (serverResponse.error.field) {
-      //     this.errors[serverResponse.error.field] = serverResponse.error.message;
-      //   } else {
-      //     this.serverError = serverResponse.error.message;
-      //   }
-      // }
+      try {
+        this.isLoading = true;
+        await authService.register({
+          username: this.username,
+          email: this.email,
+          firstName: this.firstName,
+          lastName: this.lastName,
+          password: this.password,
+          phoneNumber: this.phoneNumber
+        });
+
+        window.dispatchEvent(new Event('loginStatusChanged'));
+        this.$router.push({ name: 'feed' });
+      } catch (error) {
+        this.serverError = error.message;
+      } finally {
+        this.isLoading = false;
+      }
     },
 
     clearError(field) {
@@ -132,8 +160,14 @@ export default {
             <span class="error-message" v-if="errors.firstName">{{ errors.firstName }}</span>
           </div>
 
-          <div class="form-group">
+          <!-- <div class="form-group">
             <input type="text" v-model="middleName" placeholder="Drugie imię (opcjonalnie)" />
+          </div> -->
+
+          <div class="form-group">
+            <input type="text" v-model="phoneNumber" :class="{ 'error': errors.phoneNumber }"
+              placeholder="Numer telefonu (+48...)" @blur="validateField('phoneNumber')" />
+            <span class="error-message" v-if="errors.phoneNumber">{{ errors.phoneNumber }}</span>
           </div>
 
           <div class="form-group">
@@ -141,7 +175,10 @@ export default {
               @blur="validateField('lastName')" />
             <span class="error-message" v-if="errors.lastName">{{ errors.lastName }}</span>
           </div>
-          <button type="submit" class="button">Zarejestruj się</button>
+          <button type="submit" class="button">
+            Zarejestruj się
+            <Spinner v-if="isLoading" class="spinner" />
+          </button>
         </div>
       </form>
 

@@ -42,6 +42,12 @@ export default {
   display: flex;
   flex-direction: column;
   width: fit-content;
+  transition: transform 0.3s ease;
+}
+
+.post-preview:hover {
+  transform: scale(1.01);
+  transition: transform 0.3s ease;
 }
 
 .post-preview-img {

@@ -1,6 +1,13 @@
 <script>
 export default {
   name: "SettingsPage",
+  data() {
+    return {
+      allowArrow: localStorage.getItem('allowArrow') === 'true',
+      allowWheel: localStorage.getItem('allowWheel') === 'true',
+      sidebarAlwaysOpen: localStorage.getItem('sidebarAlwaysOpen') === 'true',
+    };
+  },
   methods: {
     logout() {
       localStorage.removeItem('JWT');
@@ -9,9 +16,29 @@ export default {
     },
     isLoggedIn() {
       return localStorage.getItem('JWT') !== null;
-    }
+    },
+    toggleArrow() {
+      localStorage.setItem('allowArrow', String(this.allowArrow));
+    },
+    toggleWheel() {
+      localStorage.setItem('allowWheel', String(this.allowWheel));
+    },
+    toggleSidebar() {
+      localStorage.setItem('sidebarAlwaysOpen', String(this.sidebarAlwaysOpen));
+      window.dispatchEvent(new Event('sidebarSettingChanged'));
+    },
   },
   mounted() {
+    // Меняем значение по умолчанию на false
+    if (localStorage.getItem('allowArrow') === null) {
+      localStorage.setItem('allowArrow', 'false');
+    }
+    if (localStorage.getItem('allowWheel') === null) {
+      localStorage.setItem('allowWheel', 'false');
+    }
+    if (localStorage.getItem('sidebarAlwaysOpen') === null) {
+      localStorage.setItem('sidebarAlwaysOpen', 'false');
+    }
     this.isLoggedIn();
   },
 };
@@ -22,15 +49,32 @@ export default {
     <h2 class="page-name">Ustawienia</h2>
     <section class="wrapper">
       <section class="settings background">
-        <h3>Ustawienia aplikacji</h3>
+        <h3>Ustawienia widoku</h3>
         <article class="settings-cell">
-          <p>Sidebar domyślnie jest otwarty</p>
+          <p>Sidebar domyślnie jest widoczny</p>
           <label class="switch">
-            <input type="checkbox">
+            <input type="checkbox" v-model="sidebarAlwaysOpen" @change="toggleSidebar">
+            <span class="slider round"></span>
+          </label>
+        </article>
+
+        <article class="settings-cell">
+          <p>Włączyć strzałki dla przeglądu zdjęć</p>
+          <label class="switch">
+            <input type="checkbox" v-model="allowArrow" @change="toggleArrow">
+            <span class="slider round"></span>
+          </label>
+        </article>
+
+        <article class="settings-cell">
+          <p>Przełączenie pomiędzy zdjęciami za pomocą kółka myszy</p>
+          <label class="switch">
+            <input type="checkbox" v-model="allowWheel" @change="toggleWheel">
             <span class="slider round"></span>
           </label>
         </article>
       </section>
+
       <section class="settings background" v-if="isLoggedIn()">
         <h3>Ustawienia konta</h3>
         <article class="settings-cell">
