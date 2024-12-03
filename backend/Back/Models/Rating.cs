@@ -1,7 +1,7 @@
 ﻿namespace Back.Models;
 
-public class Rating(int place, string tag)
+public class Rating(int place, Tag tag)
 {
     public int Place { get; set; } = place;
-    public string Tag { get; set; } = tag;
+    public Tag Tag { get; set; } = tag;
 }

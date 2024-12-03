@@ -96,18 +96,28 @@ VALUES
 ('/images/img10.jpg', 4, 10);
 
 
-INSERT INTO api_schema.tags (tag_name)
+INSERT INTO api_schema.tags (tag_name, tag_type)
 VALUES
-('Design'),
-('UI'),
-('UX'),
-('Logo'),
-('Web'),
-('App'),
-('Dashboard'),
-('Graphics'),
-('Morphism'),
-('Branding');
+('Logo', 'UI element'),
+('Button', 'UI element'),
+('Icon', 'UI element'),
+('Card', 'UI element'),
+('Web', 'Style'),
+('App', 'Style'),
+('Dashboard', 'Style'),
+('Graphics', 'Style'),
+('Morphism', 'Style'),
+('Branding', 'Style'),
+('Red', 'Color'),
+('Blue', 'Color'),
+('Green', 'Color'),
+('Yellow', 'Color'),
+('Black', 'Color'),
+('White', 'Color'),
+('Gray', 'Color'),
+('Purple', 'Color'),
+('Orange', 'Color'),
+('Brown', 'Color');
 
 
 

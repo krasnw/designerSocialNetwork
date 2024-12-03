@@ -2,15 +2,15 @@
 
 namespace Back.Services
 {
-    public class DatabaseService : IDisposable
+    public class DatabaseService
     {
         private static DatabaseService? _instance;
         private static readonly object Lock = new();
-        private readonly NpgsqlConnection _connection;
+        private readonly string _connectionString;
 
         private DatabaseService(string connectionString)
         {
-            _connection = new NpgsqlConnection(connectionString);
+            _connectionString = connectionString;
         }
 
         public static DatabaseService GetInstance(string? connectionString = null)
@@ -19,34 +19,35 @@ namespace Back.Services
             if (connectionString == null) throw new Exception("No connection string provided, but no instance exists.");
             lock (Lock)
             {
-                _instance ??= new DatabaseService(connectionString);
+                _instance = new DatabaseService(connectionString);
             }
+
             return _instance;
         }
 
         public NpgsqlConnection GetConnection()
         {
-            if (_connection.State == System.Data.ConnectionState.Closed || _connection.State == System.Data.ConnectionState.Broken)
-            {
-                _connection.Open();
-            }
-            return _connection;
+            var connection = new NpgsqlConnection(_connectionString);
+            connection.Open(); // Ensure the connection is opened
+            return connection;
         }
 
-        public void Dispose()
-        {
-            if (_connection.State == System.Data.ConnectionState.Open)
-            {
-                _connection.Close();
-            }
-            _connection.Dispose();
-        }
-
-        public void ExecuteNonQuery(string query)
+        public void ExecuteNonQuery(string query, Dictionary<string, object>? parameters = null)
         {
             try
             {
-                using var command = new NpgsqlCommand(query, GetConnection());
+                using var connection = GetConnection();
+                connection.Open();
+                using var command = new NpgsqlCommand(query, connection);
+
+                if (parameters != null)
+                {
+                    foreach (var param in parameters)
+                    {
+                        command.Parameters.AddWithValue(param.Key, param.Value);
+                    }
+                }
+
                 command.ExecuteNonQuery();
             }
             catch (Exception ex)
@@ -56,13 +57,23 @@ namespace Back.Services
             }
         }
 
-        public NpgsqlDataReader ExecuteQuery(string query)
+        public NpgsqlDataReader ExecuteQuery(string query, out NpgsqlConnection connection, out NpgsqlCommand command,
+            Dictionary<string, object>? parameters = null)
         {
             try
             {
-                using var command = new NpgsqlCommand(query, GetConnection());
-                command.Transaction = _connection.BeginTransaction(System.Data.IsolationLevel.ReadUncommitted);
-                return command.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
+                connection = GetConnection();
+                command = new NpgsqlCommand(query, connection);
+
+                if (parameters != null)
+                {
+                    foreach (var param in parameters)
+                    {
+                        command.Parameters.AddWithValue(param.Key, param.Value);
+                    }
+                }
+
+                return command.ExecuteReader();
             }
             catch (Exception ex)
             {
