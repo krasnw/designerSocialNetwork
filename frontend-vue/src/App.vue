@@ -42,12 +42,16 @@ export default {
   <section class="main-content" :style="mainContentStyle">
     <router-view v-slot="{ Component }">
       <transition name="move" mode="out-in">
-        <component :is="Component" />
+        <KeepAlive>
+          <component :is="Component" />
+        </KeepAlive>
       </transition>
     </router-view>
   </section>
   <SideBar v-if="showSidebar(currentRoute)" :page="currentRoute" @sidebar-state-changed="handleSidebarState" />
 </template>
+
+
 
 <style>
 /* Basic styling */
@@ -242,16 +246,13 @@ select {
 .move-enter-active,
 .move-leave-active {
   transition: all 0.3s ease;
-  position: absolute;
+  /* position: absolute; */
 }
 
-.move-enter-from {
-  opacity: 0;
-  transform: translateX(-100%);
-}
-
+.move-enter-from,
 .move-leave-to {
   opacity: 0;
+  /* margin-left: -100%; */
   transform: translateY(-100%);
 }
 
