@@ -27,7 +27,7 @@ public class AuthController(AuthService authService, UserService userService) : 
         {
             var image = "default.jpg";
             var isSignedUp = userService.SignUp(request.Username, request.Email, request.Password,
-                request.FirstName, request.LastName, request.PhoneNumber, request.Description, image);
+                request.FirstName, request.LastName, request.PhoneNumber, image);
 
             if (isSignedUp != "") return BadRequest("User already exists");
             var token = authService.GenerateToken(request.Username);
@@ -55,8 +55,7 @@ public class AuthController(AuthService authService, UserService userService) : 
         string password,
         string firstName,
         string lastName,
-        string phoneNumber,
-        string description = "")
+        string phoneNumber)
     {
         public string Username { get; set; } = username ?? throw new ArgumentNullException(nameof(username));
         public string Email { get; set; } = email ?? throw new ArgumentNullException(nameof(email));
@@ -64,7 +63,5 @@ public class AuthController(AuthService authService, UserService userService) : 
         public string FirstName { get; set; } = firstName ?? throw new ArgumentNullException(nameof(firstName));
         public string LastName { get; set; } = lastName ?? throw new ArgumentNullException(nameof(lastName));
         public string PhoneNumber { get; set; } = phoneNumber ?? throw new ArgumentNullException(nameof(phoneNumber));
-
-        public string Description { get; set; } = description;
     }
 }
