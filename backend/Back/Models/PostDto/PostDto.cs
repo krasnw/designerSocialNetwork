@@ -7,7 +7,7 @@ public class PostDto
     public long Id { get; set; }
     public string Title { get; set; }
     public string Content { get; set; }
-    public UserPostDto Author { get; set; }
+    public UserPost Author { get; set; }
     public string MainImageFilePath { get; set; }
     public long Likes { get; set; }
     public string CreatedAt { get; set; }
@@ -21,7 +21,7 @@ public class PostDto
             Id = post.Id,
             Title = post.Title,
             Content = post.Content,
-            Author = UserPostDto.MapToUserPostDto(post.Author),
+            Author = UserPost.MapToUserPostDto(post.Author),
             MainImageFilePath = post.Images.MainImage.ImageFilePath,
             Likes = post.Likes,
             CreatedAt = post.CreatedAt.ToString("yyyy-MM-dd"),
