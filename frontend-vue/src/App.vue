@@ -42,9 +42,7 @@ export default {
   <section class="main-content" :style="mainContentStyle">
     <router-view v-slot="{ Component }">
       <transition name="move" mode="out-in">
-        <KeepAlive>
-          <component :is="Component" />
-        </KeepAlive>
+        <component :is="Component" />
       </transition>
     </router-view>
   </section>
@@ -268,7 +266,11 @@ select {
   /* position: absolute; */
 }
 
-.move-enter-from,
+.move-enter-from {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+
 .move-leave-to {
   opacity: 0;
   /* margin-left: -100%; */

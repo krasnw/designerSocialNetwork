@@ -1,72 +1,69 @@
 <template>
-  <main>
-    <h2 class="page-name">Dodaj nowy post</h2>
-    <form class="" @submit.prevent="">
+  <KeepAlive>
+    <main>
+      <h2 class="page-name">Dodaj nowy post</h2>
+      <form class="" @submit.prevent="">
 
-      <div class="upload-post-window background">
-        <transition mode="out-in">
-          <div class="upload-post" v-if="!showTagSelection">
-            <div class="file-upload"
-              :class="{ active: dragActive, 'error-shadow': showErrors && selectedFiles.length === 0 }"
-              @dragover="handleDragOver" @dragleave="handleDragLeave" @drop="handleDrop">
-              <input type="file" multiple class="hidden-input" @change="handleFileChange" ref="fileInput"
-                accept="image/*" />
-              <div class="file-content">
-                <template v-if="selectedFiles.length">
-                  <div class="photos-container">
-                    <div v-for="(file, index) in selectedFiles" :key="index" class="photo-wrapper">
-                      <img :src="getPreviewUrl(file)" class="photo-preview" />
-                      <button type="button" class="star-button" :class="{ 'starred': mainPhotoIndex === index }"
-                        @click.stop.prevent="setMainPhoto(index)">
-                        ★
-                      </button>
-                      <button type="button" class="remove-button" @click.stop.prevent="removeFile(index)">
-                        ×
-                      </button>
+        <div class="upload-post-window background">
+          <transition mode="out-in">
+            <div class="upload-post" v-if="!showTagSelection">
+              <div class="file-upload"
+                :class="{ active: dragActive, 'error-shadow': showErrors && selectedFiles.length === 0 }"
+                @dragover="handleDragOver" @dragleave="handleDragLeave" @drop="handleDrop">
+                <input type="file" multiple class="hidden-input" @change="handleFileChange" ref="fileInput"
+                  accept="image/*" />
+                <div class="file-content">
+                  <template v-if="selectedFiles.length">
+                    <div class="photos-container">
+                      <div v-for="(file, index) in selectedFiles" :key="index" class="photo-wrapper">
+                        <img :src="getPreviewUrl(file)" class="photo-preview" />
+                        <button type="button" class="star-button" :class="{ 'starred': mainPhotoIndex === index }"
+                          @click.stop.prevent="setMainPhoto(index)">
+                          ★
+                        </button>
+                        <button type="button" class="remove-button" @click.stop.prevent="removeFile(index)">
+                          ×
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <button type="button" class="add-more" @click.stop.prevent="$refs.fileInput.click()"
-                    v-if="selectedFiles.length < 10"
-                    style="background: transparent; border: none; color: rgba(255, 255, 255, 0.7); cursor: pointer;">
-                    + Dodaj więcej zdjęć
-                  </button>
-                </template>
-                <template v-else>
-                  <div class="placeholder" @click.stop.prevent="$refs.fileInput.click()">
-                    <span>+</span>
-                    <p>Przeciągnij obrazki lub wybierz pliki (max. 10)</p>
-                  </div>
-                </template>
+                    <button type="button" class="add-more" @click.stop.prevent="$refs.fileInput.click()"
+                      v-if="selectedFiles.length < 10"
+                      style="background: transparent; border: none; color: rgba(255, 255, 255, 0.7); cursor: pointer;">
+                      + Dodaj więcej zdjęć
+                    </button>
+                  </template>
+                  <template v-else>
+                    <div class="placeholder" @click.stop.prevent="$refs.fileInput.click()">
+                      <span>+</span>
+                      <p>Przeciągnij obrazki lub wybierz pliki (max. 10)</p>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
+              <label class="title-input">
+                <h3>Tutył</h3>
+                <input v-model="title" type="text" placeholder="Wpisz tutył"
+                  :class="{ 'error-shadow': showErrors && !title }" />
+              </label>
+              <label class="description-input">
+                <h3>Opis</h3>
+                <textarea v-model="description" placeholder="Dodaj opis"></textarea>
+              </label>
+
+              <div class="button-continue">
+                <button type="button" class="submit-button" @click="handleSubmit">
+                  ➔
+                </button>
               </div>
             </div>
-
-            <label class="title-input">
-              <h3>Tutył</h3>
-              <input v-model="title" type="text" placeholder="Wpisz tutył"
-                :class="{ 'error-shadow': showErrors && !title }" />
-            </label>
-            <label class="description-input">
-              <h3>Opis</h3>
-              <textarea v-model="description" placeholder="Dodaj opis"></textarea>
-            </label>
-
-            <div class="button-continue">
-              <button type="button" class="submit-button" @click="handleSubmit">
-                ➔
-              </button>
-            </div>
-          </div>
-          <TagSelectionPage v-else :goBack="() => showTagSelection = false" :publish="publish"
-            :getGatherCallback="(fn) => tagInputGather = fn" />
-        </transition>
-
-      </div>
-
-    </form>
-
-
-
-  </main>
+            <TagSelectionPage v-else :goBack="() => showTagSelection = false" :publish="publish"
+              :getGatherCallback="(fn) => tagInputGather = fn" />
+          </transition>
+        </div>
+      </form>
+    </main>
+  </KeepAlive>
 </template>
 
 
@@ -163,7 +160,7 @@ export default {
 
       data.append("access", tagInput.selected_access)
 
-      for(const option of tagInput.selected_options){
+      for (const option of tagInput.selected_options) {
         data.append('tags', option)
       }
 
