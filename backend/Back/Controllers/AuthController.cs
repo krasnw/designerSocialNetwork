@@ -25,10 +25,11 @@ public class AuthController(AuthService authService, UserService userService) : 
     {
         try
         {
+            var image = "default.jpg";
             var isSignedUp = userService.SignUp(request.Username, request.Email, request.Password,
-                request.FirstName, request.LastName, request.PhoneNumber, request.MiddleName);
-            
-            if(isSignedUp != "") return BadRequest("User already exists");
+                request.FirstName, request.LastName, request.PhoneNumber, request.Description, image);
+
+            if (isSignedUp != "") return BadRequest("User already exists");
             var token = authService.GenerateToken(request.Username);
             return Ok(token);
         }
@@ -48,8 +49,14 @@ public class AuthController(AuthService authService, UserService userService) : 
         public string Password { get; set; } = password ?? throw new ArgumentNullException(nameof(password));
     }
 
-    public class SignUpRequest(string username, string email, string password, string firstName, string middleName,
-        string lastName, string phoneNumber)
+    public class SignUpRequest(
+        string username,
+        string email,
+        string password,
+        string firstName,
+        string lastName,
+        string phoneNumber,
+        string description = "")
     {
         public string Username { get; set; } = username ?? throw new ArgumentNullException(nameof(username));
         public string Email { get; set; } = email ?? throw new ArgumentNullException(nameof(email));
@@ -57,6 +64,7 @@ public class AuthController(AuthService authService, UserService userService) : 
         public string FirstName { get; set; } = firstName ?? throw new ArgumentNullException(nameof(firstName));
         public string LastName { get; set; } = lastName ?? throw new ArgumentNullException(nameof(lastName));
         public string PhoneNumber { get; set; } = phoneNumber ?? throw new ArgumentNullException(nameof(phoneNumber));
-        public string MiddleName { get; set; } = middleName ?? throw new ArgumentNullException(nameof(middleName));
+
+        public string Description { get; set; } = description;
     }
 }
