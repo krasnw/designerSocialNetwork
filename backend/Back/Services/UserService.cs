@@ -11,7 +11,7 @@ public class UserService
     private static DatabaseService _databaseService = DatabaseService.GetInstance();
 
     public string SignUp(string username, string email, string password, string firstName,
-        string lastName, string phoneNumber, string description, string profileImage)
+        string lastName, string phoneNumber, string profileImage)
     {
         ValidateSignUpData(username, email, password, firstName, lastName, phoneNumber);
 
@@ -19,7 +19,7 @@ public class UserService
         decimal accessFee = 0; // default value
         string accountStatus = "active";
         string accountLevel = "user";
-        if (description == null || description == "") description = "No description provided";
+        var description = "Użytkownik nie dodał jeszcze opisu.";
         if (profileImage == null || profileImage == "") profileImage = "default.jpg";
 
         User user = new(username, email, password, firstName, lastName, phoneNumber,

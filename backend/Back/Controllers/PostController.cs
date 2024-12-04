@@ -21,7 +21,12 @@ public class PostController : ControllerBase
     public IActionResult GetPosts(int pageNumber, int pageSize, string? tags = null, string? accessType = null)
     {
         var user = User.Identity?.Name;
-        var posts = _postService.GetNewestPosts(pageNumber, pageSize);
+        if (accessType?.Equals("private", StringComparison.OrdinalIgnoreCase) == true && string.IsNullOrEmpty(user))
+        {
+            return Unauthorized("You must be logged in to view private posts.");
+        }
+
+        var posts = _postService.GetNewestPosts(pageNumber, pageSize, tags, accessType);
 
         if (!string.IsNullOrEmpty(tags))
         {
@@ -31,16 +36,7 @@ public class PostController : ControllerBase
 
         if (!string.IsNullOrEmpty(accessType))
         {
-            if (accessType.Equals("private", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(user))
-            {
-                return Unauthorized("You must be logged in to view private posts.");
-            }
-
-            posts = posts.Where(post =>
-                !post.Access.Equals("protected", StringComparison.OrdinalIgnoreCase) &&
-                (string.IsNullOrEmpty(accessType) ||
-                 post.Access.Equals(accessType, StringComparison.OrdinalIgnoreCase))
-            ).ToList();
+            posts = posts.Where(post => post.Access.Equals(accessType, StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
         var postDtos = PostDto.MapToPostDtoList(posts);
@@ -57,10 +53,13 @@ public class PostController : ControllerBase
     }
 
     //tags
-    //[HttpGet("tags")]
-    
-    
-    
+    [HttpGet("tags")]
+    public IActionResult GetTags()
+    {
+        var tags = _postService.GetAllTags();
+        return tags != null ? Ok(tags) : NotFound();
+    }
+
     //get user related data
     [HttpGet("profile/{username}/usedTags")]
     public IActionResult GetUserUsedTags(string username)

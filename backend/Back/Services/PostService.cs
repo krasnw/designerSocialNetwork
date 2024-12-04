@@ -209,17 +209,29 @@ public class PostService
     }
 
     //get newest posts by page
-    public List<Post> GetNewestPosts(int pageNumber, int pageSize, string? tags = null, string? accessType = null)
+    public List<Post> GetNewestPosts(int pageNumber = 1, int pageSize = 10, string? tags = null,
+        string? accessType = null)
     {
-        string query = @"
+        string queryWithTags = @"
     SELECT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
     FROM api_schema.post p
     LEFT JOIN api_schema.post_tags pt ON p.id = pt.post_id
     LEFT JOIN api_schema.tags t ON pt.tag_id = t.id
-    WHERE (@tags IS NULL OR t.tag_name = ANY(@tags))
-    AND (@accessType IS NULL OR p.access_level = @accessType)
+    WHERE t.tag_name = ANY(@tags)
+    AND p.access_level = @accessType::api_schema.access_level
     ORDER BY p.post_date DESC
     LIMIT @pageSize OFFSET @offset";
+
+        string queryWithoutTags = @"
+    SELECT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
+    FROM api_schema.post p
+    WHERE p.access_level = @accessType::api_schema.access_level
+    ORDER BY p.post_date DESC
+    LIMIT @pageSize OFFSET @offset";
+
+        var offset = (pageNumber - 1) * pageSize;
+        if (offset < 0) offset = 0;
+        if (accessType != "public" && accessType != "protected" && accessType != "private") accessType = "public";
 
         NpgsqlConnection connection = null;
         NpgsqlCommand command = null;
@@ -227,11 +239,17 @@ public class PostService
         {
             var parameters = new Dictionary<string, object>
             {
-                { "@tags", tags?.Split(',').Select(tag => tag.Trim()).ToArray() },
                 { "@accessType", accessType },
                 { "@pageSize", pageSize },
-                { "@offset", (pageNumber - 1) * pageSize }
+                { "@offset", offset }
             };
+
+            if (!string.IsNullOrEmpty(tags))
+            {
+                parameters.Add("@tags", tags.Split(',').Select(tag => tag.Trim()).ToArray());
+            }
+
+            string query = string.IsNullOrEmpty(tags) ? queryWithoutTags : queryWithTags;
 
             using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
             var posts = new List<Post>();
@@ -239,6 +257,7 @@ public class PostService
             {
                 var post = CompilePost(reader);
                 posts.Add(post);
+                Console.WriteLine(post.ToString()); // Log each post to ensure it is being processed
             }
 
             return posts;

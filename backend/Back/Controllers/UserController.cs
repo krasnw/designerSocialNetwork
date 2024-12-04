@@ -41,6 +41,7 @@ public class UserController : ControllerBase
         return user != null ? Ok(user) : NotFound();
     }
     
+    
     //edit profile
     [Authorize]
     [HttpGet("profile/me/edit")]
