@@ -36,9 +36,10 @@ CREATE TABLE api_schema."user" (
     email VARCHAR(50) NOT NULL UNIQUE,
     user_password CHAR(64) NOT NULL, -- SHA-256 hash
     first_name VARCHAR(50) NOT NULL,
-    middle_name VARCHAR(50),
     last_name VARCHAR(50) NOT NULL,
     phone_number VARCHAR(25) NOT NULL UNIQUE,
+    profile_description TEXT,
+    profile_picture VARCHAR(100),
     join_date DATE NOT NULL,
     account_status account_status NOT NULL,
     account_level account_level NOT NULL,
@@ -144,6 +145,16 @@ CREATE TABLE api_schema.powerup (
 -- end of post block
 
 -- Chat block
+CREATE TYPE api_schema.request_status AS ENUM ('pending', 'accepted', 'completed');
+CREATE TABLE api_schema.request (
+    id SERIAL PRIMARY KEY,
+    buyer_id INTEGER REFERENCES "user"(id),
+    seller_id INTEGER REFERENCES "user"(id),
+    request_description TEXT NOT NULL,
+    request_status request_status NOT NULL
+);
+
+
 CREATE TYPE api_schema.chat_status AS ENUM ('active', 'closed');
 CREATE TABLE api_schema.chat (
     id SERIAL PRIMARY KEY,
