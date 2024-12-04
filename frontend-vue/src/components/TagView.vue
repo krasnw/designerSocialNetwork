@@ -36,14 +36,14 @@ export default {
   font-size: 12px;
   font-weight: 600;
   padding: 6px 12px;
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: var(--element-light-color);
   border-radius: 10px;
   border: 0.5px solid white;
 }
 
 .tag:hover {
-  background-color: rgba(255, 150, 150, 0.5);
-  border: 0.5px solid #f55;
+  background-color: var(--delete-button-color);
+  border: 0.5px solid var(--delete-button-border-color);
   animation: waving 0.2s infinite;
   transition: all 1s;
   cursor: url('/src/assets/Icons/TrashCan.svg'), auto;

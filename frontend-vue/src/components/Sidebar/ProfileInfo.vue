@@ -44,7 +44,7 @@ export default {
 
     <article class="sidebar-profile" v-if="isLoggedIn">
       <div class="username-wrapper" @click="goToProfile">
-        <p class="username">{{ user.name }}</p>
+        <h3 class="username">{{ user.name }}</h3>
       </div>
       <img :src="user.image" alt="Profile picture" />
     </article>
@@ -59,8 +59,8 @@ export default {
 <style scoped>
 .wrapper {
   padding: 20px 20px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border-bottom: 0.5px solid rgb(255 255 255 / 0.3);
+  background-color: var(--element-light-color);
+  border-bottom: 0.5px solid var(--element-border-light-color);
 }
 
 .sidebar-profile {
@@ -72,22 +72,22 @@ export default {
 }
 
 .sidebar-profile button {
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: var(--element-light-color);
   border-radius: 7px;
   border: 0.5px solid white;
   padding: 12px 25px;
-  color: white;
+  color: var(--primery-text-color);
   font-size: 16px;
   font-weight: 700;
 }
 
 .sidebar-profile button:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: var(--element-hover-light-color);
   cursor: pointer;
 }
 
 .username-wrapper {
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: var(--element-light-color);
   border-radius: 7px;
   border: 0.5px solid white;
   padding: 12px 50px;
@@ -95,7 +95,7 @@ export default {
 }
 
 .username {
-  color: white;
+  color: var(--primery-text-color);
   font-size: 16px;
   font-weight: 700;
 }
@@ -103,7 +103,7 @@ export default {
 
 .sidebar-profile img {
   border: 0.5px solid white;
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: var(--element-border-light-color);
   padding: 2px;
   width: 50px;
   height: 50px;

@@ -4,6 +4,7 @@ import ProfileInfo from './ProfileInfo.vue';
 import Filter from './Filter.vue';
 import Search from './Search.vue';
 import UserInfoAndStats from './UserInfoAndStats.vue';
+import ProfileBadge from './ProfileBadge.vue';
 
 
 export default {
@@ -13,7 +14,8 @@ export default {
     ProfileInfo,
     UserInfoAndStats,
     Filter,
-    Search
+    Search,
+    ProfileBadge
   },
   props: {
     page: {
@@ -26,7 +28,29 @@ export default {
     return {
       hidden: sidebarAlwaysOpen ? false : (JSON.parse(localStorage.getItem('sidebarHidden')) || false),
       rotated: sidebarAlwaysOpen ? true : (JSON.parse(localStorage.getItem('sidebarRotated')) || true),
-      alwaysOpen: sidebarAlwaysOpen
+      alwaysOpen: sidebarAlwaysOpen,
+      users: [
+        {
+          name: 'Steve Jobs',
+          avatar: 'https://placehold.co/600x600',
+        },
+        {
+          name: 'Mykhailo Krylov',
+          avatar: 'https://placehold.co/600x600',
+        },
+        {
+          name: 'Volodymyr Dobrohorskyi',
+          avatar: 'https://placehold.co/600x600',
+        },
+        {
+          name: 'Friendly Thug 52 NGG',
+          avatar: 'https://placehold.co/600x600',
+        },
+        {
+          name: 'Pan Spinacz',
+          avatar: 'https://placehold.co/600x600',
+        }
+      ]
     };
   },
   created() {
@@ -86,8 +110,12 @@ export default {
       <div v-else-if="page === 'myProfile' || page === 'userProfile'" class="wrap">
         <Filter />
       </div>
-      <div v-else-if="page === 'add-post'">
-        <h2>Ranking</h2>
+      <div v-else-if="page === 'conversations'" class="wrap">
+        <Search />
+        <article class="profile-badges">
+          <h3>Czaty</h3>
+          <ProfileBadge v-for="user in users" :key="user.name" :user="user" />
+        </article>
       </div>
     </section>
   </aside>
@@ -108,8 +136,8 @@ export default {
   right: 0;
   backdrop-filter: blur(64px);
   height: 100svh;
-  background-color: rgb(47 47 47 / 0.4);
-  border-left: 0.5px solid rgb(255 255 255 / 0.15);
+  background-color: var(--element-dark-color);
+  border-left: 0.5px solid var(--element-light-color);
   transition: width 0.3s;
 }
 
@@ -119,19 +147,18 @@ export default {
   left: -25px;
   width: 25px;
   height: 30px;
-  background-color: rgb(47 47 47 / 0.4);
+  background-color: var(--element-dark-color);
   backdrop-filter: blur(64px);
-  border-top: 0.5px solid rgb(255 255 255 / 0.15);
-  border-left: 0.5px solid rgb(255 255 255 / 0.15);
-  border-bottom: 0.5px solid rgb(255 255 255 / 0.15);
+  border-top: 0.5px solid var(--element-light-color);
+  border-left: 0.5px solid var(--element-light-color);
+  border-bottom: 0.5px solid var(--element-light-color);
   border-right: none;
-  color: white;
   border-radius: 20px 0px 0px 20px;
   cursor: pointer;
 }
 
 .arrow-button:hover {
-  background-color: rgb(47 47 47 / 0.6);
+  background-color: var(--element-dark-hover-color);
 
   span {
     transform: rotate(-20deg);
@@ -169,16 +196,22 @@ export default {
 
   &::-webkit-scrollbar-track {
     background: #0000;
-    border-left: 0.5px solid rgb(255 255 255 / 0.15);
+    border-left: 0.5px solid var(--element-light-color);
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--element-light-color);
     border-radius: 2px;
   }
 
   &::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
   }
+}
+
+.profile-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 </style>

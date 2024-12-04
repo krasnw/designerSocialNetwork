@@ -74,7 +74,7 @@ export default {
 .profile-picture {
   width: 40px;
   height: 40px;
-  border: 0.5px solid white;
+  border: 0.5px solid var(--element-border-light-color);
   padding: 2px;
   border-radius: 50%;
 }
@@ -100,13 +100,13 @@ export default {
 }
 
 .delete-button {
-  background: rgba(255, 57, 57, 0.40);
-  border-color: rgba(255, 94, 94, 0.60);
+  background: var(--delete-button-color);
+  border-color: var(--delete-button-border-color);
 }
 
 .accept-button {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.60);
+  background: var(--element-light-color);
+  border-color: var(--element-border-light-color);
 }
 
 .fade-enter-active {

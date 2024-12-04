@@ -42,9 +42,7 @@ export default {
   <section class="main-content" :style="mainContentStyle">
     <router-view v-slot="{ Component }">
       <transition name="move" mode="out-in">
-        <KeepAlive>
-          <component :is="Component" />
-        </KeepAlive>
+        <component :is="Component" />
       </transition>
     </router-view>
   </section>
@@ -57,6 +55,22 @@ export default {
 /* Basic styling */
 :root {
   --font: 'Montserrat';
+  --secondary-font: 'Inter';
+  --element-dark-color: rgba(30, 30, 30, 0.4);
+  --element-dark-hover-color: rgba(30, 30, 30, 0.6);
+  --element-light-color: rgba(255, 255, 255, 0.15);
+  --element-hover-light-color: rgba(255, 255, 255, 0.2);
+  --element-border-light-color: rgba(255, 255, 255, 0.30);
+  --delete-button-color: rgba(255, 57, 57, 0.40);
+  --delete-button-border-color: rgba(255, 94, 94, 0.60);
+  --info-text-color: rgba(255, 255, 255, 0.7);
+  --placeholder-color: rgba(255, 255, 255, 0.6);
+  --placeholder-error-color: rgba(255, 170, 170, 0.8);
+  --shadow-color: rgba(0, 0, 0, 0.25);
+  --text-color: rgba(255, 255, 255, 0.7);
+  --primery-text-color: rgba(255, 255, 255, 0.85);
+  --message-bg-left: rgba(60, 60, 60, 0.4);
+  --message-bg-right: rgba(90, 90, 90, 0.4);
 }
 
 html {
@@ -86,7 +100,7 @@ body {
 hr {
   margin: 0;
   border: none;
-  background-color: rgb(255 255 255 / 0.15);
+  background-color: var(--element-light-color);
   border-radius: 1px;
 }
 
@@ -97,22 +111,29 @@ a {
 
 a:hover {
   text-decoration: underline;
+  cursor: pointer;
 }
 
-p,
+
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
+  color: var(--primery-text-color);
+  margin: 0;
+}
+
+p {
+  font-family: var(--secondary-font);
+  color: var(--text-color);
   margin: 0;
 }
 
 .page-name {
   font-weight: 700;
   font-size: 30px;
-  color: rgba(255, 255, 255, 0.9);
   margin-top: 50px;
   margin-bottom: 30px;
   -webkit-user-select: none;
@@ -121,9 +142,9 @@ h6 {
 }
 
 .background {
-  background-color: rgba(30, 30, 30, 0.4);
+  background-color: var(--element-dark-color);
   backdrop-filter: blur(60px);
-  border: 0.5px solid rgba(255, 255, 255, 0.30);
+  border: 0.5px solid var(--element-border-light-color);
   border-radius: 15px;
 }
 
@@ -131,7 +152,7 @@ h6 {
   border: 0.5px solid;
   border-radius: 10px;
   padding: 10px 30px;
-  color: white;
+  color: rgba(255, 255, 255, 0.8);
   font-weight: 700;
   font-size: 17px;
   backdrop-filter: blur(40px);
@@ -145,39 +166,39 @@ h6 {
 input,
 textarea {
   resize: none;
-  border: 0.5px solid rgba(255, 255, 255, 0.30);
+  border: 0.5px solid var(--element-border-light-color);
   border-radius: 10px;
-  background-color: rgba(255, 255, 255, 0.12);
+  background-color: var(--element-light-color);
   padding: 19px 23px;
   margin-top: 23px;
-  box-shadow: 5px 5px 25px rgba(0, 0, 0, 0.25);
+  box-shadow: 5px 5px 25px var(--shadow-color);
   font-weight: 800;
   font-family: var(--font);
-  font-size: clamp(12px, 1.5vw, 18px);
+  font-size: clamp(9px, 1.5vw, 14px);
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--placeholder-color);
   /* Цвет текста placeholder */
 }
 
 input:focus,
 textarea:focus {
   outline: 1.5px solid #999;
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: var(--element-light-color);
 }
 
 input:hover,
 textarea:hover {
-  background-color: rgba(255, 255, 255, 0.20);
+  background-color: var(--element-hover-light-color);
 }
 
 select {
   padding: 10px;
-  border: 0.5px solid white;
+  border: 0.5px solid var(--element-border-light-color);
   border-radius: 10px;
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: var(--element-light-color);
   color: white;
   font-family: var(--font);
 }
@@ -222,18 +243,14 @@ select {
   }
 
   &::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
+    background: #fff1;
     border-radius: 4px;
     backdrop-filter: blur(5px);
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
+    background: var(--element-border-light-color);
     border-radius: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.4);
   }
 }
 
@@ -249,7 +266,11 @@ select {
   /* position: absolute; */
 }
 
-.move-enter-from,
+.move-enter-from {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+
 .move-leave-to {
   opacity: 0;
   /* margin-left: -100%; */

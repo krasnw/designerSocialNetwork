@@ -1,97 +1,3 @@
-<template>
-  <div class="tag-sel-page">
-    <!-- <h2 class="page-name">Dodaj nowy post</h2>
-    <div class="dropdown-section">
-      <label v-for="(options, index) in tagOptions" :key="index">
-        <select v-model="selectedTags[index]" @change="addTag(index)">
-          <option disabled value="">Wybierz...</option>
-          <option v-for="option in options" :key="option">{{ option }}</option>
-        </select>
-      </label>
-    </div>
-
-    <div class="tags-display">
-      <div v-for="(tag, index) in tags" :key="index" class="tag">
-        {{ tag }}
-        <span class="remove-icon" @click="removeTag(index)">
-          ✖
-        </span>
-      </div>
-    </div> -->
-
-    <div class="left">
-      <div class="left-container">
-        <h3>Wybierz tagi</h3>
-        <div class="filter">
-
-          <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'ui' }">
-            <span class="anchor" @click="toggleDropdown('ui')">Wybierz UI</span>
-            <ul class="items">
-              <li v-for="option in ui" :key="option.value">
-                <input type="checkbox" :id="'ui-' + option.value" :value="option.value" v-model="selected_ui">
-                <label :for="'ui-' + option.value">{{ option.text }}</label>
-              </li>
-            </ul>
-          </div>
-
-          <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'style' }">
-            <span class="anchor" @click="toggleDropdown('style')">Wybierz styl</span>
-            <ul class="items">
-              <li v-for="option in style" :key="option.value">
-                <input type="checkbox" :id="'style-' + option.value" :value="option.value" v-model="selected_style">
-                <label :for="'style-' + option.value">{{ option.text }}</label>
-              </li>
-            </ul>
-          </div>
-
-          <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'color' }">
-            <span class="anchor" @click="toggleDropdown('color')">Wybierz kolor</span>
-            <ul class="items">
-              <li v-for="option in color" :key="option.value">
-                <input type="checkbox" :id="'color-' + option.value" :value="option.value" v-model="selected_color">
-                <label :for="'color-' + option.value">{{ option.text }}</label>
-              </li>
-            </ul>
-          </div>
-
-          <section class="selected-tags">
-            <template v-for="[type, optionObj] in selectedOptions">
-              <TagView v-for="value in optionObj.list" :key="`${type}_${value}`" :text="`${type}_${value}`"
-                :ondelete="() => deleteOption(type, value)" />
-            </template>
-          </section>
-        </div>
-      </div>
-    </div>
-
-    <div class="right">
-      <div class="right-container">
-        <h3>Wybierz poziom dostępu</h3>
-
-        <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'access' }">
-          <span class="anchor" @click="toggleDropdown('access')">
-            {{
-              selected_access ? access.find((opt) => opt.value == selected_access).text : "Dostęp"
-            }}
-          </span>
-          <ul class="items">
-            <li v-for="option in access" :key="option.value">
-              <input type="radio" :id="'access-' + option.value" :value="option.value" v-model="selected_access">
-              <label :for="'access-' + option.value">{{ option.text }}</label>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="buttons bottom">
-      <button @click="goBack?.()" class="back-button"><span class="rotate-arrow">➔</span></button>
-      <button @click="publish?.()" class="publish-button">Publikuj</button>
-    </div>
-  </div>
-</template>
-
 <script>
 import TagView from "@/components/TagViewMk.vue";
 
@@ -216,6 +122,82 @@ export default {
   }
 };
 </script>
+
+<template>
+  <div class="tag-sel-page">
+    <div class="left">
+      <div class="left-container">
+        <h3>Wybierz tagi</h3>
+        <div class="filter">
+
+          <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'ui' }">
+            <span class="anchor" @click="toggleDropdown('ui')">Wybierz UI</span>
+            <ul class="items">
+              <li v-for="option in ui" :key="option.value">
+                <input type="checkbox" :id="'ui-' + option.value" :value="option.value" v-model="selected_ui">
+                <label :for="'ui-' + option.value">{{ option.text }}</label>
+              </li>
+            </ul>
+          </div>
+
+          <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'style' }">
+            <span class="anchor" @click="toggleDropdown('style')">Wybierz styl</span>
+            <ul class="items">
+              <li v-for="option in style" :key="option.value">
+                <input type="checkbox" :id="'style-' + option.value" :value="option.value" v-model="selected_style">
+                <label :for="'style-' + option.value">{{ option.text }}</label>
+              </li>
+            </ul>
+          </div>
+
+          <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'color' }">
+            <span class="anchor" @click="toggleDropdown('color')">Wybierz kolor</span>
+            <ul class="items">
+              <li v-for="option in color" :key="option.value">
+                <input type="checkbox" :id="'color-' + option.value" :value="option.value" v-model="selected_color">
+                <label :for="'color-' + option.value">{{ option.text }}</label>
+              </li>
+            </ul>
+          </div>
+
+          <section class="selected-tags">
+            <template v-for="[type, optionObj] in selectedOptions">
+              <TagView v-for="value in optionObj.list" :key="`${type}_${value}`" :text="`${type}_${value}`"
+                :ondelete="() => deleteOption(type, value)" />
+            </template>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="right-container">
+        <h3>Wybierz poziom dostępu</h3>
+
+        <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'access' }">
+          <span class="anchor" @click="toggleDropdown('access')">
+            {{
+              selected_access ? access.find((opt) => opt.value == selected_access).text : "Dostęp"
+            }}
+          </span>
+          <ul class="items">
+            <li v-for="option in access" :key="option.value">
+              <input type="radio" :id="'access-' + option.value" :value="option.value" v-model="selected_access">
+              <label :for="'access-' + option.value">{{ option.text }}</label>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="buttons bottom">
+      <button @click="goBack?.()" class="back-button"><span class="rotate-arrow">➔</span></button>
+      <button @click="publish?.()" class="publish-button">Publikuj</button>
+    </div>
+  </div>
+</template>
+
 
 <style scoped>
 .left {
@@ -374,10 +356,10 @@ export default {
 
 /* Button Style */
 .publish-button {
-  background: linear-gradient(135deg, #32334a, #1a1b2d);
-  border: none;
+  background: var(--element-light-color);
+  border: 0.5px solid var(--element-border-light-color);
   border-radius: 12px;
-  color: white;
+  color: var(--text-color);
   font-size: 1.2rem;
   font-weight: bold;
   cursor: pointer;
@@ -385,12 +367,12 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 6px var(--shadow-color);
   aspect-ratio: 85/35;
 }
 
 .publish-button:hover {
-  background: linear-gradient(135deg, #404158, #28293d);
+  background: var(--element-hover-light-color);
 }
 
 .publish-button:active {
@@ -403,24 +385,23 @@ export default {
 }
 
 .back-button {
-  background: linear-gradient(135deg, #32334a, #1a1b2d);
-  border: none;
+  background: var(--element-light-color);
+  border: 0.5px solid var(--element-border-light-color);
   border-radius: 12px;
-  color: white;
+  color: var(--text-color);
   font-size: 1.5rem;
   font-weight: bold;
   cursor: pointer;
   padding: 12px 20px;
   display: flex;
   align-items: center;
-  transform: rorate(180deg);
   justify-content: center;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 6px var(--shadow-color);
   aspect-ratio: 85/35;
 }
 
 .back-button:hover {
-  background: linear-gradient(135deg, #404158, #28293d);
+  background: var(--element-hover-light-color);
 }
 
 .back-button:active {
