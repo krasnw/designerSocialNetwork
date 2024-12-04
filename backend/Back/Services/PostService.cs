@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using System.Text.RegularExpressions;
 using Back.Models;
+using Back.Models.PostDto;
 using Back.Services;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
@@ -55,6 +56,55 @@ public class PostService
             }
 
             return tags;
+        }
+        finally
+        {
+            command?.Dispose();
+            connection?.Dispose();
+        }
+    }
+
+    //get all tags by user who used them
+    public List<Tag> GetAllUserTags(string username)
+    {
+        string getUserIdQuery = @"
+    SELECT id FROM api_schema.user WHERE username = @username";
+
+        string getUserTagsQuery = @"
+    SELECT t.id, t.tag_name, t.tag_type
+    FROM api_schema.tags t
+    JOIN api_schema.post_tags pt ON t.id = pt.tag_id
+    JOIN api_schema.post p ON pt.post_id = p.id
+    WHERE p.user_id = @user_id";
+
+        NpgsqlConnection connection = null;
+        NpgsqlCommand command = null;
+
+        try
+        {
+            connection = _databaseService.GetConnection();
+
+            // Retrieve user ID
+            using (command = new NpgsqlCommand(getUserIdQuery, connection))
+            {
+                command.Parameters.AddWithValue("@username", username);
+                var userId = (int?)command.ExecuteScalar();
+                if (userId == null) throw new Exception("User not found");
+
+                // Retrieve tags
+                using (var tagCommand = new NpgsqlCommand(getUserTagsQuery, connection))
+                {
+                    tagCommand.Parameters.AddWithValue("@user_id", userId);
+                    using var reader = tagCommand.ExecuteReader();
+                    var tags = new List<Tag>();
+                    while (reader.Read())
+                    {
+                        tags.Add(new Tag(reader.GetInt32(0), reader.GetString(1), reader.GetString(2)));
+                    }
+
+                    return tags;
+                }
+            }
         }
         finally
         {
@@ -121,26 +171,69 @@ public class PostService
         }
     }
 
-    //get newest posts by page
-    public List<Post>? GetNewestPosts(int pageNumber, int pageSize)
+    public List<Post>? GetAllUserPosts(string username)
     {
         string query = @"
-        SELECT * FROM api_schema.post
-        ORDER BY post_date DESC
-        LIMIT @pageSize OFFSET @offset";
+    SELECT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
+    FROM api_schema.post p
+    JOIN api_schema.user u ON p.user_id = u.id
+    WHERE u.username = @username";
+
         NpgsqlConnection connection = null;
         NpgsqlCommand command = null;
         try
         {
             var parameters = new Dictionary<string, object>
             {
+                { "@username", username }
+            };
+
+            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
+            if (!reader.HasRows) return null;
+
+            var posts = new List<Post>();
+            while (reader.Read())
+            {
+                var post = CompilePost(reader);
+                posts.Add(post);
+                Console.WriteLine(post.ToString());
+            }
+
+            return posts;
+        }
+        finally
+        {
+            command?.Dispose();
+            connection?.Dispose();
+        }
+    }
+
+    //get newest posts by page
+    public List<Post> GetNewestPosts(int pageNumber, int pageSize, string? tags = null, string? accessType = null)
+    {
+        string query = @"
+    SELECT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
+    FROM api_schema.post p
+    LEFT JOIN api_schema.post_tags pt ON p.id = pt.post_id
+    LEFT JOIN api_schema.tags t ON pt.tag_id = t.id
+    WHERE (@tags IS NULL OR t.tag_name = ANY(@tags))
+    AND (@accessType IS NULL OR p.access_level = @accessType)
+    ORDER BY p.post_date DESC
+    LIMIT @pageSize OFFSET @offset";
+
+        NpgsqlConnection connection = null;
+        NpgsqlCommand command = null;
+        try
+        {
+            var parameters = new Dictionary<string, object>
+            {
+                { "@tags", tags?.Split(',').Select(tag => tag.Trim()).ToArray() },
+                { "@accessType", accessType },
                 { "@pageSize", pageSize },
                 { "@offset", (pageNumber - 1) * pageSize }
             };
+
             using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
-
-            if (!reader.HasRows) return null;
-
             var posts = new List<Post>();
             while (reader.Read())
             {
@@ -149,6 +242,162 @@ public class PostService
             }
 
             return posts;
+        }
+        finally
+        {
+            command?.Dispose();
+            connection?.Dispose();
+        }
+    }
+
+    //get al user's posts by page
+    public List<PostMini>? GetUserPosts(string username, int pageNumber, int pageSize)
+    {
+        string query = @"
+    SELECT p.id, p.post_name, i.image_file_path, p.likes
+    FROM api_schema.post p
+    JOIN api_schema.image_container c ON p.container_id = c.id
+    JOIN api_schema.image i ON c.main_image_id = i.id
+    JOIN api_schema.user u ON p.user_id = u.id
+    WHERE u.username = @username
+    ORDER BY p.post_date DESC
+    LIMIT @pageSize OFFSET @offset";
+        NpgsqlConnection connection = null;
+        NpgsqlCommand command = null;
+        try
+        {
+            var offset = ((pageNumber - 1) * pageSize);
+            offset = offset < 0 ? 0 : offset;
+            var parameters = new Dictionary<string, object>
+            {
+                { "@username", username },
+                { "@pageSize", pageSize },
+                { "@offset", offset }
+            };
+            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
+
+            if (!reader.HasRows) return null;
+
+            var posts = new List<PostMini>();
+            while (reader.Read())
+            {
+                posts.Add(new PostMini
+                {
+                    Id = reader.GetInt32(0),
+                    Title = reader.GetString(1),
+                    MainImageFilePath = reader.GetString(2),
+                    Likes = reader.GetInt32(3)
+                });
+            }
+
+            return posts;
+        }
+        finally
+        {
+            command?.Dispose();
+            connection?.Dispose();
+        }
+    }
+
+
+    //delete post by id
+    public bool DeletePost(int id, string username)
+    {
+        string authorIdQuery = @"
+    SELECT user_id FROM api_schema.post WHERE id = @id";
+
+        string userIdQuery = @"SELECT id FROM api_schema.user WHERE username = @username";
+
+        string deletePostTagsQuery = "DELETE FROM api_schema.post_tags WHERE post_id = @post_id";
+
+        string deletePowerupQuery = "DELETE FROM api_schema.powerup WHERE post_id = @post_id";
+
+        string deletePostReportQuery = "DELETE FROM api_schema.post_report WHERE reported_id = @post_id";
+
+        string deletePostPopularityQuery = "DELETE FROM api_schema.post_popularity WHERE post_id = @post_id";
+
+        string deleteQuery = "DELETE FROM api_schema.post WHERE id = @id";
+
+        NpgsqlConnection connection = null;
+        NpgsqlCommand command = null;
+
+        int authorId = 0;
+        int userId = 0;
+
+        try
+        {
+            // Retrieve author ID
+            var parameters = new Dictionary<string, object>
+            {
+                { "@id", id }
+            };
+            using (var reader = _databaseService.ExecuteQuery(authorIdQuery, out connection, out command, parameters))
+            {
+                if (!reader.HasRows) return false;
+                reader.Read();
+                authorId = reader.GetInt32(0);
+            }
+
+            // Retrieve user ID
+            parameters = new Dictionary<string, object>
+            {
+                { "@username", username }
+            };
+            using (var reader = _databaseService.ExecuteQuery(userIdQuery, out connection, out command, parameters))
+            {
+                if (!reader.HasRows) return false;
+                reader.Read();
+                userId = reader.GetInt32(0);
+
+                // Check if the user is the author
+                if (authorId != userId) return false;
+            }
+
+            // Delete related post tags
+            parameters = new Dictionary<string, object>
+            {
+                { "@post_id", id }
+            };
+            using (command = new NpgsqlCommand(deletePostTagsQuery, connection))
+            {
+                command.Parameters.AddWithValue("@post_id", id);
+                command.ExecuteNonQuery();
+            }
+
+            // Delete related powerups
+            using (command = new NpgsqlCommand(deletePowerupQuery, connection))
+            {
+                command.Parameters.AddWithValue("@post_id", id);
+                command.ExecuteNonQuery();
+            }
+
+            // Delete related post reports
+            using (command = new NpgsqlCommand(deletePostReportQuery, connection))
+            {
+                command.Parameters.AddWithValue("@post_id", id);
+                command.ExecuteNonQuery();
+            }
+
+            // Delete related post popularity
+            using (command = new NpgsqlCommand(deletePostPopularityQuery, connection))
+            {
+                command.Parameters.AddWithValue("@post_id", id);
+                command.ExecuteNonQuery();
+            }
+
+            // Delete the post
+            using (command = new NpgsqlCommand(deleteQuery, connection))
+            {
+                command.Parameters.AddWithValue("@id", id);
+                command.ExecuteNonQuery();
+            }
+
+            return true;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            return false;
         }
         finally
         {
@@ -274,6 +523,7 @@ public class PostService
 
     private Post CompilePost(NpgsqlDataReader reader)
     {
+        Console.WriteLine(UserService.GetUser(reader.GetInt32(1)).Username);
         var post = new Post(
             reader.GetInt32(0), // id
             UserService.GetUser(reader.GetInt32(1)), // user
