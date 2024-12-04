@@ -1,11 +1,13 @@
 <script>
+import { userService } from '@/services/user';
+
 export default {
   name: "ProfileInfo",
   data() {
     return {
       isLoggedIn: localStorage.getItem('JWT') !== null,
       user: {
-        name: 'Paweł Topski',
+        name: '',
         image: 'https://placehold.co/600x600',
       }
     }
@@ -24,12 +26,33 @@ export default {
     },
     goToProfile() {
       this.$router.push({ name: 'myProfile' });
+    },
+    async loadUserData() {
+      if (this.isLoggedIn) {
+        try {
+          const userData = await userService.getMyData();
+          this.user.name = `${userData.firstName} ${userData.lastName}`;
+          if (userData.profilePicture) {
+            this.user.image = userData.profilePicture;
+          }
+        } catch (error) {
+          console.error('Ошибка при загрузке данных пользователя:', error);
+        }
+      }
     }
   },
-  mounted() {
+  async mounted() {
     // Добавляем слушатель для нового события
     window.addEventListener('loginStatusChanged', this.checkLoginStatus);
     window.addEventListener('storage', this.checkLoginStatus);
+    await this.loadUserData();
+  },
+  watch: {
+    isLoggedIn(newValue) {
+      if (newValue) {
+        this.loadUserData();
+      }
+    }
   },
   beforeDestroy() {
     // Удаляем оба слушателя

@@ -5,6 +5,7 @@ import RankIcon from '@/assets/Icons/RankIcon.vue';
 import RubyIcon from '@/assets/Icons/RubyIcon.vue';
 import ShareProfileIcon from '@/assets/Icons/ShareProfileIcon.vue';
 import TasksIcon from '@/assets/Icons/TasksIcon.vue';
+import { userService } from '@/services/user';
 
 export default {
   name: "UserInfoAndStats",
@@ -20,23 +21,71 @@ export default {
     page: {
       type: String,
       required: true
+    },
+    username: {
+      type: String,
+      required: false
     }
   },
   data() {
     return {
       isLoggedIn: localStorage.getItem('JWT') !== null,
       user: {
-        id: 1,
-        username: 'ptop',
-        name: 'Paweł Topski',
+        username: '',
+        name: '',
         image: 'https://placehold.co/600x600',
-        rank: 1000,
-        rubies: 100,
-        tasks: 10,
-        likes: 1000000,
-        description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam nec purus nec'
+        rank: 0,
+        rubies: 0,
+        tasks: 0,
+        likes: 0,
+        description: ''
       },
+    }
+  },
+  async created() {
+    try {
+      console.log('Page type:', this.page);
+      console.log('Username prop:', this.username);
 
+      let userData;
+      if (this.page === 'myProfile') {
+        userData = await userService.getMyData();
+        console.log('My profile data:', userData);
+      } else if (this.page === 'userProfile') {
+        const usernameFromRoute = this.$route.params.username;
+        userData = await userService.getUserData(usernameFromRoute);
+        console.log('User profile data:', userData);
+      } else {
+        console.log('No username provided, redirecting to 404');
+        this.$router.push('/error/404');
+        return;
+      }
+
+      console.log('Processed user data:', {
+        username: userData.username,
+        name: `${userData.firstName} ${userData.lastName}`,
+        image: userData.profileImage || 'https://placehold.co/600x600',
+        rank: userData.ratingPositions?.Logo || 0,
+        rubies: userData.rubies
+      });
+
+      this.user = {
+        username: userData.username,
+        name: `${userData.firstName} ${userData.lastName}`,
+        image: userData.profileImage || 'https://placehold.co/600x600',
+        rank: userData.ratingPositions?.Logo || 0,
+        rubies: userData.rubies,
+        tasks: 0,
+        likes: 0,
+        description: userData.description || 'Użytkownik nie dodał jeszcze opisu'
+      };
+    } catch (error) {
+      console.error('Full error object:', error);
+      if (error.message === "404") {
+        this.$router.push('/error/404');
+        return;
+      }
+      console.error('Ошибка при загрузке данных пользователя:', error);
     }
   },
   computed: {
@@ -57,7 +106,7 @@ export default {
   },
   methods: {
     copyLink() {
-      navigator.clipboard.writeText('http://localhost:8080/profile/@' + this.user.username);
+      navigator.clipboard.writeText('http://localhost:8080/profile/' + this.user.username);
     }
   }
 };
@@ -76,7 +125,7 @@ export default {
       <div class="stat-info">
         <h3>Statystyka</h3>
         <div class="stats-container">
-          <span class="stat-row" v-if="user.rank <= 1000">
+          <span class="stat-row" v-if="user.rank <= 1000 && user.rank > 0">
             <span class="stats-icon">
               <RankIcon />
             </span>
