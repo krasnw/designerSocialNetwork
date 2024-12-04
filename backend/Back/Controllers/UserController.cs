@@ -1,4 +1,5 @@
-﻿using Back.Services;
+﻿using Back.Models;
+using Back.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,52 +15,52 @@ public class UserController : ControllerBase
     {
         _userService = userService;
     }
-    
+
     [Authorize]
     [HttpGet("profile/me")]
     public IActionResult GetMyProfile()
     {
-        var user = UserService.GetUser(User.Identity?.Name);
+        var uniqueName = User.Identity?.Name;
+
+        var me = UserService.GetOwnProfile(uniqueName);
+        return me != null ? Ok(me) : Unauthorized("Blame the token, relog please");
+    }
+
+    [HttpGet("profile/{username}")]
+    public IActionResult GetUser(string username)
+    {
+        if (string.IsNullOrEmpty(username)) return BadRequest("Username is required");
+
+        var uniqueName = User.Identity?.Name;
+        if (!string.IsNullOrEmpty(uniqueName) && uniqueName == username)
+        {
+            return RedirectToAction(nameof(GetMyProfile));
+        }
+
+        var user = UserService.GetProfile(username);
         return user != null ? Ok(user) : NotFound();
     }
     
-    // [HttpGet("profile/{id}")]
-    // public IActionResult GetUser(int id)
-    // {
-    //     var user = _userService.GetUser(id);
-    //     return user != null ? Ok(user) : NotFound();
-    // }
+    //edit profile
+    [Authorize]
+    [HttpGet("profile/me/edit")]
+    public IActionResult EditMyProfile()
+    {
+        var uniqueName = User.Identity?.Name;
+        if (string.IsNullOrEmpty(uniqueName)) return Unauthorized("Blame the token, relog please");
+        
+        var user = UserService.EditData(uniqueName);
+        return user != null ? Ok(user) : Unauthorized("Blame the token, relog please");
+    }
     
-    // [HttpPost("users")]
-    // public IActionResult CreateUser([FromBody] User user)
-    // {
-    //     if (_userService.CreateUser(user))
-    //     {
-    //         return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
-    //     }
-    //
-    //     return BadRequest();
-    // }
-    //
-    // [HttpPut("users/{id}")]
-    // public IActionResult UpdateUser(int id, [FromBody] User user)
-    // {
-    //     if (_userService.UpdateUser(id, user))
-    //     {
-    //         return Ok();
-    //     }
-    //
-    //     return NotFound();
-    // }
-    //
-    // [HttpDelete("users/{id}")]
-    // public IActionResult DeleteUser(int id)
-    // {
-    //     if (_userService.DeleteUser(id))
-    //     {
-    //         return Ok();
-    //     }
-    //
-    //     return NotFound();
-    // }
+    [Authorize]
+    [HttpPut("profile/me/edit")]
+    public IActionResult EditMyProfile([FromBody] User.EditRequest request)
+    {
+        var uniqueName = User.Identity?.Name;
+        if (string.IsNullOrEmpty(uniqueName)) return Unauthorized("Blame the token, relog please");
+        
+        var user = UserService.EditProfile(uniqueName, request);
+        return user != null ? Ok(user) : NotFound();
+    }   
 }
