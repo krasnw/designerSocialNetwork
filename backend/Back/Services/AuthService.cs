@@ -28,7 +28,7 @@ public class AuthService
                 if (string.IsNullOrEmpty(secretKey) || string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience))
                 {
                     //TODO: Log error
-                    System.Console.WriteLine("Syecret: " + secretKey);
+                    System.Console.WriteLine("Secret: " + secretKey);
                     System.Console.WriteLine("Issuer: " + issuer);
                     System.Console.WriteLine("Audience: " + audience);
                     throw new InvalidOperationException("JWT configuration is missing within the environment variables");
@@ -92,7 +92,7 @@ public class AuthService
         return GenerateToken(username);
     }
 
-    private ClaimsPrincipal? ValidateToken(string token)
+    public ClaimsPrincipal? ValidateToken(string token)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
