@@ -102,13 +102,12 @@ export default {
 .button {
   padding: 10px 20px;
   border-radius: 10px;
-  border: 0.5px solid rgba(255, 255, 255, 0.3);
-  background-color: rgba(255, 255, 255, 0.15);
+  border: 0.5px solid var(--element-border-light-color);
+  background-color: var(--element-light-color);
   backdrop-filter: blur(10px);
   font-weight: 600;
   font-size: 14px;
   width: max-content;
-  color: white;
 }
 
 .settings {
@@ -148,7 +147,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.20);
+  background-color: var(--element-hover-light-color);
   -webkit-transition: .4s;
   transition: .4s;
 }

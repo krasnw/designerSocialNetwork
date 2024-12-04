@@ -3,7 +3,7 @@ import LikeIcon from '@/assets/Icons/LikeIcon.vue';
 import Lock from '@/assets/Icons/Lock.vue';
 import ShareIcon from '@/assets/Icons/ShareIcon.vue';
 import { Splide, SplideSlide } from '@splidejs/vue-splide';
-import '@splidejs/vue-splide/css'; // Добавляем стили
+import '@splidejs/vue-splide/css';
 
 
 export default {
@@ -88,7 +88,7 @@ export default {
     <header class="post-header">
       <span class="post-profile">
         <img :src="post.userProfilePicture" alt="User Profile Picture">
-        <p>{{ post.username }}</p>
+        <h4>{{ post.username }}</h4>
       </span>
 
       <div class="stats no-select">
@@ -151,7 +151,7 @@ export default {
 
 .post-description {
   padding-left: 20px;
-  border-left: 2px solid rgb(255 255 255 / 0.15);
+  border-left: 2px solid var(--element-light-color);
   width: 250px;
   max-width: 250px;
   height: 350px;
@@ -186,15 +186,16 @@ export default {
     display: flex;
     flex-wrap: wrap;
     gap: 5px;
-    border-top: 1px solid rgb(255 255 255 / 0.15);
+    border-top: 1px solid var(--element-light-color);
 
     span {
       padding: 5px 10px;
       border-radius: 10px;
-      background: rgba(255, 255, 255, 0.15);
-      border: 0.5px solid rgba(255, 255, 255, 0.3);
+      background: var(--element-light-color);
+      border: 0.5px solid var(--element-border-light-color);
       font-weight: 600;
       font-size: 12px;
+      color: var(--primery-text-color);
     }
   }
 
@@ -204,12 +205,12 @@ export default {
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--element-hover-light-color);
     border-radius: 1px;
   }
 
   ::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--element-light-color);
     border-radius: 1px;
   }
 }
@@ -219,7 +220,7 @@ export default {
   width: auto;
   margin: 0;
   border: none;
-  background-color: rgb(255 255 255 / 0.15);
+  background-color: var(--element-light-color);
   border-radius: 1px;
 }
 
@@ -229,8 +230,8 @@ export default {
   align-items: center;
   justify-content: space-between;
   border-radius: 15px;
-  border: 0.5px solid rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.15);
+  border: 0.5px solid var(--element-border-light-color);
+  background: var(--element-light-color);
   padding: 10px 20px 10px 15px;
 
   .post-profile {
@@ -245,7 +246,7 @@ export default {
       height: 30px;
       padding: 2px;
       border-radius: 50%;
-      border: 0.5px solid white;
+      border: 0.5px solid var(--element-border-light-color);
       object-fit: cover;
     }
   }

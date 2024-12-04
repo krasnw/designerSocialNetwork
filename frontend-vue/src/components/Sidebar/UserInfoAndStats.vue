@@ -68,7 +68,7 @@ export default {
 
     <article class="sidebar-profile">
       <div class="username-wrapper">
-        <p class="username">{{ user.name }}</p>
+        <h3 class="username">{{ user.name }}</h3>
       </div>
     </article>
     <article class="profile-statistics">
@@ -129,18 +129,18 @@ export default {
 <style scoped>
 button {
   font-family: var(--font);
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: var(--element-light-color);
   border-radius: 7px;
   border: 0.5px solid white;
   padding: 10px 20px;
-  color: white;
+  color: var(--primery-text-color);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
 
 button:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: var(--element-hover-light-color);
 }
 
 .profile-description {
@@ -150,13 +150,12 @@ button:hover {
 .divider {
   width: 100%;
   height: 1px;
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: var(--element-light-color);
   border-radius: 1px;
   margin: 5px 0;
 }
 
 .text-description {
-  color: white;
   font-size: 13px;
 }
 
@@ -171,8 +170,8 @@ button:hover {
 
 .wrapper {
   padding: 20px 20px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border-bottom: 0.5px solid rgb(255 255 255 / 0.3);
+  background-color: var(--element-light-color);
+  border-bottom: 0.5px solid var(--element-border-light-color);
 }
 
 .sidebar-profile {
@@ -185,7 +184,7 @@ button:hover {
 
 .profile-picture {
   border: 0.5px solid white;
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: var(--element-border-light-color);
   padding: 8px;
   width: 140px;
   height: 140px;
@@ -212,22 +211,22 @@ button:hover {
 }
 
 .sidebar-profile button {
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: var(--element-light-color);
   border-radius: 7px;
   border: 0.5px solid white;
   padding: 12px 25px;
-  color: white;
+  color: var(--primery-text-color);
   font-size: 16px;
   font-weight: 700;
 }
 
 .sidebar-profile button:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: var(--element-border-light-color);
   cursor: pointer;
 }
 
 .username-wrapper {
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: var(--element-light-color);
   border-radius: 7px;
   width: 100%;
   border: 0.5px solid white;
@@ -239,7 +238,6 @@ button:hover {
 }
 
 .username {
-  color: white;
   font-size: 16px;
   font-weight: 700;
 }
@@ -247,7 +245,7 @@ button:hover {
 
 .sidebar-profile img {
   border: 0.5px solid white;
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: var(--element-border-light-color);
   padding: 2px;
   width: 50px;
   height: 50px;
@@ -289,21 +287,16 @@ button:hover {
   text-align: left;
   font-size: 14px;
   margin-left: 8px;
+  color: var(--primery-text-color);
 }
 
 .stat-number {
   text-align: right;
   font-size: 13px;
+  color: var(--primery-text-color);
 }
 
 .stats-icon :deep(svg) {
   transform: scale(0.8);
-}
-
-/* Удалить старые стили таблицы */
-.stats-table,
-.stats-table td:nth-child(2),
-.stats-table td:nth-child(3) {
-  display: none;
 }
 </style>

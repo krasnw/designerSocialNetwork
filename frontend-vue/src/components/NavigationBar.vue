@@ -86,7 +86,7 @@ export default {
   top: 0;
   left: 0;
   backdrop-filter: blur(64px);
-  background-color: rgb(47 47 47 / 0.4);
+  background-color: var(--element-dark-color);
   z-index: 1;
 }
 
@@ -97,7 +97,7 @@ export default {
   height: 100svh;
   padding: 12px;
   background-image: url('/src/assets/Images/noise.png');
-  border-right: 0.5px solid rgb(255 255 255 / 0.15);
+  border-right: 0.5px solid var(--element-light-color);
 }
 
 .main-section {
@@ -118,7 +118,7 @@ export default {
   width: 35px;
   margin: 0;
   border: none;
-  background-color: rgb(255 255 255 / 0.15);
+  background-color: var(--element-light-color);
   border-radius: 1px;
 }
 

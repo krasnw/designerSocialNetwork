@@ -229,7 +229,7 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 15px;
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: var(--element-light-color);
   border-radius: 10px;
   border: 0.5px solid white;
 }
@@ -244,7 +244,7 @@ export default {
 .dropdown-check-list {
   width: 100%;
   position: relative;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--element-light-color);
   border-radius: 10px;
   border: 1px solid white;
   font-size: 12px;
@@ -257,14 +257,14 @@ export default {
   display: block;
   padding: 8px 15px;
   border-radius: 10px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--placeholder-color);
 }
 
 .dropdown-check-list .anchor:after {
   position: absolute;
   content: "";
-  border-left: 2px solid rgba(255, 255, 255, 0.5);
-  border-top: 2px solid rgba(255, 255, 255, 0.5);
+  border-left: 2px solid var(--placeholder-color);
+  border-top: 2px solid var(--placeholder-color);
   padding: 3px;
   right: 10px;
   top: 35%;
@@ -291,28 +291,25 @@ export default {
   box-sizing: border-box;
   z-index: 100;
   max-height: 200px;
-  /* Добавляем максимальную высоту */
   overflow-y: auto;
-  /* Добавляем вертикальную прокрутку */
 
-  /* Стилизация скроллбара */
   &::-webkit-scrollbar {
     width: 8px;
   }
 
   &::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--element-light-color);
     border-radius: 4px;
     backdrop-filter: blur(5px);
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
+    background: var(--element-border-light-color);
     border-radius: 4px;
   }
 
   &::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
   }
 }
 
@@ -331,18 +328,13 @@ export default {
   }
 
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--element-hover-light-color);
   }
 
   label {
     cursor: pointer;
   }
 }
-
-/* Удалить или закомментировать старый hover стиль */
-/* .dropdown-check-list ul.items :hover {
-  background: rgba(255, 255, 255, 0.1);
-} */
 
 .dropdown-check-list.visible .items {
   display: block;
@@ -351,7 +343,7 @@ export default {
 .toggle-type {
   display: flex;
   width: 100%;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--element-light-color);
   border-radius: 10px;
   border: 1px solid white;
   overflow: hidden;
@@ -363,15 +355,14 @@ export default {
   margin: 2px;
   text-align: center;
   cursor: pointer;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--placeholder-color);
   font-size: 12px;
   font-weight: 700;
   transition: all 0.3s ease;
 }
 
 .toggle-option.active {
-  background: rgba(255, 255, 255, 0.1);
-
+  background: var(--element-light-color);
   color: white;
   border-radius: 7px;
   box-shadow: inset 0 0 0 1px white;
@@ -385,7 +376,6 @@ export default {
 
 .reload-icon {
   cursor: pointer;
-  color: white;
 }
 
 .spin-animation {

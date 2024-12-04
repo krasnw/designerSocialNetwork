@@ -28,10 +28,10 @@ export default {
   <article class="post-preview background">
     <img class="post-preview-img" :src="post.image" alt="post.title">
     <span class="post-preview-info background">
-      <p class="post-preview-title">{{ post.title }}</p>
+      <h4 class="post-preview-title">{{ post.title }}</h4>
       <span class="post-like">
         <LikeIcon />
-        <p>{{ formattedLikes }}</p>
+        <h4>{{ formattedLikes }}</h4>
       </span>
     </span>
   </article>
@@ -62,9 +62,10 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(96, 96, 96, 0.40);
+  background: var(--element-light-color);
+  ;
   padding: 15px 30px;
-  box-shadow: 5px 5px 25px 0px rgba(0, 0, 0, 0.25);
+  box-shadow: 5px 5px 25px 0px var(--shadow-color);
 
 }
 
@@ -84,7 +85,7 @@ export default {
   gap: 15px;
   flex-shrink: 0;
 
-  p {
+  h4 {
     font-weight: 600;
   }
 }

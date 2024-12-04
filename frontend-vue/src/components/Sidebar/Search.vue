@@ -19,7 +19,7 @@ export default {
 <style scoped>
 .search-container {
   border: 0.5px solid white;
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: var(--element-light-color);
   border-radius: 10px;
   display: flex;
   align-items: center;

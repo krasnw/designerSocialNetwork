@@ -213,14 +213,14 @@ export default {
 .button {
   padding: 10px 20px;
   border-radius: 10px;
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: var(--element-light-color);
   font-weight: 600;
   font-size: 14px;
-  color: white;
+  color: var(--primery-text-color);
 }
 
 .button:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: var(--element-border-light-color);
   cursor: pointer;
 }
 
@@ -232,13 +232,13 @@ export default {
 
   h3 {
     font-size: 22px;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 1);
+    text-shadow: 1px 1px 2px var(--shadow-color);
   }
 
   p {
     padding: 20px;
     font-size: 16px;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--info-text-color);
     width: max-content;
     max-width: 500px;
   }
@@ -246,17 +246,17 @@ export default {
   #deleteErr {
     padding: 10px 20px;
     border-radius: 10px;
-    border: 0.5px solid rgba(255, 255, 255, 0.3);
-    background-color: rgba(255, 255, 255, 0.15);
+    border: 0.5px solid var(--element-border-light-color);
+    background-color: var(--element-light-color);
     backdrop-filter: blur(10px);
     font-weight: 600;
     font-size: 14px;
     width: max-content;
-    color: white;
+    color: var(--primery-text-color);
   }
 
   #deleteErr:hover {
-    background-color: rgba(255, 255, 255, 0.3);
+    background-color: var(--element-border-light-color);
     cursor: pointer;
   }
 }
@@ -277,8 +277,7 @@ export default {
 }
 
 .input.error::placeholder {
-  color: rgba(255, 170, 170, 0.8);
-  /* Цвет текста placeholder */
+  color: var(--placeholder-error-color);
 }
 
 .register-form {
@@ -287,7 +286,7 @@ export default {
   gap: 20px;
   width: max-content;
   padding: 20px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px var(--shadow-color);
 }
 
 .form-group {
@@ -306,6 +305,5 @@ export default {
 
 .input.error {
   border-color: #f88;
-  background-color: rgba(255, 0, 0, 0.1);
 }
 </style>
