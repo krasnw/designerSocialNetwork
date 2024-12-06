@@ -17,70 +17,45 @@ namespace Back.Services
         public static DatabaseService GetInstance(string? connectionString = null)
         {
             if (_instance != null) return _instance;
-            if (connectionString == null) throw new Exception("No connection string provided, but no instance exists.");
+            if (connectionString == null) throw new ArgumentNullException(nameof(connectionString), "Connection string is required when creating new instance.");
             lock (Lock)
             {
-                _instance = new DatabaseService(connectionString);
+                _instance ??= new DatabaseService(connectionString);
             }
-
             return _instance;
         }
 
         public NpgsqlConnection GetConnection()
         {
             var connection = new NpgsqlConnection(_connectionString);
-            connection.Open(); // Ensure the connection is opened
+            connection.Open();
             return connection;
+        }
+
+        private void AddParameters(NpgsqlCommand command, Dictionary<string, object>? parameters)
+        {
+            if (parameters == null) return;
+            foreach (var param in parameters)
+            {
+                command.Parameters.AddWithValue(param.Key, param.Value);
+            }
         }
 
         public void ExecuteNonQuery(string query, Dictionary<string, object>? parameters = null)
         {
-            try
-            {
-                using var connection = GetConnection();
-                connection.Open();
-                using var command = new NpgsqlCommand(query, connection);
-
-                if (parameters != null)
-                {
-                    foreach (var param in parameters)
-                    {
-                        command.Parameters.AddWithValue(param.Key, param.Value);
-                    }
-                }
-
-                command.ExecuteNonQuery();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"An error occurred while executing non-query: {ex.Message}");
-                throw;
-            }
+            using var connection = GetConnection();
+            using var command = new NpgsqlCommand(query, connection);
+            AddParameters(command, parameters);
+            command.ExecuteNonQuery();
         }
 
         public NpgsqlDataReader ExecuteQuery(string query, out NpgsqlConnection connection, out NpgsqlCommand command,
             Dictionary<string, object>? parameters = null)
         {
-            try
-            {
-                connection = GetConnection();
-                command = new NpgsqlCommand(query, connection);
-
-                if (parameters != null)
-                {
-                    foreach (var param in parameters)
-                    {
-                        command.Parameters.AddWithValue(param.Key, param.Value);
-                    }
-                }
-
-                return command.ExecuteReader();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"An error occurred while executing query: {ex.Message}");
-                throw;
-            }
+            connection = GetConnection();
+            command = new NpgsqlCommand(query, connection);
+            AddParameters(command, parameters);
+            return command.ExecuteReader();
         }
     }
 }
