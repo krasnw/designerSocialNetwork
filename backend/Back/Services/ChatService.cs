@@ -1,16 +1,19 @@
 ﻿using Back.Models;
+using Back.Services.Interfaces;
 using Npgsql;
 
 namespace Back.Services;
 
-public class ChatService
+public class ChatService : IChatService
 {
-    private static DatabaseService _databaseService = DatabaseService.GetInstance();
+    private readonly DatabaseService _databaseService;
 
+    public ChatService(DatabaseService databaseService)
+    {
+        _databaseService = databaseService;
+    }
 
-    // Under construction
-
-    public static bool SendRequest(string username, Chat.Request request)
+    public bool SendRequest(string username, Chat.Request request)
     {
         var getUserIdQuery = @"
     SELECT id FROM api_schema.user WHERE username = @Username";
