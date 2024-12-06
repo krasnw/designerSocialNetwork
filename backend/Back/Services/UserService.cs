@@ -7,6 +7,41 @@ namespace Back.Services;
 
 public class UserService : IUserService
 {
+    private static class ValidationPatterns
+    {
+        public const string Username = @"^[a-zA-Z0-9_]{2,50}$";
+        public const string Email = @"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$";
+        public const string Password = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$";
+        public const string Name = @"^[a-zA-Z]{1,50}$";
+        public const string Phone = @"^\+?[0-9]{6,25}$";
+    }
+
+    private static class SqlQueries
+    {
+        public const string GetUserProfile = @"
+            SELECT u.username, u.first_name, u.last_name, u.profile_description, u.profile_picture, w.amount
+            FROM api_schema.user u
+            LEFT JOIN api_schema.wallet w ON u.id = w.user_id
+            WHERE u.username = @username";
+
+        public const string GetUserRatings = @"
+            SELECT t.tag_name, r.rating
+            FROM api_schema.user_rating r
+            JOIN api_schema.rating_list rl ON r.list_id = rl.id
+            JOIN api_schema.tags t ON rl.tag_id = t.id
+            WHERE r.user_id = (SELECT id FROM api_schema.user WHERE username = @username)";
+
+        public const string UpdateUser = @"
+            UPDATE api_schema.user 
+            SET email = @Email, first_name = @FirstName,
+                last_name = @LastName, phone_number = @PhoneNumber, 
+                profile_description = @Description,
+                profile_picture = @ProfileImage, 
+                access_fee = @AccessFee
+                {0}
+            WHERE username = @Username";
+    }
+
     private readonly HashSet<string> _loggedInUsers = new();
     private readonly IDatabaseService _databaseService;
 
@@ -15,10 +50,40 @@ public class UserService : IUserService
         _databaseService = databaseService;
     }
 
+    private void ValidateUserData(string username, string email, string password, string firstName,
+        string lastName, string phoneNumber, bool validateUsername = true)
+    {
+        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(firstName) ||
+            string.IsNullOrEmpty(lastName) || string.IsNullOrEmpty(phoneNumber))
+        {
+            throw new ArgumentException("All fields are required.");
+        }
+
+        if (validateUsername)
+        {
+            if (string.IsNullOrEmpty(username) || !Regex.IsMatch(username, ValidationPatterns.Username))
+            {
+                throw new ArgumentException("Username must be between 2 and 50 characters long and contain only letters, numbers, and underscores.");
+            }
+        }
+
+        if (!Regex.IsMatch(email, ValidationPatterns.Email))
+            throw new ArgumentException("Email is not in the correct format.");
+
+        if (!string.IsNullOrEmpty(password) && !Regex.IsMatch(password, ValidationPatterns.Password))
+            throw new ArgumentException("Password must be at least 8 characters long and include a mix of upper and lower case letters and numbers.");
+
+        if (!Regex.IsMatch(firstName, ValidationPatterns.Name) || !Regex.IsMatch(lastName, ValidationPatterns.Name))
+            throw new ArgumentException("Names must be between 1 and 50 characters long and contain only letters.");
+
+        if (!Regex.IsMatch(phoneNumber, ValidationPatterns.Phone))
+            throw new ArgumentException("Invalid phone number format. Example: +48123123123");
+    }
+
     public string SignUp(string username, string email, string password, string firstName,
         string lastName, string phoneNumber, string profileImage)
     {
-        ValidateSignUpData(username, email, password, firstName, lastName, phoneNumber);
+        ValidateUserData(username, email, password, firstName, lastName, phoneNumber);
 
         string joinDate = DateTime.Now.ToString("yyyy-MM-dd");
         decimal accessFee = 0; // default value
@@ -88,51 +153,6 @@ public class UserService : IUserService
         }
     }
 
-    private void ValidateSignUpData(string username, string email, string password, string firstName,
-        string lastName, string phoneNumber)
-    {
-        if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password) ||
-            string.IsNullOrEmpty(firstName) || string.IsNullOrEmpty(lastName) || string.IsNullOrEmpty(phoneNumber))
-        {
-            throw new ArgumentException("All fields are required.");
-        }
-
-        var usernameRegex = new Regex("^[a-zA-Z0-9_]{2,50}$");
-        if (!usernameRegex.IsMatch(username))
-        {
-            // 2 characters for names like 'Li'
-            throw new ArgumentException("Username must be between 2 and 50 characters long and contain only letters," +
-                                        " numbers, and underscores.");
-        }
-
-        var emailRegex = new Regex(@"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$");
-        if (!emailRegex.IsMatch(email))
-        {
-            throw new ArgumentException("Email is not in the correct format.");
-        }
-
-        var passwordRegex = new Regex(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$");
-        if (!passwordRegex.IsMatch(password))
-        {
-            throw new ArgumentException(
-                "Password must be at least 8 characters long" +
-                " and include a mix of upper and lower case letters and numbers.");
-        }
-
-        var nameRegex = new Regex(@"^[a-zA-Z]{1,50}$");
-        if (!nameRegex.IsMatch(firstName) || !nameRegex.IsMatch(lastName))
-        {
-            throw new ArgumentException("First and last names must be between 1 and 50 characters long" +
-                                        " and contain only letters.");
-        }
-
-        var phoneNumberRegex = new Regex(@"^\+?[0-9]{6,25}$");
-        if (!phoneNumberRegex.IsMatch(phoneNumber))
-        {
-            throw new ArgumentException("Invalid phone number format. Example: +48123123123");
-        }
-    }
-
     public bool Login(string username, string password)
     {
         string query = "SELECT user_password FROM api_schema.user WHERE username = @Username";
@@ -175,36 +195,26 @@ public class UserService : IUserService
         return _loggedInUsers.Contains(username);
     }
 
-    public User GetUser(string username)
+    private User ExecuteUserQuery(string query, Dictionary<string, object> parameters)
     {
-        if (string.IsNullOrEmpty(username)) return null;
-        string query = "SELECT * FROM api_schema.user WHERE username = @username";
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
+        using var reader = _databaseService.ExecuteQuery(query, out var connection, out var command, parameters);
         try
         {
-            var parameters = new Dictionary<string, object>
-            {
-                { "@username", username }
-            };
-
-            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
             if (!reader.HasRows) return null;
-
             reader.Read();
-            
+
             return new User(
-                reader.GetString(1), // username
-                reader.GetString(2), // email
-                reader.GetString(3), // user_password
-                reader.GetString(4), // first_name
-                reader.GetString(5), // last_name
-                reader.GetString(6), // phone_number
-                reader.GetDecimal(12), // access_fee
-                reader.GetString(10), // account_status
-                reader.GetString(11), // account_level
-                reader.IsDBNull(7) ? "" : reader.GetString(7), // profile_description
-                reader.IsDBNull(8) ? "" : reader.GetString(8) // profile_picture
+                reader.GetString(reader.GetOrdinal("username")),
+                reader.GetString(reader.GetOrdinal("email")),
+                reader.GetString(reader.GetOrdinal("user_password")),
+                reader.GetString(reader.GetOrdinal("first_name")),
+                reader.GetString(reader.GetOrdinal("last_name")),
+                reader.GetString(reader.GetOrdinal("phone_number")),
+                reader.GetDecimal(reader.GetOrdinal("access_fee")),
+                reader.GetString(reader.GetOrdinal("account_status")),
+                reader.GetString(reader.GetOrdinal("account_level")),
+                reader.GetStringOrDefault(reader.GetOrdinal("profile_description")),
+                reader.GetStringOrDefault(reader.GetOrdinal("profile_picture"), "default.png")
             );
         }
         finally
@@ -214,40 +224,54 @@ public class UserService : IUserService
         }
     }
 
-    public User GetUser(int id)
+    private Dictionary<string, int> GetUserRatings(string username)
     {
-        string query = "SELECT * FROM api_schema.user WHERE id = @id";
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
+        var ratings = new Dictionary<string, int>();
+        var parameters = new Dictionary<string, object> { { "@username", username } };
+
+        using var reader = _databaseService.ExecuteQuery(SqlQueries.GetUserRatings, out var connection, out var command, parameters);
         try
         {
-            var parameters = new Dictionary<string, object>
+            while (reader.Read())
             {
-                { "@id", id }
-            };
-            
-            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
+                ratings.Add(reader.GetString(0), reader.GetInt32(1));
+            }
+            return ratings;
+        }
+        finally
+        {
+            command?.Dispose();
+            connection?.Dispose();
+        }
+    }
+
+    public User GetUser(string username) => 
+        ExecuteUserQuery(SqlQueries.GetUserByUsername, new Dictionary<string, object> { { "@username", username } });
+
+    public User GetUser(int id) =>
+        ExecuteUserQuery("SELECT * FROM api_schema.user WHERE id = @id", new Dictionary<string, object> { { "@id", id } });
+
+    public UserProfile GetProfile(string username, bool includeWallet = false)
+    {
+        var parameters = new Dictionary<string, object> { { "@username", username } };
+
+        using var reader = _databaseService.ExecuteQuery(SqlQueries.GetUserProfile, out var connection, out var command, parameters);
+        try
+        {
             if (!reader.HasRows) return null;
 
             reader.Read();
-
-            return new User(
-                reader.GetString(reader.GetOrdinal("username")), // username
-                reader.GetString(reader.GetOrdinal("email")), // email
-                reader.GetString(reader.GetOrdinal("user_password")), // user_password
-                reader.GetString(reader.GetOrdinal("first_name")), // first_name
-                reader.GetString(reader.GetOrdinal("last_name")), // last_name
-                reader.GetString(reader.GetOrdinal("phone_number")), // phone_number
-                reader.GetDecimal(reader.GetOrdinal("access_fee")), // access_fee
-                reader.GetString(reader.GetOrdinal("account_status")), // account_status
-                reader.GetString(reader.GetOrdinal("account_level")), // account_level
-                reader.IsDBNull(reader.GetOrdinal("profile_description"))
-                    ? ""
-                    : reader.GetString(reader.GetOrdinal("profile_description")), // profile_description
-                reader.IsDBNull(reader.GetOrdinal("profile_picture"))
-                    ? "default.png"
-                    : reader.GetString(reader.GetOrdinal("profile_picture")) // profile_picture
+            var profile = new UserProfile(
+                reader.GetString(reader.GetOrdinal("username")),
+                reader.GetString(reader.GetOrdinal("first_name")),
+                reader.GetString(reader.GetOrdinal("last_name")),
+                GetUserRatings(username),
+                reader.GetStringOrDefault(reader.GetOrdinal("profile_description")),
+                reader.GetStringOrDefault(reader.GetOrdinal("profile_picture")),
+                includeWallet ? reader.GetInt32(reader.GetOrdinal("amount")) : 0
             );
+
+            return profile;
         }
         finally
         {
@@ -256,132 +280,20 @@ public class UserService : IUserService
         }
     }
 
-    public UserProfile GetOwnProfile(string username)
-    {
-        var userQuery = @"
-SELECT u.username, u.first_name, u.last_name, u.profile_description, u.profile_picture, w.amount
-FROM api_schema.user u
-JOIN api_schema.wallet w ON u.id = w.user_id
-WHERE u.username = @username";
-
-        var ratingQuery = @"
-SELECT t.tag_name, r.rating
-FROM api_schema.user_rating r
-    JOIN api_schema.rating_list rl ON r.list_id = rl.id
-JOIN api_schema.tags t ON rl.tag_id = t.id
-WHERE r.user_id = (SELECT id FROM api_schema.user WHERE username = @username)";
-
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
-        try
-        {
-            var parameters = new Dictionary<string, object>
-            {
-                { "@username", username }
-            };
-
-            // Execute the first query to get user details
-            using var userReader = _databaseService.ExecuteQuery(userQuery, out connection, out command, parameters);
-            if (!userReader.HasRows) return null;
-
-            userReader.Read();
-            string firstName = userReader.GetString(1);
-            string lastName = userReader.GetString(2);
-            string description = userReader.IsDBNull(3) ? "" : userReader.GetString(3);
-            string profileImage = userReader.IsDBNull(4) ? "" : userReader.GetString(4);
-            int rubies = userReader.GetInt32(5);
-
-            // Execute the second query to get rating positions
-            var ratingPositions = new Dictionary<string, int>();
-            using var ratingReader =
-                _databaseService.ExecuteQuery(ratingQuery, out connection, out command, parameters);
-            while (ratingReader.Read())
-            {
-                string tagName = ratingReader.GetString(0);
-                int position = ratingReader.GetInt32(1);
-                ratingPositions.Add(tagName, position);
-            }
-
-            return new UserProfile(username, firstName, lastName, ratingPositions, description, profileImage, rubies);
-        }
-        finally
-        {
-            command?.Dispose();
-            connection?.Dispose();
-        }
-    }
-
-    public UserProfile GetProfile(string username)
-    {
-        var userQuery = @"
-SELECT u.username, u.first_name, u.last_name, u.profile_description, u.profile_picture
-FROM api_schema.user u
-WHERE u.username = @username";
-
-        var ratingQuery = @"
-SELECT t.tag_name, r.rating
-FROM api_schema.user_rating r
-    JOIN api_schema.rating_list rl ON r.list_id = rl.id
-JOIN api_schema.tags t ON rl.tag_id = t.id
-WHERE r.user_id = (SELECT id FROM api_schema.user WHERE username = @username)";
-
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
-        try
-        {
-            var parameters = new Dictionary<string, object>
-            {
-                { "@username", username }
-            };
-
-            // Execute the first query to get user details
-            using var userReader = _databaseService.ExecuteQuery(userQuery, out connection, out command, parameters);
-            if (!userReader.HasRows) return null;
-
-            userReader.Read();
-            string firstName = userReader.GetString(1);
-            string lastName = userReader.GetString(2);
-            string description = userReader.IsDBNull(3) ? "" : userReader.GetString(3);
-            string profileImage = userReader.IsDBNull(4) ? "" : userReader.GetString(4);
-
-            // Execute the second query to get rating positions
-            var ratingPositions = new Dictionary<string, int>();
-            using var ratingReader =
-                _databaseService.ExecuteQuery(ratingQuery, out connection, out command, parameters);
-            while (ratingReader.Read())
-            {
-                string tagName = ratingReader.GetString(0);
-                int position = ratingReader.GetInt32(1);
-                ratingPositions.Add(tagName, position);
-            }
-
-            return new UserProfile(username, firstName, lastName, ratingPositions, description, profileImage);
-        }
-        finally
-        {
-            command?.Dispose();
-            connection?.Dispose();
-        }
-    }
+    public UserProfile GetOwnProfile(string username) => GetProfile(username, true);
 
     public User.EditRequest EditData(string username)
     {
         var query = @"
-        SELECT email, first_name, last_name, phone_number, profile_description, profile_picture, access_fee
-        FROM api_schema.user
-        WHERE username = @Username";
+            SELECT email, first_name, last_name, phone_number, profile_description, 
+                   profile_picture, access_fee
+            FROM api_schema.user
+            WHERE username = @Username";
 
-        var parameters = new Dictionary<string, object>
-        {
-            { "@Username", username }
-        };
-
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
-
+        using var reader = _databaseService.ExecuteQuery(query, out var connection, out var command, 
+            new Dictionary<string, object> { { "@Username", username } });
         try
         {
-            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
             if (!reader.HasRows) return null;
 
             reader.Read();
@@ -392,8 +304,8 @@ WHERE r.user_id = (SELECT id FROM api_schema.user WHERE username = @username)";
                 FirstName = reader.GetString(1),
                 LastName = reader.GetString(2),
                 PhoneNumber = reader.GetString(3),
-                Description = reader.IsDBNull(4) ? "" : reader.GetString(4),
-                ProfileImage = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                Description = reader.GetStringOrDefault(4),
+                ProfileImage = reader.GetStringOrDefault(5),
                 AccessFee = reader.GetInt32(6)
             };
         }
@@ -406,21 +318,14 @@ WHERE r.user_id = (SELECT id FROM api_schema.user WHERE username = @username)";
 
     public bool EditProfile(string username, User.EditRequest request)
     {
-        if (!ValidateEditData(request)) return false;
+        ValidateUserData(null, request.Email, request.Password, request.FirstName, 
+            request.LastName, request.PhoneNumber, false);
 
-        var query = @"
-    UPDATE api_schema.user 
-    SET email = @Email, first_name = @FirstName,
-    last_name = @LastName, phone_number = @PhoneNumber, profile_description = @Description,
-    profile_picture = @ProfileImage, access_fee = @AccessFee";
-
-        if (!string.IsNullOrEmpty(request.Password))
-        {
-            query += ", user_password = @Password";
-        }
-
-        query += " WHERE username = @Username";
-
+        var passwordClause = !string.IsNullOrEmpty(request.Password) 
+            ? ", user_password = @Password" 
+            : "";
+        
+        var query = string.Format(SqlQueries.UpdateUser, passwordClause);
         var parameters = new Dictionary<string, object>
         {
             { "@Email", request.Email },
@@ -438,20 +343,9 @@ WHERE r.user_id = (SELECT id FROM api_schema.user WHERE username = @username)";
             parameters.Add("@Password", BCrypt.Net.BCrypt.HashPassword(request.Password));
         }
 
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
-
         try
         {
-            connection = _databaseService.GetConnection();
-
-            command = new NpgsqlCommand(query, connection);
-            foreach (var param in parameters)
-            {
-                command.Parameters.AddWithValue(param.Key, param.Value);
-            }
-
-            command.ExecuteNonQuery();
+            _databaseService.ExecuteNonQuery(query, parameters);
             return true;
         }
         catch (Exception e)
@@ -459,41 +353,12 @@ WHERE r.user_id = (SELECT id FROM api_schema.user WHERE username = @username)";
             Console.WriteLine(e.Message);
             return false;
         }
-        finally
-        {
-            command?.Dispose();
-            connection?.Close();
-            connection?.Dispose();
-        }
     }
+}
 
-    private static bool ValidateEditData(User.EditRequest request)
-    {
-        if (string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.FirstName) ||
-            string.IsNullOrEmpty(request.LastName) || string.IsNullOrEmpty(request.PhoneNumber))
-        {
-            throw new ArgumentException("All fields are required.");
-        }
-
-        var emailRegex = new Regex(@"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$");
-        if (!emailRegex.IsMatch(request.Email))
-        {
-            throw new ArgumentException("Email is not in the correct format.");
-        }
-
-        var nameRegex = new Regex(@"^[a-zA-Z]{1,50}$");
-        if (!nameRegex.IsMatch(request.FirstName) || !nameRegex.IsMatch(request.LastName))
-        {
-            throw new ArgumentException("First and last names must be between 1 and 50 characters long" +
-                                        " and contain only letters.");
-        }
-
-        var phoneNumberRegex = new Regex(@"^\+?[0-9]{6,25}$");
-        if (!phoneNumberRegex.IsMatch(request.PhoneNumber))
-        {
-            throw new ArgumentException("Invalid phone number format. Example: +48123123123");
-        }
-
-        return true;
-    }
+// Extension method for NpgsqlDataReader
+public static class NpgsqlDataReaderExtensions
+{
+    public static string GetStringOrDefault(this NpgsqlDataReader reader, int ordinal, string defaultValue = "") =>
+        reader.IsDBNull(ordinal) ? defaultValue : reader.GetString(ordinal);
 }
