@@ -8,11 +8,6 @@ var builder = WebApplication.CreateBuilder(args);
 // Load environment variables from .env file
 DotNetEnv.Env.Load();
 
-// Connect to database
-//var db = DatabaseService.GetInstance(Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"));
-var db = DatabaseService.GetInstance("Host=database;Port=5432;Username=api_user;Password=api_user_password;" +
-                                     "Database=api_database;SearchPath=api_schema;");
-
 // Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -44,17 +39,22 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Update service registration
-builder.Services.AddSingleton<IDatabaseService>(provider => 
-    DatabaseService.GetInstance(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddSingleton<DatabaseService>(provider => 
+    DatabaseService.GetInstance("Host=database;Port=5432;Username=api_user;Password=api_user_password;" +
+                              "Database=api_database;SearchPath=api_schema;"));
+builder.Services.AddSingleton<IDatabaseService>(provider => provider.GetRequiredService<DatabaseService>());
+
+// Оказывается, ПОРЯДОК РЕГИСТРАЦИИ СЕРВИСОВ ИМЕЕТ ЗНАЧЕНИЕ, да, живём в 2024 году
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<IChatService, ChatService>();
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IDatabaseService, DatabaseService>();
-builder.Services.AddScoped<ITagService, TagService>();
 
-builder.Services.AddScoped<AuthService>();
-builder.Services.AddSingleton<UserService>();
+// Remove these redundant registrations
+// builder.Services.AddScoped<AuthService>();
+// builder.Services.AddSingleton<UserService>();
+
 builder.Services.AddAuthorization();
 builder.Services.AddCors(options =>
 {
@@ -66,8 +66,9 @@ builder.Services.AddCors(options =>
     });
 });
 
-var authService = new AuthService();
-authService.AddAuth(builder.Services);
+// Remove these lines as they are redundant
+// var authService = new AuthService();
+// authService.AddAuth(builder.Services);
 
 builder.Services.AddControllers();
 

@@ -6,9 +6,9 @@ namespace Back.Services;
 
 public class ChatService : IChatService
 {
-    private readonly DatabaseService _databaseService;
+    private readonly IDatabaseService _databaseService;
 
-    public ChatService(DatabaseService databaseService)
+    public ChatService(IDatabaseService databaseService)
     {
         _databaseService = databaseService;
     }

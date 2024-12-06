@@ -1,61 +1,63 @@
 ﻿using Npgsql;
 using Back.Services.Interfaces;
 
-namespace Back.Services
+namespace Back.Services;
+
+public class DatabaseService : IDatabaseService
 {
-    public class DatabaseService : IDatabaseService
+    private static DatabaseService? _instance;
+    private static readonly object Lock = new();
+    private readonly string _connectionString;
+
+    public DatabaseService(string connectionString)
     {
-        private static DatabaseService? _instance;
-        private static readonly object Lock = new();
-        private readonly string _connectionString;
+        _connectionString = connectionString;
+    }
 
-        private DatabaseService(string connectionString)
+    public static DatabaseService GetInstance(string? connectionString = null)
+    {
+        if (_instance != null) return _instance;
+        if (connectionString == null)
+            throw new ArgumentNullException(nameof(connectionString),
+                "Connection string is required when creating new instance.");
+        lock (Lock)
         {
-            _connectionString = connectionString;
+            _instance ??= new DatabaseService(connectionString);
         }
 
-        public static DatabaseService GetInstance(string? connectionString = null)
-        {
-            if (_instance != null) return _instance;
-            if (connectionString == null) throw new ArgumentNullException(nameof(connectionString), "Connection string is required when creating new instance.");
-            lock (Lock)
-            {
-                _instance ??= new DatabaseService(connectionString);
-            }
-            return _instance;
-        }
+        return _instance;
+    }
 
-        public NpgsqlConnection GetConnection()
-        {
-            var connection = new NpgsqlConnection(_connectionString);
-            connection.Open();
-            return connection;
-        }
+    public NpgsqlConnection GetConnection()
+    {
+        var connection = new NpgsqlConnection(_connectionString);
+        connection.Open();
+        return connection;
+    }
 
-        private void AddParameters(NpgsqlCommand command, Dictionary<string, object>? parameters)
+    private void AddParameters(NpgsqlCommand command, Dictionary<string, object>? parameters)
+    {
+        if (parameters == null) return;
+        foreach (var param in parameters)
         {
-            if (parameters == null) return;
-            foreach (var param in parameters)
-            {
-                command.Parameters.AddWithValue(param.Key, param.Value);
-            }
+            command.Parameters.AddWithValue(param.Key, param.Value);
         }
+    }
 
-        public void ExecuteNonQuery(string query, Dictionary<string, object>? parameters = null)
-        {
-            using var connection = GetConnection();
-            using var command = new NpgsqlCommand(query, connection);
-            AddParameters(command, parameters);
-            command.ExecuteNonQuery();
-        }
+    public void ExecuteNonQuery(string query, Dictionary<string, object>? parameters = null)
+    {
+        using var connection = GetConnection();
+        using var command = new NpgsqlCommand(query, connection);
+        AddParameters(command, parameters);
+        command.ExecuteNonQuery();
+    }
 
-        public NpgsqlDataReader ExecuteQuery(string query, out NpgsqlConnection connection, out NpgsqlCommand command,
-            Dictionary<string, object>? parameters = null)
-        {
-            connection = GetConnection();
-            command = new NpgsqlCommand(query, connection);
-            AddParameters(command, parameters);
-            return command.ExecuteReader();
-        }
+    public NpgsqlDataReader ExecuteQuery(string query, out NpgsqlConnection connection, out NpgsqlCommand command,
+        Dictionary<string, object>? parameters = null)
+    {
+        connection = GetConnection();
+        command = new NpgsqlCommand(query, connection);
+        AddParameters(command, parameters);
+        return command.ExecuteReader();
     }
 }

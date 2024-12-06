@@ -11,16 +11,17 @@ namespace Back.Services;
 
 public class PostService : IPostService
 {
-    private readonly DatabaseService _databaseService = DatabaseService.GetInstance();
+    private readonly IDatabaseService _databaseService;
     private readonly ITagService _tagService;
-    private readonly UserService _userService;
+    private readonly IUserService _userService;
 
     private const string POST_BASE_SELECT = @"
         SELECT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
         FROM api_schema.post p";
 
-    public PostService(ITagService tagService, UserService userService)
+    public PostService(IDatabaseService databaseService, ITagService tagService, IUserService userService)
     {
+        _databaseService = databaseService;
         _tagService = tagService;
         _userService = userService;
     }
