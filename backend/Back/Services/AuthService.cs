@@ -11,6 +11,47 @@ using System.Text;
 public class AuthService : IAuthService
 {
     private readonly TimeSpan _tokenLifetime = TimeSpan.FromHours(3);
+    private readonly string? _secretKey;
+    private readonly string? _issuer;
+    private readonly string? _audience;
+    private readonly byte[] _keyBytes;
+
+    public AuthService()
+    {
+        (_secretKey, _issuer, _audience) = GetJwtConfig();
+        _keyBytes = Encoding.ASCII.GetBytes(_secretKey ?? string.Empty);
+    }
+
+    private (string? secretKey, string? issuer, string? audience) GetJwtConfig()
+    {
+        var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
+        var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER");
+        var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
+
+        if (string.IsNullOrEmpty(secretKey) || string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience))
+        {
+            //TODO: Log error
+            System.Console.WriteLine($"Secret: {secretKey}\nIssuer: {issuer}\nAudience: {audience}");
+            throw new InvalidOperationException("JWT configuration is missing within the environment variables");
+        }
+
+        return (secretKey, issuer, audience);
+    }
+
+    private TokenValidationParameters GetTokenValidationParameters()
+    {
+        return new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(_keyBytes),
+            ValidateIssuer = true,
+            ValidIssuer = _issuer,
+            ValidateAudience = true,
+            ValidAudience = _audience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    }
 
     public void AddAuth(IServiceCollection services)
     {
@@ -22,45 +63,15 @@ public class AuthService : IAuthService
             })
             .AddJwtBearer(options =>
             {
-                var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
-                var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER");
-                var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
-
-                if (string.IsNullOrEmpty(secretKey) || string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience))
-                {
-                    //TODO: Log error
-                    System.Console.WriteLine("Secret: " + secretKey);
-                    System.Console.WriteLine("Issuer: " + issuer);
-                    System.Console.WriteLine("Audience: " + audience);
-                    throw new InvalidOperationException("JWT configuration is missing within the environment variables");
-                }
-
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = issuer,
-                    ValidAudience = audience,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
-                };
+                options.TokenValidationParameters = GetTokenValidationParameters();
             });
     }
 
     public string? GenerateToken(string username)
     {
-        var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
-        var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER");
-        var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
-    
-        if (string.IsNullOrEmpty(secretKey) || string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience))
-        {
-            return null;
-        }
-    
+        if (string.IsNullOrEmpty(_secretKey)) return null;
+
         var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.ASCII.GetBytes(secretKey);
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(new Claim[]
@@ -69,9 +80,9 @@ public class AuthService : IAuthService
                 new Claim(ClaimTypes.Role, "User")
             }),
             Expires = DateTime.UtcNow.Add(_tokenLifetime),
-            Issuer = issuer,
-            Audience = audience,
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            Issuer = _issuer,
+            Audience = _audience,
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(_keyBytes), SecurityAlgorithms.HmacSha256Signature)
         };
         var token = tokenHandler.CreateToken(tokenDescriptor);
         return tokenHandler.WriteToken(token);
@@ -95,28 +106,9 @@ public class AuthService : IAuthService
 
     public ClaimsPrincipal? ValidateToken(string token)
     {
+        if (string.IsNullOrEmpty(_secretKey)) return null;
+
         var tokenHandler = new JwtSecurityTokenHandler();
-        var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
-        var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER");
-        var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
-
-        if (string.IsNullOrEmpty(secretKey) || string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience))
-        {
-            return null;
-        }
-
-        var key = Encoding.ASCII.GetBytes(secretKey);
-        var validationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(key),
-            ValidateIssuer = true,
-            ValidIssuer = issuer,
-            ValidateAudience = true,
-            ValidAudience = audience,
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero
-        };
-        return tokenHandler.ValidateToken(token, validationParameters, out _);
+        return tokenHandler.ValidateToken(token, GetTokenValidationParameters(), out _);
     }
 }
