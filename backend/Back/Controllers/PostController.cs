@@ -1,6 +1,7 @@
 ﻿using Back.Models.DTO;
 using Back.Models.PostDto;
 using back.Services;
+using Back.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,11 +11,11 @@ namespace Back.Controllers;
 [Route("[controller]")]
 public class PostController : ControllerBase
 {
-    private PostService _postService;
+    private readonly IPostService _postService;
 
-    public PostController()
+    public PostController(IPostService postService)
     {
-        _postService = new PostService();
+        _postService = postService;
     }
 
     [HttpGet("feed")]
@@ -50,22 +51,6 @@ public class PostController : ControllerBase
         if (post == null) return NotFound();
         var postFormatted = PostDto.MapToPostDto(_postService.GetPost(id));
         return postFormatted != null ? Ok(postFormatted) : NotFound();
-    }
-
-    //tags
-    [HttpGet("tags")]
-    public IActionResult GetTags()
-    {
-        var tags = _postService.GetAllTags();
-        return tags != null ? Ok(tags) : NotFound();
-    }
-
-    //get user related data
-    [HttpGet("profile/{username}/usedTags")]
-    public IActionResult GetUserUsedTags(string username)
-    {
-        var tags = _postService.GetAllUserTags(username);
-        return tags != null ? Ok(tags) : NotFound();
     }
 
     [HttpGet("profile/{username}/mini")]

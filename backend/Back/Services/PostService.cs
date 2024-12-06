@@ -3,114 +3,22 @@ using System.Text.RegularExpressions;
 using Back.Models;
 using Back.Models.PostDto;
 using Back.Services;
+using Back.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 
 namespace back.Services;
 
-public class PostService
+public class PostService : IPostService
 {
-    private DatabaseService _databaseService = DatabaseService.GetInstance();
+    private readonly DatabaseService _databaseService = DatabaseService.GetInstance();
+    private readonly ITagService _tagService;
+    private readonly UserService _userService;
 
-    //get all tags
-    public List<Tag> GetAllTags()
+    public PostService(ITagService tagService, UserService userService)
     {
-        string query = "SELECT * FROM api_schema.tags";
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
-        try
-        {
-            using var reader = _databaseService.ExecuteQuery(query, out connection, out command);
-            var tags = new List<Tag>();
-            while (reader.Read())
-            {
-                tags.Add(new Tag(reader.GetInt32(0), reader.GetString(1), reader.GetString(2)));
-            }
-
-            return tags;
-        }
-        finally
-        {
-            command?.Dispose();
-            connection?.Dispose();
-        }
-    }
-
-    public List<Tag> GetAllTags(string type)
-    {
-        string query = "SELECT * FROM api_schema.tags WHERE tag_type = @type";
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
-        try
-        {
-            var parameters = new Dictionary<string, object>
-            {
-                { "@type", type }
-            };
-
-            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
-            var tags = new List<Tag>();
-            while (reader.Read())
-            {
-                tags.Add(new Tag(reader.GetInt32(0), reader.GetString(1), reader.GetString(2)));
-            }
-
-            return tags;
-        }
-        finally
-        {
-            command?.Dispose();
-            connection?.Dispose();
-        }
-    }
-
-    //get all tags by user who used them
-    public List<Tag> GetAllUserTags(string username)
-    {
-        string getUserIdQuery = @"
-    SELECT id FROM api_schema.user WHERE username = @username";
-
-        string getUserTagsQuery = @"
-    SELECT t.id, t.tag_name, t.tag_type
-    FROM api_schema.tags t
-    JOIN api_schema.post_tags pt ON t.id = pt.tag_id
-    JOIN api_schema.post p ON pt.post_id = p.id
-    WHERE p.user_id = @user_id";
-
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
-
-        try
-        {
-            connection = _databaseService.GetConnection();
-
-            // Retrieve user ID
-            using (command = new NpgsqlCommand(getUserIdQuery, connection))
-            {
-                command.Parameters.AddWithValue("@username", username);
-                var userId = (int?)command.ExecuteScalar();
-                if (userId == null) throw new Exception("User not found");
-
-                // Retrieve tags
-                using (var tagCommand = new NpgsqlCommand(getUserTagsQuery, connection))
-                {
-                    tagCommand.Parameters.AddWithValue("@user_id", userId);
-                    using var reader = tagCommand.ExecuteReader();
-                    var tags = new List<Tag>();
-                    while (reader.Read())
-                    {
-                        tags.Add(new Tag(reader.GetInt32(0), reader.GetString(1), reader.GetString(2)));
-                    }
-
-                    return tags;
-                }
-            }
-        }
-        finally
-        {
-            command?.Dispose();
-            connection?.Dispose();
-        }
+        _tagService = tagService;
+        _userService = userService;
     }
 
     //get post by id
@@ -542,19 +450,17 @@ public class PostService
 
     private Post CompilePost(NpgsqlDataReader reader)
     {
-        Console.WriteLine(UserService.GetUser(reader.GetInt32(1)).Username);
-        var post = new Post(
-            reader.GetInt32(0), // id
-            UserService.GetUser(reader.GetInt32(1)), // user
-            reader.GetString(2), // title
-            reader.GetString(3), // content
-            GetPostImages(reader.GetInt32(0)), // images
-            DateOnly.FromDateTime(reader.GetDateTime(5)), // post_date
-            reader.GetInt32(6), // likes
-            reader.GetString(7), // access_level
-            GetPostTags(reader.GetInt32(0)), // tags
-            GetPostRatings(reader.GetInt32(0)) // ratings
+        return new Post(
+            reader.GetInt32(0),
+            _userService.GetUser(reader.GetInt32(1)),
+            reader.GetString(2),
+            reader.GetString(3),
+            GetPostImages(reader.GetInt32(0)),
+            DateOnly.FromDateTime(reader.GetDateTime(5)),
+            reader.GetInt32(6),
+            reader.GetString(7),
+            _tagService.GetPostTags(reader.GetInt32(0)),
+            GetPostRatings(reader.GetInt32(0))
         );
-        return post;
     }
 }
