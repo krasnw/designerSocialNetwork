@@ -40,6 +40,9 @@ public class UserService : IUserService
                 access_fee = @AccessFee
                 {0}
             WHERE username = @Username";
+
+        public const string GetUserByUsername = @"
+            SELECT * FROM api_schema.user WHERE username = @username";
     }
 
     private readonly HashSet<string> _loggedInUsers = new();
@@ -281,6 +284,8 @@ public class UserService : IUserService
     }
 
     public UserProfile GetOwnProfile(string username) => GetProfile(username, true);
+
+    public UserProfile GetProfile(string username) => GetProfile(username, false);
 
     public User.EditRequest EditData(string username)
     {
