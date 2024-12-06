@@ -3,59 +3,37 @@ using System.Text.RegularExpressions;
 using Back.Models;
 using Back.Models.PostDto;
 using Back.Services;
+using Back.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 
-namespace back.Services;
+namespace Back.Services;
 
-public class PostService
+public class PostService : IPostService
 {
-    private DatabaseService _databaseService = DatabaseService.GetInstance();
+    private readonly IDatabaseService _databaseService;
+    private readonly ITagService _tagService;
+    private readonly IUserService _userService;
 
-    //get all tags
-    public List<Tag> GetAllTags()
+    private const string POST_BASE_SELECT = @"
+        SELECT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
+        FROM api_schema.post p";
+
+    public PostService(IDatabaseService databaseService, ITagService tagService, IUserService userService)
     {
-        string query = "SELECT * FROM api_schema.tags";
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
-        try
-        {
-            using var reader = _databaseService.ExecuteQuery(query, out connection, out command);
-            var tags = new List<Tag>();
-            while (reader.Read())
-            {
-                tags.Add(new Tag(reader.GetInt32(0), reader.GetString(1), reader.GetString(2)));
-            }
-
-            return tags;
-        }
-        finally
-        {
-            command?.Dispose();
-            connection?.Dispose();
-        }
+        _databaseService = databaseService;
+        _tagService = tagService;
+        _userService = userService;
     }
 
-    public List<Tag> GetAllTags(string type)
+    private T ExecuteQueryWithDisposable<T>(string query, Dictionary<string, object> parameters, Func<NpgsqlDataReader, T> processor)
     {
-        string query = "SELECT * FROM api_schema.tags WHERE tag_type = @type";
         NpgsqlConnection connection = null;
         NpgsqlCommand command = null;
         try
         {
-            var parameters = new Dictionary<string, object>
-            {
-                { "@type", type }
-            };
-
             using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
-            var tags = new List<Tag>();
-            while (reader.Read())
-            {
-                tags.Add(new Tag(reader.GetInt32(0), reader.GetString(1), reader.GetString(2)));
-            }
-
-            return tags;
+            return processor(reader);
         }
         finally
         {
@@ -64,148 +42,39 @@ public class PostService
         }
     }
 
-    //get all tags by user who used them
-    public List<Tag> GetAllUserTags(string username)
+    private Dictionary<string, object> CreatePostIdParam(int id) => 
+        new() { { "@id", id } };
+
+    public Post GetPost(int id) =>
+        ExecuteQueryWithDisposable(
+            $"{POST_BASE_SELECT} WHERE id = @id",
+            CreatePostIdParam(id),
+            reader => !reader.HasRows ? null : (reader.Read() ? CompilePost(reader) : null)
+        );
+
+    public List<Post>? GetAllUserPosts(int userId) =>
+        ExecuteQueryWithDisposable(
+            $"{POST_BASE_SELECT} WHERE user_id = @user_id",
+            new Dictionary<string, object> { { "@user_id", userId } },
+            reader => !reader.HasRows ? null : ReadMultiplePosts(reader)
+        );
+
+    public List<Post>? GetAllUserPosts(string username) =>
+        ExecuteQueryWithDisposable(
+            $"{POST_BASE_SELECT} JOIN api_schema.user u ON p.user_id = u.id WHERE u.username = @username",
+            new Dictionary<string, object> { { "@username", username } },
+            reader => !reader.HasRows ? null : ReadMultiplePosts(reader)
+        );
+
+    private List<Post> ReadMultiplePosts(NpgsqlDataReader reader)
     {
-        string getUserIdQuery = @"
-    SELECT id FROM api_schema.user WHERE username = @username";
-
-        string getUserTagsQuery = @"
-    SELECT t.id, t.tag_name, t.tag_type
-    FROM api_schema.tags t
-    JOIN api_schema.post_tags pt ON t.id = pt.tag_id
-    JOIN api_schema.post p ON pt.post_id = p.id
-    WHERE p.user_id = @user_id";
-
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
-
-        try
+        var posts = new List<Post>();
+        while (reader.Read())
         {
-            connection = _databaseService.GetConnection();
-
-            // Retrieve user ID
-            using (command = new NpgsqlCommand(getUserIdQuery, connection))
-            {
-                command.Parameters.AddWithValue("@username", username);
-                var userId = (int?)command.ExecuteScalar();
-                if (userId == null) throw new Exception("User not found");
-
-                // Retrieve tags
-                using (var tagCommand = new NpgsqlCommand(getUserTagsQuery, connection))
-                {
-                    tagCommand.Parameters.AddWithValue("@user_id", userId);
-                    using var reader = tagCommand.ExecuteReader();
-                    var tags = new List<Tag>();
-                    while (reader.Read())
-                    {
-                        tags.Add(new Tag(reader.GetInt32(0), reader.GetString(1), reader.GetString(2)));
-                    }
-
-                    return tags;
-                }
-            }
+            var post = CompilePost(reader);
+            posts.Add(post);
         }
-        finally
-        {
-            command?.Dispose();
-            connection?.Dispose();
-        }
-    }
-
-    //get post by id
-    public Post GetPost(int id)
-    {
-        string query = "SELECT * FROM api_schema.post WHERE id = @id";
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
-        try
-        {
-            var parameters = new Dictionary<string, object>
-            {
-                { "@id", id }
-            };
-
-            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
-            if (!reader.HasRows) return null;
-            reader.Read();
-
-            return CompilePost(reader);
-        }
-        finally
-        {
-            command?.Dispose();
-            connection?.Dispose();
-        }
-    }
-
-    //get all user's posts
-    public List<Post>? GetAllUserPosts(int userId)
-    {
-        string query = "SELECT * FROM api_schema.post WHERE user_id = @user_id";
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
-        try
-        {
-            var parameters = new Dictionary<string, object>
-            {
-                { "@user_id", userId }
-            };
-
-            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
-            if (!reader.HasRows) return null;
-
-            var posts = new List<Post>();
-            while (reader.Read())
-            {
-                var post = CompilePost(reader);
-                posts.Add(post);
-            }
-
-            return posts;
-        }
-        finally
-        {
-            command?.Dispose();
-            connection?.Dispose();
-        }
-    }
-
-    public List<Post>? GetAllUserPosts(string username)
-    {
-        string query = @"
-    SELECT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
-    FROM api_schema.post p
-    JOIN api_schema.user u ON p.user_id = u.id
-    WHERE u.username = @username";
-
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
-        try
-        {
-            var parameters = new Dictionary<string, object>
-            {
-                { "@username", username }
-            };
-
-            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
-            if (!reader.HasRows) return null;
-
-            var posts = new List<Post>();
-            while (reader.Read())
-            {
-                var post = CompilePost(reader);
-                posts.Add(post);
-                Console.WriteLine(post.ToString());
-            }
-
-            return posts;
-        }
-        finally
-        {
-            command?.Dispose();
-            connection?.Dispose();
-        }
+        return posts;
     }
 
     //get newest posts by page
@@ -540,21 +409,17 @@ public class PostService
         }
     }
 
-    private Post CompilePost(NpgsqlDataReader reader)
-    {
-        Console.WriteLine(UserService.GetUser(reader.GetInt32(1)).Username);
-        var post = new Post(
-            reader.GetInt32(0), // id
-            UserService.GetUser(reader.GetInt32(1)), // user
-            reader.GetString(2), // title
-            reader.GetString(3), // content
-            GetPostImages(reader.GetInt32(0)), // images
-            DateOnly.FromDateTime(reader.GetDateTime(5)), // post_date
-            reader.GetInt32(6), // likes
-            reader.GetString(7), // access_level
-            GetPostTags(reader.GetInt32(0)), // tags
-            GetPostRatings(reader.GetInt32(0)) // ratings
+    private Post CompilePost(NpgsqlDataReader reader) =>
+        new(
+            reader.GetInt32(0),
+            _userService.GetUser(reader.GetInt32(1)),
+            reader.GetString(2),
+            reader.GetString(3),
+            GetPostImages(reader.GetInt32(0)),
+            DateOnly.FromDateTime(reader.GetDateTime(5)),
+            reader.GetInt32(6),
+            reader.GetString(7),
+            _tagService.GetPostTags(reader.GetInt32(0)),
+            GetPostRatings(reader.GetInt32(0))
         );
-        return post;
-    }
 }

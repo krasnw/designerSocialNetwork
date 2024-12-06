@@ -1,5 +1,6 @@
 ﻿using Back.Models;
 using Back.Services;
+using Back.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,9 +10,9 @@ namespace Back.Controllers;
 [Route("[controller]")]
 public class UserController : ControllerBase
 {
-    private readonly UserService _userService;
+    private readonly IUserService _userService;
 
-    public UserController(UserService userService)
+    public UserController(IUserService userService)
     {
         _userService = userService;
     }
@@ -21,8 +22,7 @@ public class UserController : ControllerBase
     public IActionResult GetMyProfile()
     {
         var uniqueName = User.Identity?.Name;
-
-        var me = UserService.GetOwnProfile(uniqueName);
+        var me = _userService.GetOwnProfile(uniqueName);  // Use instance method
         return me != null ? Ok(me) : Unauthorized("Blame the token, relog please");
     }
 
@@ -37,7 +37,7 @@ public class UserController : ControllerBase
             return RedirectToAction(nameof(GetMyProfile));
         }
 
-        var user = UserService.GetProfile(username);
+        var user = _userService.GetProfile(username);  // Use instance method
         return user != null ? Ok(user) : NotFound();
     }
     
@@ -50,7 +50,7 @@ public class UserController : ControllerBase
         var uniqueName = User.Identity?.Name;
         if (string.IsNullOrEmpty(uniqueName)) return Unauthorized("Blame the token, relog please");
         
-        var user = UserService.EditData(uniqueName);
+        var user = _userService.EditData(uniqueName);  // Use instance method
         return user != null ? Ok(user) : Unauthorized("Blame the token, relog please");
     }
     
@@ -61,7 +61,7 @@ public class UserController : ControllerBase
         var uniqueName = User.Identity?.Name;
         if (string.IsNullOrEmpty(uniqueName)) return Unauthorized("Blame the token, relog please");
         
-        var user = UserService.EditProfile(uniqueName, request);
-        return user != null ? Ok(user) : NotFound();
+        var success = _userService.EditProfile(uniqueName, request);  // Use instance method and fix return type
+        return success ? Ok() : NotFound();
     }   
 }
