@@ -1,22 +1,31 @@
 ﻿using Back.Services;
+using Back.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-
 
 namespace Back.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class AuthController(AuthService authService, UserService userService) : ControllerBase
+public class AuthController : ControllerBase
 {
+    private readonly IAuthService _authService;
+    private readonly IUserService _userService;
+
+    public AuthController(IAuthService authService, IUserService userService)
+    {
+        _authService = authService;
+        _userService = userService;
+    }
+
     [HttpPost("login")]
     public IActionResult Login([FromBody] LoginRequest request)
     {
-        if (!userService.Login(request.Username, request.Password))
+        if (!_userService.Login(request.Username, request.Password))
         {
             return Unauthorized("Invalid username or password");
         }
 
-        var token = authService.GenerateToken(request.Username);
+        var token = _authService.GenerateToken(request.Username);
         return Ok(token ?? "Token generation failed");
     }
 
@@ -26,11 +35,11 @@ public class AuthController(AuthService authService, UserService userService) : 
         try
         {
             var image = "default.jpg";
-            var isSignedUp = userService.SignUp(request.Username, request.Email, request.Password,
+            var isSignedUp = _userService.SignUp(request.Username, request.Email, request.Password,
                 request.FirstName, request.LastName, request.PhoneNumber, image);
 
             if (isSignedUp != "") return BadRequest("User already exists");
-            var token = authService.GenerateToken(request.Username);
+            var token = _authService.GenerateToken(request.Username);
             return Ok(token);
         }
         catch (ArgumentException ex)

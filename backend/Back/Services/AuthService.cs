@@ -1,5 +1,6 @@
 ﻿namespace Back.Services;
 
+using Back.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
@@ -7,7 +8,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-public class AuthService
+public class AuthService : IAuthService
 {
     private readonly TimeSpan _tokenLifetime = TimeSpan.FromHours(3);
 
