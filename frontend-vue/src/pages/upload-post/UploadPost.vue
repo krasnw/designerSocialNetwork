@@ -18,7 +18,7 @@ export default {
   },
   computed: {
     isFormValid() {
-      return this.selectedFiles.length > 0 && this.title;
+      return Boolean(this.selectedFiles.length > 0 && this.title.trim());
     },
   },
   methods: {

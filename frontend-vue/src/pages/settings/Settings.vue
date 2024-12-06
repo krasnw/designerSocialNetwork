@@ -6,6 +6,8 @@ export default {
       allowArrow: localStorage.getItem('allowArrow') === 'true',
       allowWheel: localStorage.getItem('allowWheel') === 'true',
       sidebarAlwaysOpen: localStorage.getItem('sidebarAlwaysOpen') === 'true',
+      postsPerRequest: localStorage.getItem('postsPerRequest') || 3,
+      isInvalidPages: false
     };
   },
   methods: {
@@ -27,6 +29,15 @@ export default {
       localStorage.setItem('sidebarAlwaysOpen', String(this.sidebarAlwaysOpen));
       window.dispatchEvent(new Event('sidebarSettingChanged'));
     },
+    validateAndSavePages() {
+      const value = Number(this.postsPerRequest);
+      if (value < 3 || value > 15) {
+        this.isInvalidPages = true;
+        return;
+      }
+      this.isInvalidPages = false;
+      localStorage.setItem('postsPerRequest', value);
+    },
   },
   mounted() {
     // Меняем значение по умолчанию на false
@@ -38,6 +49,9 @@ export default {
     }
     if (localStorage.getItem('sidebarAlwaysOpen') === null) {
       localStorage.setItem('sidebarAlwaysOpen', 'false');
+    }
+    if (localStorage.getItem('postsPerRequest') === null) {
+      localStorage.setItem('postsPerRequest', '3');
     }
     this.isLoggedIn();
   },
@@ -71,6 +85,14 @@ export default {
           <label class="switch">
             <input type="checkbox" v-model="allowWheel" @change="toggleWheel">
             <span class="slider round"></span>
+          </label>
+        </article>
+
+        <article class="settings-cell">
+          <p>Ilość lodowanych postów jednocześnie</p>
+          <label class="number-input">
+            <input type="number" min="3" max="15" step="1" v-model="postsPerRequest" @input="validateAndSavePages"
+              :style="{ border: isInvalidPages ? '0.5px solid var(--delete-button-border-color)' : '0.5px solid var(--element-border-light-color)' }">
           </label>
         </article>
       </section>
@@ -122,6 +144,27 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-top: 20px;
+}
+
+.number-input input {
+  padding: 0px;
+  margin: 0px;
+  width: 35px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1px solid var(--element-border-light-color);
+  text-align: center;
+
+  &:focus {
+    outline: none;
+  }
+
+  /* arrow styling */
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
 }
 
 /* toggle */

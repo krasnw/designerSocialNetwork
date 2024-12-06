@@ -1,65 +1,79 @@
 <script>
+import Spinner from '@/assets/Icons/Spinner.vue';
 import PostView from '@/components/PostView.vue';
+import { postsContentService } from '@/services/postsContent';
 
 export default {
   components: {
-    PostView
+    PostView,
+    Spinner
   },
   data() {
     return {
-      posts: [
-        {
-          id: 1,
-          username: 'Takumi Fujiwara',
-          userProfilePicture: 'https://placehold.co/300x300',
-          postPictures: [
-            'https://placehold.co/600x500',
-            'https://placehold.co/600x500',
-            'https://placehold.co/600x500',
-          ],
-          title: 'Parowanie czcionek',
-          description: `Oto kilka par czcionek, które możesz wykorzystać w swoim projekcie. \n\nNie zapomnij zasubskrybować mojego kanału i nacisnąć przycisk Lubię to`,
-          tags: ['Czcionka', 'Flat', 'Układ'],
-          shares: 2739,
-          likes: 35610,
-          isPrivate: true
-        },
-        {
-          id: 2,
-          username: 'Paweł Topski',
-          userProfilePicture: 'https://placehold.co/300x300',
-          postPictures: [
-            'https://placehold.co/600x500',
-            'https://placehold.co/600x500'
-          ],
-          title: 'Przycisk w stylu Glassmorphism',
-          description: `Very long text for the description. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla nec purus feugiat, molestie ipsum et, ultricies turpis. Incididunt quis amet mollit aute id qui veniam ad qui incididunt deserunt ipsum irure deserunt. Fugiat excepteur dolore qui fugiat nulla tempor tempor velit magna ut. Amet Lorem non velit consectetur veniam excepteur reprehenderit cillum laborum sit dolor commodo mollit.
+      posts: [],
+      currentPage: 1,
+      loading: false,
+      hasMore: true,
+      scrollTimeout: null
+    }
+  },
+  methods: {
+    async loadPosts() {
+      if (this.loading || !this.hasMore) return;
 
-        Minim consectetur consequat in esse incididunt quis voluptate sit anim quis minim sint dolore dolor. Ex non eiusmod laboris dolor. Aliquip dolore incididunt qui aliqua excepteur. Anim adipisicing exercitation nulla mollit sint officia laboris. Id exercitation ipsum ut laboris enim ut. In commodo dolor nostrud consectetur enim minim velit excepteur nulla velit cillum.
+      this.loading = true;
+      try {
+        console.log('Loading page:', this.currentPage);
+        const newPosts = await postsContentService.getFeedPosts(this.currentPage);
+        console.log('Received posts:', newPosts);
 
-        Dolore ad esse nostrud nostrud officia commodo. Pariatur incididunt veniam non quis. Qui tempor veniam ullamco sit magna dolore quis est excepteur ex dolore dolore sit. Laboris non sint deserunt laboris est et exercitation Lorem voluptate voluptate eiusmod.`,
-          tags: ['Flat', 'Czerwony', 'Glassmorphism', 'Przycisk'],
-          shares: 10,
-          likes: 150,
-          isPrivate: false
+        if (!Array.isArray(newPosts) || newPosts.length === 0) {
+          console.log('No more posts available');
+          this.hasMore = false;
+        } else {
+          this.posts.push(...newPosts);
+          this.currentPage++;
+        }
+      } catch (error) {
+        console.error('Error loading posts:', error);
+        this.hasMore = false;
+      } finally {
+        this.loading = false;
+      }
+    },
+    setupIntersectionObserver() {
+      this.observer = new IntersectionObserver(
+        (entries) => {
+          const target = entries[0];
+          if (target.isIntersecting && !this.loading && this.hasMore) {
+            console.log('Sentinel is visible, loading more posts...');
+            this.loadPosts();
+          }
         },
         {
-          id: 3,
-          username: 'Jan Kowalski',
-          userProfilePicture: 'https://placehold.co/300x300',
-          postPictures: [
-            // 'https://placehold.co/600x500',
-            'https://placehold.co/600x500'
-          ],
-          title: 'Sample Post Title',
-          description: `Long text for the description. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla nec purus feugiat, molestie ipsum et, ultricies turpis. 
-          Incididunt quis amet mollit aute id qui veniam ad qui incididunt deserunt ipsum irure deserunt.`,
-          tags: ['Ciemny', 'Neomorphism', 'Input'],
-          shares: 1345,
-          likes: 15345,
-          isPrivate: false
-        },
-      ]
+          rootMargin: '300px', // Увеличиваем отступ для более раннего срабатывания
+          threshold: 0.1 // Немного увеличиваем порог видимости
+        }
+      );
+
+      // Добавляем проверку наличия элемента
+      if (this.$refs.sentinel) {
+        this.observer.observe(this.$refs.sentinel);
+      } else {
+        console.error('Sentinel element not found');
+      }
+    }
+  },
+  mounted() {
+    this.loadPosts();
+    // Даем время для рендеринга DOM перед установкой observer
+    this.$nextTick(() => {
+      this.setupIntersectionObserver();
+    });
+  },
+  beforeUnmount() {
+    if (this.observer) {
+      this.observer.disconnect();
     }
   },
   name: "FeedPage",
@@ -69,10 +83,20 @@ export default {
 <template>
   <main>
     <h2 class="page-name">Strona główna</h2>
-    <section class="posts">
-      <article v-for="post in posts">
+    <section class="posts" ref="postsContainer">
+      <div v-if="posts.length === 0 && !loading" class="no-posts">
+        Brak dostępnych postów
+      </div>
+      <article v-for="post in posts" :key="post.id">
         <PostView :post="post" />
       </article>
+      <div ref="sentinel" class="sentinel" style="height: 20px;"></div>
+      <div v-if="loading" class="loading">Ładowanie
+        <Spinner class="spinner" />
+      </div>
+      <div v-if="!hasMore && posts.length > 0" class="no-more">
+        Nie ma więcej postów
+      </div>
     </section>
   </main>
 </template>
@@ -83,5 +107,42 @@ export default {
   flex-direction: column;
   gap: 50px;
   padding-bottom: 60px;
+  min-height: 200px;
+  height: 100%;
+  overflow-y: auto;
+  position: relative;
+  /* Минимальная высота для корректной работы прокрутки */
+}
+
+.loading,
+.no-more {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--info-text-color);
+  background-color: var(--element-dark-color);
+  border: 0.5px solid var(--element-light-color);
+  padding: 20px;
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  width: max-content;
+}
+
+.no-posts {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--info-text-color);
+  background-color: var(--element-dark-color);
+  border: 0.5px solid var(--element-light-color);
+  padding: 40px 80px;
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+}
+
+.sentinel {
+  height: 20px;
 }
 </style>

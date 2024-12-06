@@ -5,6 +5,7 @@ import ShareIcon from '@/assets/Icons/ShareIcon.vue';
 import { Splide, SplideSlide } from '@splidejs/vue-splide';
 import '@splidejs/vue-splide/css';
 
+const API_URL = "http://localhost:8088";
 
 export default {
   name: 'PostView',
@@ -20,12 +21,26 @@ export default {
       type: Object,
       required: true,
       validator(post) {
-        return ['username', 'userProfilePicture', 'postPictures', 'title', 'description'].every(prop => prop in post)
+        // Обновляем валидатор под структуру данных с сервера
+        return ['title', 'content', 'author', 'mainImageFilePath'].every(prop => prop in post)
       }
     }
   },
 
   computed: {
+    formattedPost() {
+      return {
+        ...this.post,
+        username: this.post.author?.username || '',
+        displayName: `${this.post.author?.firstName || ''} ${this.post.author?.lastName || ''}`.trim(),
+        userProfilePicture: 'https://placehold.co/300x300',
+        postPictures: this.post.mainImageFilePath ? [`${API_URL}${this.post.mainImageFilePath}`] : [],
+        tags: this.post.tags || [],
+        likes: this.post.likes || 0,
+        shares: 0,
+        isPrivate: this.post.access === 'private'
+      }
+    },
     formattedLikes() {
       const likes = this.post.likes;
       if (likes >= 1000) {
@@ -34,7 +49,7 @@ export default {
       return likes;
     },
     formattedShares() {
-      const shares = this.post.shares;
+      const shares = this.formattedPost.shares;
       //for thousands
       if (shares >= 1000) {
         return (shares / 1000).toFixed(1).replace('.', ',') + ' K';
@@ -50,17 +65,25 @@ export default {
     splideOptions() {
       return {
         rewind: true,
-        arrows: (localStorage.getItem('allowArrow') === 'true') ? this.post.postPictures.length > 1 : false,
+        arrows: (localStorage.getItem('allowArrow') === 'true') ? this.formattedPost.postPictures.length > 1 : false,
         wheel: localStorage.getItem('allowWheel') === 'true',
         waitForTransition: localStorage.getItem('allowWheel') === 'true',
         releaseWheel: false,
         lazyLoad: 'nearby',
         preloadPages: 1,
         gap: '20px',
-        pagination: this.post.postPictures.length > 1, // скрываем пагинацию если картинка одна
+        pagination: this.formattedPost.postPictures.length > 1, // скрываем пагинацию если картинка одна
       }
     }
   },
+
+  methods: {
+    navigateToProfile() {
+      if (this.formattedPost.username) {
+        this.$router.push(`/profile/${this.formattedPost.username}`);
+      }
+    }
+  }
 }
 </script>
 
@@ -68,8 +91,7 @@ export default {
   <article class="post background">
     <div class="post-content">
       <Splide class="picture-slider" :options="splideOptions" aria-label="Post slides">
-        <!-- <img v-for="(picture, index) in post.postPictures" :key="index" :src="picture" alt="Post Picture"> -->
-        <SplideSlide v-for="(picture, index) in post.postPictures" :key="index">
+        <SplideSlide v-for="(picture, index) in formattedPost.postPictures" :key="index">
           <img class="slide" :src="picture" alt="Post Picture">
         </SplideSlide>
       </Splide>
@@ -77,7 +99,7 @@ export default {
         <h3>{{ post.title }}</h3>
         <div class="divider-horizontal"></div>
         <span class="post-sub-content">
-          <p style="white-space: pre-wrap">{{ post.description }}</p>
+          <p style="white-space: pre-wrap">{{ formattedPost.description }}</p>
           <span class="tags no-select">
             <span v-for="(tag, index) in post.tags" :key="index">{{ tag }}</span>
           </span>
@@ -86,17 +108,17 @@ export default {
     </div>
 
     <header class="post-header">
-      <span class="post-profile">
-        <img :src="post.userProfilePicture" alt="User Profile Picture">
-        <h4>{{ post.username }}</h4>
+      <span class="post-profile" @click="navigateToProfile" role="button">
+        <img :src="formattedPost.userProfilePicture" alt="User Profile Picture">
+        <h4>{{ formattedPost.displayName }}</h4>
       </span>
 
       <div class="stats no-select">
-        <span v-if="post.isPrivate">
+        <span v-if="formattedPost.isPrivate">
           <Lock />Prywatne
         </span>
         <span>
-          <ShareIcon />{{ formattedShares }}
+          <ShareIcon />
         </span>
         <span>
           <LikeIcon />{{ formattedLikes }}
@@ -240,6 +262,12 @@ export default {
     align-items: center;
     gap: 10px;
     font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      opacity: 0.8;
+    }
 
     img {
       width: 30px;
