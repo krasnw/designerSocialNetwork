@@ -6,7 +6,12 @@ namespace Back.Services;
 
 public class TagService : ITagService
 {
-    private readonly DatabaseService _databaseService = DatabaseService.GetInstance();
+    private readonly DatabaseService _databaseService;
+
+    public TagService(DatabaseService databaseService)
+    {
+        _databaseService = databaseService;
+    }
 
     private List<Tag> ExecuteTagQuery(string query, Dictionary<string, object> parameters = null)
     {
