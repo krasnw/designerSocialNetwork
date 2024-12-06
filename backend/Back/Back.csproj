@@ -32,7 +32,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Data\Stored\" />
+      <Folder Include="wwwroot\img\" />
     </ItemGroup>
 
 </Project>
