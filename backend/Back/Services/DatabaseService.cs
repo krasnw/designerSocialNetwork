@@ -1,8 +1,9 @@
 ﻿using Npgsql;
+using Back.Services.Interfaces;
 
 namespace Back.Services
 {
-    public class DatabaseService
+    public class DatabaseService : IDatabaseService
     {
         private static DatabaseService? _instance;
         private static readonly object Lock = new();
