@@ -1,14 +1,19 @@
 ﻿using System.Text.RegularExpressions;
 using Back.Models;
 using Npgsql;
+using Back.Services.Interfaces;
 
 namespace Back.Services;
 
-public class UserService
+public class UserService : IUserService
 {
     private readonly HashSet<string> _loggedInUsers = new();
+    private readonly IDatabaseService _databaseService;
 
-    private static DatabaseService _databaseService = DatabaseService.GetInstance();
+    public UserService(IDatabaseService databaseService)
+    {
+        _databaseService = databaseService;
+    }
 
     public string SignUp(string username, string email, string password, string firstName,
         string lastName, string phoneNumber, string profileImage)
@@ -65,7 +70,7 @@ public class UserService
         return "";
     }
 
-    private static bool IsUnique(User user)
+    private bool IsUnique(User user)
     {
         string query = $"SELECT * FROM api_schema.user WHERE username = '{user.Username}' " +
                        " OR email = '{user.Email}' OR phone_number = '{user.PhoneNumber}'";
@@ -170,7 +175,7 @@ public class UserService
         return _loggedInUsers.Contains(username);
     }
 
-    public static User GetUser(string username)
+    public User GetUser(string username)
     {
         if (string.IsNullOrEmpty(username)) return null;
         string query = "SELECT * FROM api_schema.user WHERE username = @username";
@@ -209,7 +214,7 @@ public class UserService
         }
     }
 
-    public static User GetUser(int id)
+    public User GetUser(int id)
     {
         string query = "SELECT * FROM api_schema.user WHERE id = @id";
         NpgsqlConnection connection = null;
@@ -251,7 +256,7 @@ public class UserService
         }
     }
 
-    public static UserProfile GetOwnProfile(string username)
+    public UserProfile GetOwnProfile(string username)
     {
         var userQuery = @"
 SELECT u.username, u.first_name, u.last_name, u.profile_description, u.profile_picture, w.amount
@@ -306,7 +311,7 @@ WHERE r.user_id = (SELECT id FROM api_schema.user WHERE username = @username)";
         }
     }
 
-    public static UserProfile GetProfile(string username)
+    public UserProfile GetProfile(string username)
     {
         var userQuery = @"
 SELECT u.username, u.first_name, u.last_name, u.profile_description, u.profile_picture
@@ -359,7 +364,7 @@ WHERE r.user_id = (SELECT id FROM api_schema.user WHERE username = @username)";
         }
     }
 
-    public static User.EditRequest EditData(string username)
+    public User.EditRequest EditData(string username)
     {
         var query = @"
         SELECT email, first_name, last_name, phone_number, profile_description, profile_picture, access_fee
@@ -399,7 +404,7 @@ WHERE r.user_id = (SELECT id FROM api_schema.user WHERE username = @username)";
         }
     }
 
-    public static bool EditProfile(string username, User.EditRequest request)
+    public bool EditProfile(string username, User.EditRequest request)
     {
         if (!ValidateEditData(request)) return false;
 
