@@ -1,4 +1,5 @@
 using Back.Services;
+using Back.Services.Interfaces;
 using Microsoft.OpenApi.Models;
 using Npgsql;
 
@@ -41,6 +42,16 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+
+// Update service registration
+builder.Services.AddSingleton<IDatabaseService>(provider => 
+    DatabaseService.GetInstance(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IPostService, PostService>();
+builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IDatabaseService, DatabaseService>();
+builder.Services.AddScoped<ITagService, TagService>();
 
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddSingleton<UserService>();

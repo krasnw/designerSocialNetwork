@@ -7,7 +7,7 @@ using Back.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 
-namespace back.Services;
+namespace Back.Services;
 
 public class PostService : IPostService
 {
