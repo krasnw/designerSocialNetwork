@@ -41,13 +41,11 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Update service registration
-builder.Services.AddSingleton<DatabaseService>(provider => 
-    DatabaseService.GetInstance("Host=database;Port=5432;Username=api_user;Password=api_user_password;" +
-                              "Database=api_database;SearchPath=api_schema;"));
-builder.Services.AddSingleton<IDatabaseService>(provider => provider.GetRequiredService<DatabaseService>());
+// Remove all existing DatabaseService registrations and replace with this single registration
+builder.Services.AddSingleton<IDatabaseService>(sp => 
+    DatabaseService.GetInstance(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Оказывается, ПОРЯДОК РЕГИСТРАЦИИ СЕР��ИСОВ ИМЕЕТ ЗНАЧЕНИЕ, да, живём в 2024 году
+// Remove duplicate service registrations
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITagService, TagService>();

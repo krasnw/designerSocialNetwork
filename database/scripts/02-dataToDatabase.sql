@@ -95,29 +95,30 @@ VALUES
 ('/images/img9.jpg', 4, 9),
 ('/images/img10.jpg', 4, 10);
 
+-- Clear existing tags and reinsert with correct case
+TRUNCATE api_schema.tags CASCADE;
 
-INSERT INTO api_schema.tags (tag_name, tag_type)
-VALUES
-('Logo', 'UI element'),
-('Button', 'UI element'),
-('Icon', 'UI element'),
-('Card', 'UI element'),
-('Web', 'Style'),
-('App', 'Style'),
-('Dashboard', 'Style'),
-('Graphics', 'Style'),
-('Morphism', 'Style'),
-('Branding', 'Style'),
-('Red', 'Color'),
-('Blue', 'Color'),
-('Green', 'Color'),
-('Yellow', 'Color'),
-('Black', 'Color'),
-('White', 'Color'),
-('Gray', 'Color'),
-('Purple', 'Color'),
-('Orange', 'Color'),
-('Brown', 'Color');
+INSERT INTO api_schema.tags (tag_name, tag_type) VALUES
+('Logo', 'ui element'),
+('Button', 'ui element'),
+('Icon', 'ui element'),
+('Card', 'ui element'),
+('Web', 'style'),
+('App', 'style'),
+('Dashboard', 'style'),
+('Graphics', 'style'),
+('Morphism', 'style'),
+('Branding', 'style'),
+('Red', 'color'),
+('Blue', 'color'),
+('Green', 'color'),
+('Yellow', 'color'),
+('Black', 'color'),
+('White', 'color'),
+('Gray', 'color'),
+('Purple', 'color'),
+('Orange', 'color'),
+('Brown', 'color');
 
 
 

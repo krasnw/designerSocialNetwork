@@ -82,7 +82,7 @@ public class PostService : IPostService
         string? accessType = null)
     {
         string queryWithTags = @"
-    SELECT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
+    SELECT DISTINCT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
     FROM api_schema.post p
     LEFT JOIN api_schema.post_tags pt ON p.id = pt.post_id
     LEFT JOIN api_schema.tags t ON pt.tag_id = t.id
@@ -315,7 +315,9 @@ public class PostService : IPostService
             var tags = new List<Tag>();
             while (reader.Read())
             {
-                tags.Add(new Tag(reader.GetInt32(0), reader.GetString(1), reader.GetString(2)));
+                var tagTypeStr = reader.GetString(2).ToUpper().Replace(" ", "_");
+                Enum.TryParse<TagType>(tagTypeStr, out var tagType);
+                tags.Add(new Tag(reader.GetInt32(0), reader.GetString(1), tagType));
             }
 
             return tags;
@@ -396,8 +398,10 @@ public class PostService : IPostService
             var ratings = new List<Rating>();
             while (reader.Read())
             {
+                var tagTypeStr = reader.GetString(3).ToUpper().Replace(" ", "_");
+                Enum.TryParse<TagType>(tagTypeStr, out var tagType);
                 ratings.Add(new Rating(reader.GetInt32(0),
-                    new Tag(reader.GetInt32(1), reader.GetString(2), reader.GetString(3))));
+                    new Tag(reader.GetInt32(1), reader.GetString(2), tagType)));
             }
 
             return ratings;

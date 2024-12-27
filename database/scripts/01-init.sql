@@ -110,7 +110,8 @@ ADD COLUMN main_image_id INTEGER REFERENCES api_schema.image(id) ON DELETE SET N
 -- end of image block
 
 -- Post block
-CREATE TYPE api_schema.tag_type AS ENUM ('UI element', 'Style', 'Color');
+DROP TYPE IF EXISTS api_schema.tag_type CASCADE;
+CREATE TYPE api_schema.tag_type AS ENUM ('ui element', 'style', 'color');
 CREATE TABLE api_schema.tags (
     id SERIAL PRIMARY KEY,
     tag_name VARCHAR(20) NOT NULL UNIQUE,

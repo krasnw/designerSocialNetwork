@@ -24,8 +24,26 @@ public class TagController : ControllerBase
     [HttpGet("type/{type}")]
     public IActionResult GetTagsByType(string type)
     {
-        var tags = _tagService.GetAllTags(type);
-        return tags != null ? Ok(tags) : NotFound();
+        try
+        {
+            Console.WriteLine($"Original type: {type}"); // Debug log
+            
+            // Convert type to match database enum format (e.g., UI_ELEMENT -> ui element)
+            var formattedType = type.ToLower()
+                                  .Replace("_", " ");
+            
+            Console.WriteLine($"Formatted type: {formattedType}"); // Debug log
+            
+            var tags = _tagService.GetAllTags(formattedType);
+            
+            Console.WriteLine($"Found tags: {tags.Count}"); // Debug log
+            return tags.Any() ? Ok(tags) : NotFound();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}"); // Debug log
+            return BadRequest($"Invalid tag type: {type}");
+        }
     }
 
     [HttpGet("user/{username}")]
