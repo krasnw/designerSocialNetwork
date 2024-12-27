@@ -22,7 +22,7 @@ public class UserController : ControllerBase
     public IActionResult GetMyProfile()
     {
         var uniqueName = User.Identity?.Name;
-        var me = _userService.GetOwnProfile(uniqueName);  // Use instance method
+        var me = _userService.GetOwnProfile(uniqueName);
         return me != null ? Ok(me) : Unauthorized("Blame the token, relog please");
     }
 
@@ -59,9 +59,21 @@ public class UserController : ControllerBase
     public IActionResult EditMyProfile([FromBody] User.EditRequest request)
     {
         var uniqueName = User.Identity?.Name;
-        if (string.IsNullOrEmpty(uniqueName)) return Unauthorized("Blame the token, relog please");
+        if (string.IsNullOrEmpty(uniqueName)) 
+            return Unauthorized("Blame the token, relog please");
         
-        var success = _userService.EditProfile(uniqueName, request);  // Use instance method and fix return type
-        return success ? Ok() : NotFound();
+        try 
+        {
+            var success = _userService.EditProfile(uniqueName, request);
+            return success ? Ok() : NotFound();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new { error = "An unexpected error occurred while updating the profile." });
+        }
     }   
 }

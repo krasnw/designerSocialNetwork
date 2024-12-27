@@ -2,6 +2,9 @@ using Back.Services;
 using Back.Services.Interfaces;
 using Microsoft.OpenApi.Models;
 using Npgsql;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,16 +47,41 @@ builder.Services.AddSingleton<DatabaseService>(provider =>
                               "Database=api_database;SearchPath=api_schema;"));
 builder.Services.AddSingleton<IDatabaseService>(provider => provider.GetRequiredService<DatabaseService>());
 
-// Оказывается, ПОРЯДОК РЕГИСТРАЦИИ СЕРВИСОВ ИМЕЕТ ЗНАЧЕНИЕ, да, живём в 2024 году
+// Оказывается, ПОРЯДОК РЕГИСТРАЦИИ СЕР��ИСОВ ИМЕЕТ ЗНАЧЕНИЕ, да, живём в 2024 году
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 
-// Remove these redundant registrations
-// builder.Services.AddScoped<AuthService>();
-// builder.Services.AddSingleton<UserService>();
+// Load environment variables from .env file
+DotNetEnv.Env.Load();
+
+// Get JWT settings from environment variables
+var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER");
+var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
+var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
+
+// ...existing code...
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey))
+    };
+});
 
 builder.Services.AddAuthorization();
 builder.Services.AddCors(options =>
@@ -66,10 +94,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Remove these lines as they are redundant
-// var authService = new AuthService();
-// authService.AddAuth(builder.Services);
-
 builder.Services.AddControllers();
 
 var app = builder.Build();
@@ -80,8 +104,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Your API v1"));
 }
-
-//app.UseHttpsRedirection();
 
 app.UseCors("AllowAll");
 
