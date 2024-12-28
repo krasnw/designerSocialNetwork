@@ -35,20 +35,24 @@ public class AuthController : ControllerBase
         try
         {
             var image = "default.jpg";
-            var isSignedUp = _userService.SignUp(request.Username, request.Email, request.Password,
+            var signUpResult = _userService.SignUp(request.Username, request.Email, request.Password,
                 request.FirstName, request.LastName, request.PhoneNumber, image);
 
-            if (isSignedUp != "") return BadRequest("User already exists");
+            if (!string.IsNullOrEmpty(signUpResult))
+            {
+                return BadRequest(new { message = signUpResult });
+            }
+
             var token = _authService.GenerateToken(request.Username);
             return Ok(token);
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(ex.Message);
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ex.Message);
+            return StatusCode(500, new { message = ex.Message });
         }
     }
 

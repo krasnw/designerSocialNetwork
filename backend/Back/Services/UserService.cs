@@ -45,6 +45,21 @@ public class UserService : IUserService
             SELECT * FROM api_schema.user WHERE username = @username";
     }
 
+    private static class AccountTypes
+    {
+        public enum Status
+        {
+            active,
+            frozen
+        }
+
+        public enum Level
+        {
+            user,
+            admin
+        }
+    }
+
     private readonly HashSet<string> _loggedInUsers = new();
     private readonly IDatabaseService _databaseService;
 
@@ -83,76 +98,177 @@ public class UserService : IUserService
             throw new ArgumentException("Invalid phone number format. Example: +48123123123");
     }
 
+    private bool IsUnique(User user, out string errorMessage)
+    {
+        errorMessage = "";
+        try
+        {
+            var checks = new[]
+            {
+                (query: "SELECT COUNT(*) FROM api_schema.user WHERE username = @Username", 
+                 message: "Username already taken"),
+                (query: "SELECT COUNT(*) FROM api_schema.user WHERE email = @Email", 
+                 message: "Email already registered"),
+                (query: "SELECT COUNT(*) FROM api_schema.user WHERE phone_number = @PhoneNumber", 
+                 message: "Phone number already registered")
+            };
+
+            foreach (var (query, message) in checks)
+            {
+                var parameters = new Dictionary<string, object>
+                {
+                    { "@Username", user.Username },
+                    { "@Email", user.Email },
+                    { "@PhoneNumber", user.PhoneNumber }
+                };
+
+                using var reader = _databaseService.ExecuteQuery(query, out var connection, out var command, parameters);
+                try
+                {
+                    if (reader.Read() && reader.GetInt32(0) > 0)
+                    {
+                        errorMessage = message;
+                        return false;
+                    }
+                }
+                finally
+                {
+                    command?.Dispose();
+                    connection?.Dispose();
+                }
+            }
+            return true;
+        }
+        catch (Exception)
+        {
+            errorMessage = "Database error occurred while checking user existence";
+            return false;
+        }
+    }
+
     public string SignUp(string username, string email, string password, string firstName,
         string lastName, string phoneNumber, string profileImage)
     {
-        ValidateUserData(username, email, password, firstName, lastName, phoneNumber);
-
-        string joinDate = DateTime.Now.ToString("yyyy-MM-dd");
-        decimal accessFee = 0; // default value
-        string accountStatus = "active";
-        string accountLevel = "user";
-        var description = "Użytkownik nie dodał jeszcze opisu.";
-        if (profileImage == null || profileImage == "") profileImage = "default.jpg";
-
-        User user = new(username, email, password, firstName, lastName, phoneNumber,
-            accessFee, accountStatus, accountLevel, description, profileImage);
-
-        if (!IsUnique(user)) return "User already exists";
-
-        password = BCrypt.Net.BCrypt.HashPassword(password);
-
-
-        var query = @"
-        INSERT INTO api_schema.""user"" (username, email, user_password, first_name, last_name, phone_number,
-        join_date, access_fee, account_status, account_level, profile_description, profile_picture)
-        VALUES (@username, @email, @password, @firstName, @lastName, @phoneNumber,
-        @joinDate, @accessFee, @accountStatus, @accountLevel, @description, @profileImage)";
-
-        var parameters = new Dictionary<string, object>
-        {
-            { "@username", username },
-            { "@email", email },
-            { "@password", password },
-            { "@firstName", firstName },
-            { "@lastName", lastName },
-            { "@phoneNumber", phoneNumber },
-            { "@joinDate", joinDate },
-            { "@accessFee", accessFee },
-            { "@accountStatus", accountStatus },
-            { "@accountLevel", accountLevel },
-            { "@description", description },
-            { "@profileImage", profileImage }
-        };
-
         try
         {
-            _databaseService.ExecuteNonQuery(query, parameters);
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e.Message);
-            return "Unexpected error occurred. Blame Volodymyr.";
-        }
+            ValidateUserData(username, email, password, firstName, lastName, phoneNumber);
 
-        return "";
-    }
+            var user = new User(username, email, password, firstName, lastName, phoneNumber,
+                0, AccountTypes.Status.active.ToString(), AccountTypes.Level.user.ToString(), 
+                "Użytkownik nie dodał jeszcze opisu.", 
+                string.IsNullOrEmpty(profileImage) ? "default.jpg" : profileImage);
 
-    private bool IsUnique(User user)
-    {
-        string query = $"SELECT * FROM api_schema.user WHERE username = '{user.Username}' " +
-                       " OR email = '{user.Email}' OR phone_number = '{user.PhoneNumber}'";
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
-        try
-        {
-            using var reader = _databaseService.ExecuteQuery(query, out connection, out command);
-            return !reader.HasRows;
+            string uniqueErrorMessage;
+            if (!IsUnique(user, out uniqueErrorMessage))
+            {
+                return uniqueErrorMessage;
+            }
+
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
+            var joinDate = DateTime.Now.Date;
+
+            // Create an image container for the user's profile
+            var createContainerQuery = @"
+                INSERT INTO api_schema.image_container (amount_of_images)
+                VALUES (0) RETURNING id";
+
+            var containerId = 0;
+            using (var connection = new NpgsqlConnection(_databaseService.GetConnection().ConnectionString))
+            {
+                connection.Open();
+                using var command = new NpgsqlCommand(createContainerQuery, connection);
+                containerId = (int)command.ExecuteScalar();
+            }
+
+            // Insert user with all required fields
+            var userQuery = @"
+                INSERT INTO api_schema.user (
+                    username, email, user_password, first_name, last_name, phone_number,
+                    join_date, access_fee, account_status, account_level, profile_description, 
+                    profile_picture
+                ) VALUES (
+                    @username, @email, @password, @firstName, @lastName, @phoneNumber,
+                    @joinDate, @accessFee, 
+                    cast(@accountStatus as api_schema.account_status), 
+                    cast(@accountLevel as api_schema.account_level), 
+                    @description, @profileImage
+                ) RETURNING id";
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "@username", username },
+                { "@email", email },
+                { "@password", hashedPassword },
+                { "@firstName", firstName },
+                { "@lastName", lastName },
+                { "@phoneNumber", phoneNumber },
+                { "@joinDate", joinDate },
+                { "@accessFee", 0 },
+                { "@accountStatus", AccountTypes.Status.active.ToString() },
+                { "@accountLevel", AccountTypes.Level.user.ToString() },
+                { "@description", "Użytkownik nie dodał jeszcze opisu." },
+                { "@profileImage", user.ProfileImage }
+            };
+
+            var userId = 0;
+            using (var connection = new NpgsqlConnection(_databaseService.GetConnection().ConnectionString))
+            {
+                connection.Open();
+                using var command = new NpgsqlCommand(userQuery, connection);
+                foreach (var param in parameters)
+                {
+                    command.Parameters.AddWithValue(param.Key, param.Value);
+                }
+                userId = (int)command.ExecuteScalar();
+            }
+
+            // Create wallet for the user
+            var walletQuery = @"
+                INSERT INTO api_schema.wallet (amount, user_id)
+                VALUES (@amount, @userId)";
+
+            var walletParameters = new Dictionary<string, object>
+            {
+                { "@amount", 0 },
+                { "@userId", userId }
+            };
+
+            _databaseService.ExecuteNonQuery(walletQuery, walletParameters);
+
+            // Create initial user ratings
+            var ratingQuery = @"
+                INSERT INTO api_schema.user_rating (user_id, list_id, rating)
+                SELECT @userId, id, 0 FROM api_schema.rating_list";
+
+            var ratingParameters = new Dictionary<string, object>
+            {
+                { "@userId", userId }
+            };
+
+            _databaseService.ExecuteNonQuery(ratingQuery, ratingParameters);
+            return "";
         }
-        finally
+        catch (ArgumentException ex)
         {
-            command?.Dispose();
-            connection?.Dispose();
+            return $"Validation error: {ex.Message}";
+        }
+        catch (PostgresException ex)
+        {
+            switch (ex.SqlState)
+            {
+                case "23505": // unique_violation
+                    return "This username, email, or phone number is already registered.";
+                case "23514": // check_violation
+                    return "Invalid data format provided.";
+                case "42804": // datatype_mismatch
+                    return "Internal error: Invalid data type for account status or level.";
+                default:
+                    return $"Database error: {ex.MessageText}";
+            }
+        }
+        catch (Exception)
+        {
+            return "An unexpected error occurred during registration.";
         }
     }
 
@@ -271,7 +387,7 @@ public class UserService : IUserService
                 GetUserRatings(username),
                 reader.GetStringOrDefault(reader.GetOrdinal("profile_description")),
                 reader.GetStringOrDefault(reader.GetOrdinal("profile_picture")),
-                includeWallet ? reader.GetInt32(reader.GetOrdinal("amount")) : 0
+                includeWallet ? (reader.IsDBNull(reader.GetOrdinal("amount")) ? 0 : reader.GetInt32(reader.GetOrdinal("amount"))) : 0
             );
 
             return profile;
