@@ -98,6 +98,16 @@ public class PostService : IPostService
     ORDER BY p.post_date DESC
     LIMIT @pageSize OFFSET @offset";
 
+        string queryForPrivatePosts = @"
+    SELECT DISTINCT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
+    FROM api_schema.post p
+    JOIN api_schema.private_access pa ON p.user_id = pa.seller_id
+    JOIN api_schema.user u ON pa.buyer_id = u.id
+    WHERE p.access_level = 'private'
+    AND u.username = @username
+    ORDER BY p.post_date DESC
+    LIMIT @pageSize OFFSET @offset";
+
         var offset = (pageNumber - 1) * pageSize;
         if (offset < 0) offset = 0;
         if (accessType != "public" && accessType != "protected" && accessType != "private") accessType = "public";
@@ -106,19 +116,27 @@ public class PostService : IPostService
         NpgsqlCommand command = null;
         try
         {
+            string query;
             var parameters = new Dictionary<string, object>
             {
-                { "@accessType", accessType },
                 { "@pageSize", pageSize },
                 { "@offset", offset }
             };
 
-            if (!string.IsNullOrEmpty(tags))
+            if (accessType == "private")
             {
-                parameters.Add("@tags", tags.Split(',').Select(tag => tag.Trim()).ToArray());
+                query = queryForPrivatePosts;
+                parameters.Add("@username", "");  // Will be set in Controller if user is authenticated
             }
-
-            string query = string.IsNullOrEmpty(tags) ? queryWithoutTags : queryWithTags;
+            else
+            {
+                query = string.IsNullOrEmpty(tags) ? queryWithoutTags : queryWithTags;
+                parameters.Add("@accessType", accessType);
+                if (!string.IsNullOrEmpty(tags))
+                {
+                    parameters.Add("@tags", tags.Split(',').Select(tag => tag.Trim()).ToArray());
+                }
+            }
 
             using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
             var posts = new List<Post>();
@@ -187,6 +205,39 @@ public class PostService : IPostService
         }
     }
 
+    //check if user has access to post
+    public bool HasUserAccessToPost(string username, long postId)
+    {
+        string query = @"
+            SELECT COUNT(*)
+            FROM api_schema.private_access pa
+            JOIN api_schema.user u ON pa.buyer_id = u.id
+            WHERE u.username = @username 
+            AND pa.seller_id = (SELECT user_id FROM api_schema.post WHERE id = @postId)";
+    
+        var parameters = new Dictionary<string, object>
+        {
+            { "@username", username },
+            { "@postId", postId }
+        };
+    
+        NpgsqlConnection connection = null;
+        NpgsqlCommand command = null;
+        try
+        {
+            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
+            if (reader.Read())
+            {
+                return reader.GetInt32(0) > 0;
+            }
+            return false;
+        }
+        finally
+        {
+            command?.Dispose();
+            connection?.Dispose();
+        }
+    }
 
     //delete post by id
     public bool DeletePost(int id, string username)
