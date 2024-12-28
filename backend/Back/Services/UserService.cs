@@ -9,10 +9,11 @@ public class UserService : IUserService
 {
     private static class ValidationPatterns
     {
-        public const string Username = @"^[a-zA-Z0-9_]{2,50}$";
-        public const string Email = @"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$";
+        public const string Username = @"^[\w\-_]{2,50}$";  // Keep username simple for URLs
+        public const string Email = @"^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$";
         public const string Password = @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$";
-        public const string Name = @"^[a-zA-Z]{1,50}$";
+        // Updated pattern for names to support extended characters
+        public const string Name = @"^[\p{L}\p{M}]{1,50}$";  // Unicode letter or mark
         public const string Phone = @"^\+?[0-9]{6,25}$";
     }
 

@@ -3,8 +3,8 @@
 
 DROP DATABASE IF EXISTS api_database;
 
--- Creation of the database
-CREATE DATABASE api_database;
+-- Set database encoding to UTF-8
+CREATE DATABASE api_database WITH ENCODING 'UTF8' LC_COLLATE='en_US.UTF-8' LC_CTYPE='en_US.UTF-8' TEMPLATE template0;
 -- connect to the database
 \c api_database;
 
@@ -34,9 +34,9 @@ CREATE TABLE api_schema."user" (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(50) NOT NULL UNIQUE,
-    user_password CHAR(64) NOT NULL, -- SHA-256 hash
-    first_name VARCHAR(50) NOT NULL,
-    last_name VARCHAR(50) NOT NULL,
+    user_password VARCHAR(255) NOT NULL, -- Changed from CHAR(64) to VARCHAR(255) for BCrypt hashes
+    first_name VARCHAR(50) NOT NULL COLLATE "ucs_basic",  -- Add collation for proper sorting
+    last_name VARCHAR(50) NOT NULL COLLATE "ucs_basic",   -- Add collation for proper sorting
     phone_number VARCHAR(25) NOT NULL UNIQUE,
     profile_description TEXT,
     profile_picture VARCHAR(100),

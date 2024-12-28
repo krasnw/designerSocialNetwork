@@ -32,6 +32,9 @@ public class DatabaseService : IDatabaseService
     {
         var connection = new NpgsqlConnection(_connectionString);
         connection.Open();
+        // Set UTF-8 encoding for the connection
+        using var command = new NpgsqlCommand("SET client_encoding TO 'UTF8';", connection);
+        command.ExecuteNonQuery();
         return connection;
     }
 
