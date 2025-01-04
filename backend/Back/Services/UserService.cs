@@ -150,6 +150,8 @@ public class UserService : IUserService
     public string SignUp(string username, string email, string password, string firstName,
         string lastName, string phoneNumber, string profileImage)
     {
+        using var connection = _databaseService.GetConnection();
+        using var transaction = connection.BeginTransaction();
         try
         {
             ValidateUserData(username, email, password, firstName, lastName, phoneNumber);
@@ -167,19 +169,6 @@ public class UserService : IUserService
 
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
             var joinDate = DateTime.Now.Date;
-
-            // Create an image container for the user's profile
-            var createContainerQuery = @"
-                INSERT INTO api_schema.image_container (amount_of_images)
-                VALUES (0) RETURNING id";
-
-            var containerId = 0;
-            using (var connection = new NpgsqlConnection(_databaseService.GetConnection().ConnectionString))
-            {
-                connection.Open();
-                using var command = new NpgsqlCommand(createContainerQuery, connection);
-                containerId = (int)command.ExecuteScalar();
-            }
 
             // Insert user with all required fields
             var userQuery = @"
@@ -208,68 +197,41 @@ public class UserService : IUserService
                 { "@accountStatus", AccountTypes.Status.active.ToString() },
                 { "@accountLevel", AccountTypes.Level.user.ToString() },
                 { "@description", "Użytkownik nie dodał jeszcze opisu." },
-                { "@profileImage", user.ProfileImage }
+                { "@profileImage", profileImage }
             };
 
-            var userId = 0;
-            using (var connection = new NpgsqlConnection(_databaseService.GetConnection().ConnectionString))
+            using var command = new NpgsqlCommand(userQuery, connection);
+            foreach (var param in parameters)
             {
-                connection.Open();
-                using var command = new NpgsqlCommand(userQuery, connection);
-                foreach (var param in parameters)
-                {
-                    command.Parameters.AddWithValue(param.Key, param.Value);
-                }
-                userId = (int)command.ExecuteScalar();
+                command.Parameters.AddWithValue(param.Key, param.Value);
             }
+            
+            var userId = (int)command.ExecuteScalar();
 
             // Create wallet for the user
             var walletQuery = @"
                 INSERT INTO api_schema.wallet (amount, user_id)
                 VALUES (@amount, @userId)";
 
-            var walletParameters = new Dictionary<string, object>
-            {
-                { "@amount", 0 },
-                { "@userId", userId }
-            };
+            using var walletCommand = new NpgsqlCommand(walletQuery, connection);
+            walletCommand.Parameters.AddWithValue("@amount", 0);
+            walletCommand.Parameters.AddWithValue("@userId", userId);
+            walletCommand.ExecuteNonQuery();
 
-            _databaseService.ExecuteNonQuery(walletQuery, walletParameters);
-
-            // Create initial user ratings
-            var ratingQuery = @"
-                INSERT INTO api_schema.user_rating (user_id, list_id, rating)
-                SELECT @userId, id, 0 FROM api_schema.rating_list";
-
-            var ratingParameters = new Dictionary<string, object>
-            {
-                { "@userId", userId }
-            };
-
-            _databaseService.ExecuteNonQuery(ratingQuery, ratingParameters);
+            transaction.Commit();
             return "";
-        }
-        catch (ArgumentException ex)
-        {
-            return $"Validation error: {ex.Message}";
         }
         catch (PostgresException ex)
         {
-            switch (ex.SqlState)
-            {
-                case "23505": // unique_violation
-                    return "This username, email, or phone number is already registered.";
-                case "23514": // check_violation
-                    return "Invalid data format provided.";
-                case "42804": // datatype_mismatch
-                    return "Internal error: Invalid data type for account status or level.";
-                default:
-                    return $"Database error: {ex.MessageText}";
-            }
+            transaction.Rollback();
+            Console.WriteLine($"Database error: {ex.MessageText}");
+            return $"Database error: {ex.MessageText}";
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return "An unexpected error occurred during registration.";
+            transaction.Rollback();
+            Console.WriteLine($"Unexpected error: {ex.Message}");
+            return $"An unexpected error occurred during registration. {ex.Message}";
         }
     }
 

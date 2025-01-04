@@ -16,15 +16,18 @@ CREATE SCHEMA api_schema;
 --switch to the new schema
 SET search_path TO api_schema;
 
--- Update user's password
+-- Replace the existing user creation block with this:
 DO $$
-    BEGIN
-        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'api_user') THEN
-            ALTER USER api_user WITH PASSWORD 'api_user_password';
-        ELSE
-            CREATE USER api_user WITH PASSWORD 'api_user_password';
-        END IF;
-    END $$;
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'api_user') THEN
+        DROP OWNED BY api_user;
+        DROP USER api_user;
+    END IF;
+END
+$$;
+
+CREATE USER api_user WITH PASSWORD 'api_user_password' LOGIN;
+ALTER USER api_user WITH CREATEDB;
 
 -- Creation of the tables and enums used in tables
 -- User block
@@ -256,8 +259,22 @@ CREATE TABLE api_schema.post_popularity (
 -- end of rating block
 
 -- Grant privileges to everything in the schema/database
+GRANT USAGE ON SCHEMA api_schema TO api_user;
+GRANT ALL ON ALL TABLES IN SCHEMA api_schema TO api_user;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA api_schema TO api_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA api_schema GRANT ALL ON TABLES TO api_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA api_schema GRANT ALL ON SEQUENCES TO api_user;
 ALTER DATABASE api_database OWNER TO api_user;
 ALTER SCHEMA api_schema OWNER TO api_user;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA api_schema TO api_user;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA api_schema TO api_user;
 GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA api_schema TO api_user;
+
+-- At the end of the file, add these additional grants:
+ALTER ROLE api_user SET search_path TO api_schema;
+GRANT CREATE ON SCHEMA api_schema TO api_user;
+GRANT USAGE, CREATE ON ALL SEQUENCES IN SCHEMA api_schema TO api_user;
+ALTER DEFAULT PRIVILEGES FOR ROLE api_user IN SCHEMA api_schema
+    GRANT ALL ON TABLES TO api_user;
+ALTER DEFAULT PRIVILEGES FOR ROLE api_user IN SCHEMA api_schema
+    GRANT ALL ON SEQUENCES TO api_user;
