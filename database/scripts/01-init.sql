@@ -16,17 +16,8 @@ CREATE SCHEMA api_schema;
 --switch to the new schema
 SET search_path TO api_schema;
 
--- Replace the existing user creation block with this:
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'api_user') THEN
-        DROP OWNED BY api_user;
-        DROP USER api_user;
-    END IF;
-END
-$$;
 
-CREATE USER api_user WITH PASSWORD 'api_user_password' LOGIN;
+-- CREATE USER api_user WITH PASSWORD 'api_user_password' LOGIN;
 ALTER USER api_user WITH CREATEDB;
 
 -- Creation of the tables and enums used in tables
@@ -273,7 +264,7 @@ GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA api_schema TO api_user;
 -- At the end of the file, add these additional grants:
 ALTER ROLE api_user SET search_path TO api_schema;
 GRANT CREATE ON SCHEMA api_schema TO api_user;
-GRANT USAGE, CREATE ON ALL SEQUENCES IN SCHEMA api_schema TO api_user;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA api_schema TO api_user;
 ALTER DEFAULT PRIVILEGES FOR ROLE api_user IN SCHEMA api_schema
     GRANT ALL ON TABLES TO api_user;
 ALTER DEFAULT PRIVILEGES FOR ROLE api_user IN SCHEMA api_schema
