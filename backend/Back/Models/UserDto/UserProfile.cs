@@ -9,9 +9,11 @@
         public string Description { get; set; }
         public string ProfileImage { get; set; }
         public int? Rubies { get; set; }
+        public int TotalLikes { get; set; }
+        public int CompletedTasks { get; set; }
 
         public UserProfile(string username, string firstName, string lastName, Dictionary<string, int> ratingPositions,
-            string description, string profileImage, int? rubies = null)
+            string description, string profileImage, int? rubies = null, int totalLikes = 0, int completedTasks = 0)
         {
             Username = username;
             FirstName = firstName;
@@ -20,6 +22,8 @@
             Description = description;
             ProfileImage = profileImage;
             Rubies = rubies;
+            TotalLikes = totalLikes;
+            CompletedTasks = completedTasks;
         }
     }
 }

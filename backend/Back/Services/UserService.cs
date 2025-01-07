@@ -20,7 +20,13 @@ public class UserService : IUserService
     private static class SqlQueries
     {
         public const string GetUserProfile = @"
-            SELECT u.username, u.first_name, u.last_name, u.profile_description, u.profile_picture, w.amount
+            SELECT 
+                u.username, u.first_name, u.last_name, u.profile_description, 
+                u.profile_picture, w.amount,
+                (SELECT COALESCE(SUM(likes), 0) FROM api_schema.post WHERE user_id = u.id) as total_likes,
+                (SELECT COUNT(*) FROM api_schema.chat 
+                 WHERE (buyer_id = u.id OR seller_id = u.id) 
+                 AND chat_status = 'closed') as completed_tasks
             FROM api_schema.user u
             LEFT JOIN api_schema.wallet w ON u.id = w.user_id
             WHERE u.username = @username";
@@ -350,7 +356,9 @@ public class UserService : IUserService
                 GetUserRatings(username),
                 reader.GetStringOrDefault(reader.GetOrdinal("profile_description")),
                 reader.GetStringOrDefault(reader.GetOrdinal("profile_picture")),
-                includeWallet ? (reader.IsDBNull(reader.GetOrdinal("amount")) ? 0 : reader.GetInt32(reader.GetOrdinal("amount"))) : 0
+                includeWallet ? (reader.IsDBNull(reader.GetOrdinal("amount")) ? 0 : reader.GetInt32(reader.GetOrdinal("amount"))) : 0,
+                reader.GetInt32(reader.GetOrdinal("total_likes")),
+                reader.GetInt32(reader.GetOrdinal("completed_tasks"))
             );
 
             return profile;
