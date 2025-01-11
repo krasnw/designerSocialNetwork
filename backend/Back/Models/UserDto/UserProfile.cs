@@ -1,11 +1,23 @@
 ﻿namespace Back.Models
 {
+    public class RatingEntry
+    {
+        public string Name { get; set; }
+        public int Value { get; set; }
+
+        public RatingEntry(string name, int value)
+        {
+            Name = name;
+            Value = value;
+        }
+    }
+
     public class UserProfile
     {
         public string Username { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public Dictionary<string, int> RatingPositions { get; set; } // Key: Tag, Value: Position
+        public List<RatingEntry> RatingPositions { get; set; } 
         public string Description { get; set; }
         public string ProfileImage { get; set; }
         public int? Rubies { get; set; }
@@ -18,7 +30,7 @@
             Username = username;
             FirstName = firstName;
             LastName = lastName;
-            RatingPositions = ratingPositions;
+            RatingPositions = ratingPositions.Select(r => new RatingEntry(r.Key, r.Value)).ToList();
             Description = description;
             ProfileImage = profileImage;
             Rubies = rubies;
