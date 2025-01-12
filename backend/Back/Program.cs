@@ -1,17 +1,18 @@
 using Back.Services;
 using Back.Services.Interfaces;
 using Microsoft.OpenApi.Models;
-using Npgsql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    WebRootPath = "wwwroot"
+});
 
-// Load environment variables from .env file
 DotNetEnv.Env.Load();
 
-// Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -41,26 +42,20 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Remove all existing DatabaseService registrations and replace with this single registration
-builder.Services.AddSingleton<IDatabaseService>(sp => 
-    DatabaseService.GetInstance(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// Remove duplicate service registrations
+builder.Services.AddScoped<IDatabaseService, DatabaseService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddScoped<IImageService, ImageService>();
 
-// Load environment variables from .env file
 DotNetEnv.Env.Load();
 
 // Get JWT settings from environment variables
 var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER");
 var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
 var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
-
-// ...existing code...
 
 builder.Services.AddAuthentication(options =>
 {
@@ -86,9 +81,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", builder =>
     {
-        builder.AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
+        builder.WithOrigins("http://localhost:3000") // Add your frontend URL
+               .AllowAnyMethod()
+               .AllowAnyHeader()
+               .AllowCredentials();
     });
 });
 
@@ -96,20 +92,54 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Add health check endpoint first
+app.MapGet("/health", async (context) =>
+{
+    context.Response.ContentType = "text/plain";
+    await context.Response.WriteAsync("Healthy");
+});
+
+// Development configuration
 if (app.Environment.IsDevelopment())
 {
+    app.UseDeveloperExceptionPage();
     app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Your API v1"));
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Your API v1");
+        c.RoutePrefix = string.Empty; // Serve Swagger UI at root
+    });
 }
 
+app.UseRouting();
 app.UseCors("AllowAll");
-
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseStaticFiles();
+
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception ex)
+    {
+        context.Response.StatusCode = 500;
+        await context.Response.WriteAsJsonAsync(new { error = "Internal Server Error", details = ex.Message });
+    }
+});
 
 app.MapControllers();
 
-app.Run();
+try
+{
+    app.Run();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Application failed to start: {ex.Message}");
+    throw;
+}
 
 public partial class Program {}

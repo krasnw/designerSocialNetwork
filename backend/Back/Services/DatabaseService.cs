@@ -1,49 +1,33 @@
 ﻿using Npgsql;
 using Back.Services.Interfaces;
+using Microsoft.Extensions.Configuration;
 
 namespace Back.Services;
 
 public class DatabaseService : IDatabaseService
 {
-    private static DatabaseService? _instance;
-    private static readonly object Lock = new();
     private readonly string _connectionString;
 
-    public DatabaseService(string connectionString)
+    public DatabaseService(IConfiguration configuration)
     {
-        _connectionString = connectionString;
-    }
-
-    public static DatabaseService GetInstance(string? connectionString = null)
-    {
-        if (_instance != null) return _instance;
-        if (connectionString == null)
-            throw new ArgumentNullException(nameof(connectionString),
-                "Connection string is required when creating new instance.");
-        lock (Lock)
-        {
-            _instance ??= new DatabaseService(connectionString);
-        }
-
-        return _instance;
+        _connectionString = configuration.GetConnectionString("DefaultConnection") 
+            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
     }
 
     public NpgsqlConnection GetConnection()
     {
         var connection = new NpgsqlConnection(_connectionString);
-        connection.Open();
-        // Set UTF-8 encoding for the connection
-        using var command = new NpgsqlCommand("SET client_encoding TO 'UTF8';", connection);
-        command.ExecuteNonQuery();
-        return connection;
-    }
-
-    private void AddParameters(NpgsqlCommand command, Dictionary<string, object>? parameters)
-    {
-        if (parameters == null) return;
-        foreach (var param in parameters)
+        try
         {
-            command.Parameters.AddWithValue(param.Key, param.Value);
+            connection.Open();
+            using var command = new NpgsqlCommand("SET client_encoding TO 'UTF8';", connection);
+            command.ExecuteNonQuery();
+            return connection;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Database connection error: {ex.Message}");
+            throw;
         }
     }
 
@@ -51,7 +35,13 @@ public class DatabaseService : IDatabaseService
     {
         using var connection = GetConnection();
         using var command = new NpgsqlCommand(query, connection);
-        AddParameters(command, parameters);
+        if (parameters != null)
+        {
+            foreach (var param in parameters)
+            {
+                command.Parameters.AddWithValue(param.Key, param.Value);
+            }
+        }
         command.ExecuteNonQuery();
     }
 
@@ -60,7 +50,13 @@ public class DatabaseService : IDatabaseService
     {
         connection = GetConnection();
         command = new NpgsqlCommand(query, connection);
-        AddParameters(command, parameters);
+        if (parameters != null)
+        {
+            foreach (var param in parameters)
+            {
+                command.Parameters.AddWithValue(param.Key, param.Value);
+            }
+        }
         return command.ExecuteReader();
     }
 }
