@@ -28,11 +28,14 @@ public class Post(
     public List<Tag> Tags { get; set; } = tags;
     public List<Rating> Ratings { get; set; } = ratings;
 
+    public List<string> ImagesNames => Images?.AllImages?.Select(img => img.Path)?.ToList() ?? new List<string>();
+
     public override string ToString()
     {
         return $"Post ID: {Id}, User: {Author.Username}, Title: {Title}, Content: {Content}, " +
                $"Likes: {Likes}, Access Level: {Access}, " +
                $"Tags: {string.Join(", ", Tags.Select(tag => tag.Name))}, " +
+               $"Images: {string.Join(", ", ImagesNames)}, " +
                $"Ratings: {string.Join(", ", Ratings.Select(rating => rating.Place))}";
     }
 }

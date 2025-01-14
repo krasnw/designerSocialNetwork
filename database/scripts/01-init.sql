@@ -114,7 +114,7 @@ CREATE TABLE api_schema.tags (
 
 CREATE TYPE api_schema.access_level AS ENUM ('public', 'private', 'protecteed');
 CREATE TABLE api_schema.post (
-    id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY,  -- Changed from INTEGER to SERIAL
     user_id INTEGER REFERENCES "user"(id),
     post_name VARCHAR(50) NOT NULL,
     post_text TEXT NOT NULL,

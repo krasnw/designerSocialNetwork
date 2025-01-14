@@ -5,6 +5,7 @@ namespace Back.Services.Interfaces;
 
 public interface IPostService
 {
+    Task<Post?> CreatePost(string username, PostCreationData request);
     Post GetPost(int id);
     List<Post>? GetAllUserPosts(int userId);
     List<Post>? GetAllUserPosts(string username);

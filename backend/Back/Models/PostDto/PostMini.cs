@@ -2,23 +2,17 @@
 
 public class PostMini
 {
-    /*main pic
-     title
-     likes
-     post id*/
     public long Id { get; set; }
-    public string Title { get; set; }
-    public string MainImageFilePath { get; set; }
+    public string Title { get; set; } = null!;
+    public string MainImageFilePath { get; set; } = null!;
     public long Likes { get; set; }
     
-    public static PostMini MapToPostMini(Post post)
-    {
-        return new PostMini
+    public static PostMini MapToPostMini(Post post) =>
+        new()
         {
             Id = post.Id,
             Title = post.Title,
-            MainImageFilePath = post.Images.MainImage.ImageFilePath,
+            MainImageFilePath = post.Images.MainImage.Path,
             Likes = post.Likes
         };
-    }
 }

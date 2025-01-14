@@ -11,10 +11,12 @@ namespace Back.Controllers;
 public class PostController : ControllerBase
 {
     private readonly IPostService _postService;
+    private readonly IImageService _imageService;
 
-    public PostController(IPostService postService)
+    public PostController(IPostService postService, IImageService imageService)
     {
         _postService = postService;
+        _imageService = imageService;
     }
 
     [HttpGet("feed")]
@@ -147,5 +149,124 @@ public class PostController : ControllerBase
 
         var isDeleted = _postService.DeletePost(id, uniqueName);
         return isDeleted ? Ok("Post deleted successfully") : BadRequest("Post not found or you are not the author");
+    }
+
+    [Authorize]
+    [HttpPost]
+    public async Task<IActionResult> CreatePost([FromForm] CreatePostRequest request)
+    {
+        var username = User.Identity?.Name;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized(new { message = "User authentication required" });
+
+        try
+        {
+            // Validation checks
+            var validationError = ValidateCreatePostRequest(request);
+            if (validationError != null)
+                return BadRequest(new { message = validationError });
+
+            // Upload all images first
+            var uploadedPaths = new List<string>();
+            var uploadedImages = new HashSet<string>(); // Track unique image hashes
+            try
+            {
+                foreach (var image in request.Images)
+                {
+                    if (!_imageService.IsImageValid(image))
+                    {
+                        return BadRequest(new { 
+                            message = $"Invalid image format or size: {image.FileName}",
+                            supportedFormats = new[] { "jpg", "jpeg", "png", "gif" },
+                            maxSize = "5MB"
+                        });
+                    }
+
+                    // Generate unique filename based on content
+                    var path = await _imageService.UploadImageAsync(image, username);
+                    if (!uploadedImages.Add(path))
+                    {
+                        // Skip duplicate images but keep the path for the post
+                        uploadedPaths.Add(path);
+                        continue;
+                    }
+                    uploadedPaths.Add(path);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Cleanup any uploaded images
+                foreach (var path in uploadedPaths)
+                {
+                    await _imageService.DeleteImageAsync(path, username);
+                }
+                return StatusCode(500, new { 
+                    message = "Failed to upload images",
+                    error = ex.Message
+                });
+            }
+
+            var createRequest = new PostCreationData
+            {
+                Title = request.Title,
+                Content = request.Content,
+                ImagePaths = uploadedPaths,
+                MainImagePath = uploadedPaths[request.MainImageIndex],
+                Tags = request.Tags ?? new List<string>(),
+                AccessLevel = request.AccessLevel
+            };
+
+            var post = await _postService.CreatePost(username, createRequest);
+            if (post != null)
+                return Ok(PostDto.MapToPostDto(post));
+
+            // If post creation failed, cleanup uploaded images
+            foreach (var path in uploadedPaths)
+            {
+                await _imageService.DeleteImageAsync(path, username);
+            }
+            
+            return StatusCode(500, new { 
+                message = "Failed to create post",
+                error = "Database operation failed"
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { 
+                message = "An unexpected error occurred while creating the post",
+                error = ex.Message 
+            });
+        }
+    }
+
+    private string? ValidateCreatePostRequest(CreatePostRequest request)
+    {
+        if (string.IsNullOrEmpty(request.Title))
+            return "Title is required";
+            
+        if (string.IsNullOrEmpty(request.Content))
+            return "Content is required";
+            
+        if (!request.Images.Any())
+            return "At least one image is required";
+            
+        if (request.Images.Count > 10)
+            return "Maximum 10 images allowed";
+            
+        if (request.MainImageIndex >= request.Images.Count)
+            return "Main image index is invalid";
+            
+        if (!string.IsNullOrEmpty(request.AccessLevel) && 
+            request.AccessLevel != "public" && 
+            request.AccessLevel != "private" && 
+            request.AccessLevel != "protected")
+            return "Invalid access level. Must be: public, private, or protected";
+
+        return null;
     }
 }

@@ -477,4 +477,243 @@ public class PostService : IPostService
             _tagService.GetPostTags(reader.GetInt32(0)),
             GetPostRatings(reader.GetInt32(0))
         );
+
+    public async Task<Post?> CreatePost(string username, PostCreationData request)
+    {
+        if (request.ImagePaths.Count > 10)
+            throw new ArgumentException("Maximum 10 images allowed per post");
+
+        if (!request.ImagePaths.Contains(request.MainImagePath))
+            throw new ArgumentException("Main image must be one of the uploaded images");
+
+        try
+        {
+            // 1. Create image container
+            var containerId = CreateImageContainer(request.ImagePaths, request.MainImagePath, username);
+            if (containerId <= 0) throw new Exception("Failed to create image container");
+
+            // 2. Create post record
+            var postId = CreatePostRecord(username, request, containerId);
+            if (postId <= 0) throw new Exception("Failed to create post record");
+
+            // 3. Add tags
+            AddPostTags(postId, request.Tags);
+
+            // 4. Return the created post
+            return GetPost(postId);
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Failed to create post: {ex.Message}", ex);
+        }
+    }
+
+    private int CreateImageContainer(List<string> imagePaths, string mainImagePath, string username)
+    {
+        NpgsqlConnection connection = null;
+        NpgsqlCommand command = null;
+        var containerId = 0;
+
+        try
+        {
+            // 1. Get user ID first
+            var userQuery = "SELECT id FROM api_schema.user WHERE username = @username";
+            var userParams = new Dictionary<string, object>
+            {
+                { "@username", username }
+            };
+
+            int userId;
+            using (var userReader = _databaseService.ExecuteQuery(userQuery, out connection, out command, userParams))
+            {
+                if (!userReader.Read())
+                    throw new Exception("User not found");
+                userId = userReader.GetInt32(0);
+            }
+
+            // 2. Create container
+            var containerQuery = @"
+                INSERT INTO api_schema.image_container (amount_of_images)
+                VALUES (@amount)
+                RETURNING id";
+            
+            var containerParams = new Dictionary<string, object>
+            {
+                { "@amount", imagePaths.Count }
+            };
+
+            using (var containerReader = _databaseService.ExecuteQuery(containerQuery, out connection, out command, containerParams))
+            {
+                if (!containerReader.Read())
+                    throw new Exception("Failed to create image container");
+                containerId = containerReader.GetInt32(0);
+            }
+
+            // 3. Insert or update images
+            foreach (var path in imagePaths)
+            {
+                var imageQuery = @"
+                    INSERT INTO api_schema.image (image_file_path, container_id, user_id)
+                    VALUES (@path, @containerId, @userId)
+                    ON CONFLICT (image_file_path) DO UPDATE 
+                    SET container_id = @containerId,
+                        user_id = @userId
+                    RETURNING id";
+
+                var imageParams = new Dictionary<string, object>
+                {
+                    { "@path", path },
+                    { "@containerId", containerId },
+                    { "@userId", userId }
+                };
+
+                using var imageReader = _databaseService.ExecuteQuery(imageQuery, out connection, out command, imageParams);
+                if (!imageReader.Read())
+                    throw new Exception($"Failed to process image: {path}");
+            }
+
+            // 4. Set main image
+            var mainImageQuery = @"
+                UPDATE api_schema.image_container 
+                SET main_image_id = (
+                    SELECT id FROM api_schema.image 
+                    WHERE image_file_path = @path 
+                    AND container_id = @containerId
+                )
+                WHERE id = @containerId
+                RETURNING id";
+
+            var mainImageParams = new Dictionary<string, object>
+            {
+                { "@path", mainImagePath },
+                { "@containerId", containerId }
+            };
+
+            using var mainImageReader = _databaseService.ExecuteQuery(mainImageQuery, out connection, out command, mainImageParams);
+            if (!mainImageReader.Read())
+                throw new Exception("Failed to set main image");
+
+            return containerId;
+        }
+        catch (Exception ex)
+        {
+            // If anything fails, try to cleanup the container
+            if (containerId > 0)
+            {
+                try
+                {
+                    var cleanupQuery = "DELETE FROM api_schema.image_container WHERE id = @containerId";
+                    var cleanupParams = new Dictionary<string, object> { { "@containerId", containerId } };
+                    _databaseService.ExecuteNonQuery(cleanupQuery, cleanupParams);
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
+            }
+            throw new Exception($"Failed to create image container: {ex.Message}");
+        }
+        finally
+        {
+            command?.Dispose();
+            connection?.Dispose();
+        }
+    }
+
+    private int CreatePostRecord(string username, PostCreationData request, int containerId)
+    {
+        var query = @"
+            INSERT INTO api_schema.post (
+                user_id, post_name, post_text, container_id, 
+                post_date, likes, access_level
+            )
+            SELECT 
+                u.id, @title, @content, @containerId, 
+                CURRENT_DATE, 0, @accessLevel::api_schema.access_level
+            FROM api_schema.user u
+            WHERE u.username = @username
+            RETURNING id";
+
+        var parameters = new Dictionary<string, object>
+        {
+            { "@username", username },
+            { "@title", request.Title },
+            { "@content", request.Content },
+            { "@containerId", containerId },
+            { "@accessLevel", request.AccessLevel.ToLower() }
+        };
+
+        NpgsqlConnection connection = null;
+        NpgsqlCommand command = null;
+
+        try
+        {
+            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
+            if (reader.Read())
+            {
+                return reader.GetInt32(0);
+            }
+            throw new Exception("Failed to create post record");
+        }
+        finally
+        {
+            command?.Dispose();
+            connection?.Dispose();
+        }
+    }
+
+    private void AddPostTags(int postId, List<string> tags)
+    {
+        foreach (var tag in tags)
+        {
+            // First ensure tag exists
+            var tagQuery = @"
+                INSERT INTO api_schema.tags (tag_name, tag_type)
+                VALUES (@name, 'style')
+                ON CONFLICT (tag_name) DO UPDATE 
+                SET tag_name = EXCLUDED.tag_name
+                RETURNING id";
+
+            var tagParams = new Dictionary<string, object>
+            {
+                { "@name", tag.ToLower() }
+            };
+
+            int tagId;
+            NpgsqlConnection connection = null;
+            NpgsqlCommand command = null;
+
+            try
+            {
+                using var reader = _databaseService.ExecuteQuery(tagQuery, out connection, out command, tagParams);
+                if (reader.Read())
+                {
+                    tagId = reader.GetInt32(0);
+                }
+                else
+                {
+                    continue;
+                }
+            }
+            finally
+            {
+                command?.Dispose();
+                connection?.Dispose();
+            }
+
+            // Then add post-tag relationship
+            var relationQuery = @"
+                INSERT INTO api_schema.post_tags (post_id, tag_id)
+                VALUES (@postId, @tagId)
+                ON CONFLICT DO NOTHING";
+
+            var relationParams = new Dictionary<string, object>
+            {
+                { "@postId", postId },
+                { "@tagId", tagId }
+            };
+
+            _databaseService.ExecuteNonQuery(relationQuery, relationParams);
+        }
+    }
 }

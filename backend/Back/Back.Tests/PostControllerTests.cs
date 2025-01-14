@@ -13,12 +13,14 @@ namespace Back.Tests.Controllers
     public class PostControllerTests
     {
         private readonly Mock<IPostService> _postServiceMock;
+        private readonly Mock<IImageService> _imageServiceMock;
         private readonly PostController _controller;
 
         public PostControllerTests()
         {
             _postServiceMock = new Mock<IPostService>();
-            _controller = new PostController(_postServiceMock.Object);
+            _imageServiceMock = new Mock<IImageService>();
+            _controller = new PostController(_postServiceMock.Object, _imageServiceMock.Object);
         }
 
         [Fact]

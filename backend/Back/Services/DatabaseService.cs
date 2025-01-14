@@ -10,8 +10,20 @@ public class DatabaseService : IDatabaseService
 
     public DatabaseService(IConfiguration configuration)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection") 
+        var baseConnectionString = configuration.GetConnectionString("DefaultConnection") 
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+        
+        // Build connection string with custom pooling settings
+        var builder = new NpgsqlConnectionStringBuilder(baseConnectionString)
+        {
+            Pooling = true,
+            MinPoolSize = 1,
+            MaxPoolSize = 200,
+            // Remove Timeout or set it to 0 for no timeout
+            CommandTimeout = 0
+        };
+        
+        _connectionString = builder.ToString();
     }
 
     public NpgsqlConnection GetConnection()
