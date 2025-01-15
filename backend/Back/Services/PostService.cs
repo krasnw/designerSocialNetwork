@@ -640,7 +640,7 @@ public class PostService : IPostService
                 post_date, likes, access_level
             )
             SELECT 
-                u.id, @title, @content, @containerId, 
+                u.id, @title, COALESCE(@content, ''), @containerId, 
                 CURRENT_DATE, 0, @accessLevel::api_schema.access_level
             FROM api_schema.user u
             WHERE u.username = @username
@@ -650,7 +650,7 @@ public class PostService : IPostService
         {
             { "@username", username },
             { "@title", request.Title },
-            { "@content", request.Content },
+            { "@content", (object?)request.Content ?? DBNull.Value }, // Handle null content
             { "@containerId", containerId },
             { "@accessLevel", request.AccessLevel.ToLower() }
         };
