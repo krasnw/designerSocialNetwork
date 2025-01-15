@@ -1,3 +1,10 @@
+-- Reset sequences and clear data
+ALTER SEQUENCE api_schema.post_id_seq RESTART WITH 1;
+ALTER SEQUENCE api_schema.image_container_id_seq RESTART WITH 1;
+ALTER SEQUENCE api_schema.image_id_seq RESTART WITH 1;
+ALTER SEQUENCE api_schema.tags_id_seq RESTART WITH 1;
+TRUNCATE api_schema.post CASCADE;
+
 INSERT INTO api_schema."user" 
 (username, email, user_password, first_name, last_name, phone_number, join_date, account_status, account_level, access_fee) 
 VALUES
@@ -122,34 +129,33 @@ INSERT INTO api_schema.tags (tag_name, tag_type) VALUES
 
 
 
-INSERT INTO api_schema.post (id, user_id, post_name, post_text, container_id, post_date, likes, access_level) 
+INSERT INTO api_schema.post (user_id, post_name, post_text, container_id, post_date, likes, access_level) 
 VALUES
-(1, 1, 'UI Design', 'Sample post content 1', 1, '2024-01-10', 10, 'public'),
-(2, 2, 'Logo Design', 'Sample post content 2', 2, '2024-02-10', 20, 'public'),
-(3, 3, 'Button Design', 'Sample post content 3', 3, '2024-03-10', 15, 'private'),
-(4, 4, 'Icon Design', 'Sample post content 4', 4, '2024-04-10', 5, 'protected'),
-(5, 5, 'UX Design', 'Sample post content 5', 1, '2024-05-10', 50, 'public'),
-(6, 6, 'Glass Morphism', 'Sample post content 2', 1, '2024-06-10', 100, 'private'),
-(7, 7, 'Website Layout', 'Sample post content 3', 2, '2024-07-10', 25, 'public'),
-(8, 8, 'App Design', 'Sample post content 8', 4, '2024-08-10', 30, 'protected'),
-(9, 9, 'Dashboard Design', 'Sample post content 1', 4, '2024-09-10', 75, 'private'),
-(10, 10, 'Card Design', 'Sample post content 10', 3, '2024-10-10', 90, 'public');
-
-
+(1, 'UI Design', 'Sample post content 1', 1, '2024-01-10', 10, 'public'),
+(2, 'Logo Design', 'Sample post content 2', 2, '2024-02-10', 20, 'public'),
+(3, 'Button Design', 'Sample post content 3', 3, '2024-03-10', 15, 'private'),
+(4, 'Icon Design', 'Sample post content 4', 4, '2024-04-10', 5, 'protected'),
+(5, 'UX Design', 'Sample post content 5', 1, '2024-05-10', 50, 'public'),
+(6, 'Glass Morphism', 'Sample post content 2', 1, '2024-06-10', 100, 'private'),
+(7, 'Website Layout', 'Sample post content 3', 2, '2024-07-10', 25, 'public'),
+(8, 'App Design', 'Sample post content 8', 4, '2024-08-10', 30, 'protected'),
+(9, 'Dashboard Design', 'Sample post content 1', 4, '2024-09-10', 75, 'private'),
+(10, 'Card Design', 'Sample post content 10', 3, '2024-10-10', 90, 'public');
 
 INSERT INTO api_schema.post_tags (post_id, tag_id)
-VALUES
-(1, 2),
-(2, 4),
-(3, 3), 
-(4, 1), 
-(5, 3), 
-(6, 9), 
-(7, 5), 
-(8, 6), 
-(9, 7), 
-(10, 8); 
-
+SELECT p.id, t.id
+FROM api_schema.post p, api_schema.tags t
+WHERE (p.post_name, t.tag_name) IN
+(('UI Design', 'Button'),
+ ('Logo Design', 'Card'),
+ ('Button Design', 'Icon'),
+ ('Icon Design', 'Logo'),
+ ('UX Design', 'Icon'),
+ ('Glass Morphism', 'Morphism'),
+ ('Website Layout', 'Web'),
+ ('App Design', 'App'),
+ ('Dashboard Design', 'Dashboard'),
+ ('Card Design', 'Graphics'));
 
 INSERT INTO api_schema.powerup (post_id, transaction_id, powerup_date, power_days)
 VALUES
