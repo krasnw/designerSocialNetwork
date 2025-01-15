@@ -57,15 +57,25 @@ public class PostController : ControllerBase
         return new JsonResult(PostDto.MapToPostDtoList(posts));
     }
 
+    [HttpGet("protected/{hash}")]
+    public IActionResult GetProtectedPost(string hash)
+    {
+        var post = _postService.GetProtectedPost(hash);
+        if (post == null) return NotFound("Post not found.");
+        
+        var postFormatted = PostDto.MapToPostDto(post);
+        return Ok(postFormatted);
+    }
+
     [HttpGet("{id}")]
-    public IActionResult GetPost(int id)
+    public IActionResult GetPost(long id)  // Changed from int to long
     {
         var post = _postService.GetPost(id);
         if (post == null) return NotFound("Post not found.");
 
         var user = User.Identity?.Name;
         
-        // Check access for private posts
+        // Check access for private/protected posts
         if (post.Access.Equals("private", StringComparison.OrdinalIgnoreCase))
         {
             if (string.IsNullOrEmpty(user))
@@ -73,11 +83,14 @@ public class PostController : ControllerBase
                 return Unauthorized("You must be logged in to view private posts.");
             }
             
-            // Check if user has access to this private post
             if (!_postService.HasUserAccessToPost(user, post.Id))
             {
                 return Unauthorized("You don't have access to this private post.");
             }
+        }
+        else if (post.Access.Equals("protected", StringComparison.OrdinalIgnoreCase))
+        {
+            return NotFound("This post requires a special access link.");
         }
 
         var postFormatted = PostDto.MapToPostDto(post);
@@ -142,7 +155,7 @@ public class PostController : ControllerBase
     //delete post
     [Authorize]
     [HttpDelete("{id}")]
-    public IActionResult DeletePost(int id)
+    public IActionResult DeletePost(long id)  // Changed from int to long
     {
         var uniqueName = User.Identity?.Name;
         if (string.IsNullOrEmpty(uniqueName)) return Unauthorized("Blame the token, relog please");

@@ -42,10 +42,10 @@ public class PostService : IPostService
         }
     }
 
-    private Dictionary<string, object> CreatePostIdParam(int id) => 
+    private Dictionary<string, object> CreatePostIdParam(long id) => 
         new() { { "@id", id } };
 
-    public Post GetPost(int id) =>
+    public Post GetPost(long id) =>
         ExecuteQueryWithDisposable(
             $"{POST_BASE_SELECT} WHERE id = @id",
             CreatePostIdParam(id),
@@ -240,7 +240,7 @@ public class PostService : IPostService
     }
 
     //delete post by id
-    public bool DeletePost(int id, string username)
+    public bool DeletePost(long id, string username)
     {
         string authorIdQuery = @"
     SELECT user_id FROM api_schema.post WHERE id = @id";
@@ -346,7 +346,7 @@ public class PostService : IPostService
     }
 
     //compile post from all data needed
-    public List<Tag> GetPostTags(int id)
+    public List<Tag> GetPostTags(long id)
     {
         string query = @"
         SELECT t.id, t.tag_name, t.tag_type
@@ -380,7 +380,7 @@ public class PostService : IPostService
         }
     }
 
-    public ImageContainer GetPostImages(int id)
+    public ImageContainer GetPostImages(long id)
     {
         string query = @"
         SELECT i.id, i.image_file_path
@@ -402,7 +402,7 @@ public class PostService : IPostService
             var images = new List<Image>();
             while (reader.Read())
             {
-                images.Add(new Image(reader.GetInt32(0), reader.GetString(1)));
+                images.Add(new Image((int)reader.GetInt64(0), reader.GetString(1)));  // Add cast to int
             }
 
             string mainImageQuery = @"
@@ -414,10 +414,13 @@ public class PostService : IPostService
 
             using var mainImageReader =
                 _databaseService.ExecuteQuery(mainImageQuery, out connection, out command, parameters);
-            if (!mainImageReader.HasRows) return new ImageContainer(id, images.FirstOrDefault(), images);
+            if (!mainImageReader.HasRows) return new ImageContainer((int)id, images.FirstOrDefault(), images);  // Add cast to int
             mainImageReader.Read();
-            var container = new ImageContainer(id, new Image(mainImageReader.GetInt32(0), mainImageReader.GetString(1)),
-                images);
+            var container = new ImageContainer(
+                (int)id, 
+                new Image((int)mainImageReader.GetInt64(0), mainImageReader.GetString(1)),
+                images
+            );
 
             return container;
         }
@@ -428,7 +431,7 @@ public class PostService : IPostService
         }
     }
 
-    public List<Rating> GetPostRatings(int id)
+    public List<Rating> GetPostRatings(long id)
     {
         string query = @"
         SELECT p.rating, t.id, t.tag_name, t.tag_type
@@ -500,7 +503,16 @@ public class PostService : IPostService
             AddPostTags(postId, request.Tags);
 
             // 4. Return the created post
-            return GetPost(postId);
+            var post = GetPost(postId);
+
+            // Generate protected access hash if post is protected
+            if (post != null && post.Access.Equals("protected", StringComparison.OrdinalIgnoreCase))
+            {
+                var hash = GenerateProtectedAccessHash(post.Id);
+                // Add hash to response or handle it as needed
+            }
+
+            return post;
         }
         catch (Exception ex)
         {
@@ -508,7 +520,7 @@ public class PostService : IPostService
         }
     }
 
-    private int CreateImageContainer(List<string> imagePaths, string mainImagePath, string username)
+    private long CreateImageContainer(List<string> imagePaths, string mainImagePath, string username)
     {
         NpgsqlConnection connection = null;
         NpgsqlCommand command = null;
@@ -620,7 +632,7 @@ public class PostService : IPostService
         }
     }
 
-    private int CreatePostRecord(string username, PostCreationData request, int containerId)
+    private long CreatePostRecord(string username, PostCreationData request, long containerId)
     {
         var query = @"
             INSERT INTO api_schema.post (
@@ -662,7 +674,7 @@ public class PostService : IPostService
         }
     }
 
-    private void AddPostTags(int postId, List<string> tags)
+    private void AddPostTags(long postId, List<string> tags)
     {
         foreach (var tag in tags)
         {
@@ -715,5 +727,43 @@ public class PostService : IPostService
 
             _databaseService.ExecuteNonQuery(relationQuery, relationParams);
         }
+    }
+
+    public Post? GetProtectedPost(string hash)
+    {
+        string query = @"
+            SELECT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
+            FROM api_schema.post p
+            JOIN api_schema.protected_post_access ppa ON p.id = ppa.post_id
+            WHERE ppa.access_hash = @hash";
+
+        var parameters = new Dictionary<string, object>
+        {
+            { "@hash", hash }
+        };
+
+        return ExecuteQueryWithDisposable(query, parameters,
+            reader => !reader.HasRows ? null : (reader.Read() ? CompilePost(reader) : null));
+    }
+
+    public string GenerateProtectedAccessHash(long postId)
+    {
+        var hash = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
+            .Replace("/", "_")
+            .Replace("+", "-")
+            .Replace("=", "");
+
+        string query = @"
+            INSERT INTO api_schema.protected_post_access (post_id, access_hash)
+            VALUES (@postId, @hash)";
+
+        var parameters = new Dictionary<string, object>
+        {
+            { "@postId", postId },
+            { "@hash", hash }
+        };
+
+        _databaseService.ExecuteNonQuery(query, parameters);
+        return hash;
     }
 }

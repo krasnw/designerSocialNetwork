@@ -1,6 +1,8 @@
 using Back.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Hosting;
+using System.IO;
 
 namespace Back.Controllers;
 
@@ -9,10 +11,12 @@ namespace Back.Controllers;
 public class ImageController : ControllerBase
 {
     private readonly IImageService _imageService;
+    private readonly IWebHostEnvironment _environment;
 
-    public ImageController(IImageService imageService)
+    public ImageController(IImageService imageService, IWebHostEnvironment environment)
     {
         _imageService = imageService;
+        _environment = environment;
     }
 
     [HttpPost("upload")]
@@ -41,15 +45,17 @@ public class ImageController : ControllerBase
     }
 
     [HttpGet("{filename}")]
-    public async Task<IActionResult> GetImage(string filename)
+    public IActionResult GetImage(string filename)
     {
-        var imageData = await _imageService.GetImageAsync(filename);
-        if (imageData == null)
+        var path = Path.Combine(_environment.WebRootPath, "images", filename);
+        
+        if (!System.IO.File.Exists(path))
         {
             return NotFound();
         }
 
-        return File(imageData, _imageService.GetContentType(filename));
+        var imageFileStream = System.IO.File.OpenRead(path);
+        return File(imageFileStream, "image/png"); // Adjust content type as needed
     }
 
     [HttpDelete("{filename}")]

@@ -28,12 +28,12 @@ CREATE TABLE api_schema."user" (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(50) NOT NULL UNIQUE,
-    user_password VARCHAR(255) NOT NULL, -- Changed from CHAR(64) to VARCHAR(255) for BCrypt hashes
-    first_name VARCHAR(50) NOT NULL COLLATE "ucs_basic",  -- Add collation for proper sorting
-    last_name VARCHAR(50) NOT NULL COLLATE "ucs_basic",   -- Add collation for proper sorting
+    user_password VARCHAR(255) NOT NULL,
+    first_name VARCHAR(50) NOT NULL COLLATE "ucs_basic",
+    last_name VARCHAR(50) NOT NULL COLLATE "ucs_basic",
     phone_number VARCHAR(25) NOT NULL UNIQUE,
     profile_description TEXT,
-    profile_picture VARCHAR(100),
+    profile_picture VARCHAR(100) DEFAULT 'default.png' NOT NULL,
     join_date DATE NOT NULL,
     account_status account_status NOT NULL,
     account_level account_level NOT NULL,
@@ -112,9 +112,9 @@ CREATE TABLE api_schema.tags (
     tag_type tag_type NOT NULL
 );
 
-CREATE TYPE api_schema.access_level AS ENUM ('public', 'private', 'protecteed');
+CREATE TYPE api_schema.access_level AS ENUM ('public', 'private', 'protected');
 CREATE TABLE api_schema.post (
-    id SERIAL PRIMARY KEY,  -- Changed from INTEGER to SERIAL
+    id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES "user"(id),
     post_name VARCHAR(50) NOT NULL,
     post_text TEXT NOT NULL,
@@ -137,6 +137,15 @@ CREATE TABLE api_schema.powerup (
     powerup_date DATE NOT NULL,
     power_days INTEGER NOT NULL
 );
+
+CREATE TABLE api_schema.protected_post_access (
+    id SERIAL PRIMARY KEY,
+    post_id INTEGER REFERENCES post(id) ON DELETE CASCADE,
+    access_hash VARCHAR(64) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_protected_post_hash ON api_schema.protected_post_access(access_hash);
 -- end of post block
 
 -- Chat block
@@ -261,7 +270,6 @@ GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA api_schema TO api_user;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA api_schema TO api_user;
 GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA api_schema TO api_user;
 
--- At the end of the file, add these additional grants:
 ALTER ROLE api_user SET search_path TO api_schema;
 GRANT CREATE ON SCHEMA api_schema TO api_user;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA api_schema TO api_user;

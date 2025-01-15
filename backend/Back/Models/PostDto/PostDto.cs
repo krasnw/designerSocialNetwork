@@ -9,7 +9,7 @@ public class PostDto
     public string Content { get; set; }
     public UserMiniDto Author { get; set; } = null!;
     public string MainImageFilePath { get; set; }
-    public List<string> Images { get; set; }  // Add this line
+    public List<string> Images { get; set; }
     public long Likes { get; set; }
     public DateOnly CreatedAt { get; set; }
     public string Access { get; set; }
@@ -21,14 +21,9 @@ public class PostDto
             Id = post.Id,
             Title = post.Title,
             Content = post.Content,
-            Author = new UserMiniDto
-            {
-                Username = post.Author.Username,
-                FirstName = post.Author.FirstName,
-                LastName = post.Author.LastName
-            },
+            Author = UserMiniDto.MapFromUser(post.Author),
             MainImageFilePath = post.Images.MainImage.Path,
-            Images = post.ImagesNames,  // Add this line
+            Images = post.ImagesNames,
             Likes = post.Likes,
             CreatedAt = post.CreatedAt,
             Access = post.Access,

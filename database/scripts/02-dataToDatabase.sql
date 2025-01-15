@@ -127,11 +127,11 @@ VALUES
 (1, 1, 'UI Design', 'Sample post content 1', 1, '2024-01-10', 10, 'public'),
 (2, 2, 'Logo Design', 'Sample post content 2', 2, '2024-02-10', 20, 'public'),
 (3, 3, 'Button Design', 'Sample post content 3', 3, '2024-03-10', 15, 'private'),
-(4, 4, 'Icon Design', 'Sample post content 4', 4, '2024-04-10', 5, 'protecteed'),
+(4, 4, 'Icon Design', 'Sample post content 4', 4, '2024-04-10', 5, 'protected'),
 (5, 5, 'UX Design', 'Sample post content 5', 1, '2024-05-10', 50, 'public'),
 (6, 6, 'Glass Morphism', 'Sample post content 2', 1, '2024-06-10', 100, 'private'),
 (7, 7, 'Website Layout', 'Sample post content 3', 2, '2024-07-10', 25, 'public'),
-(8, 8, 'App Design', 'Sample post content 8', 4, '2024-08-10', 30, 'protecteed'),
+(8, 8, 'App Design', 'Sample post content 8', 4, '2024-08-10', 30, 'protected'),
 (9, 9, 'Dashboard Design', 'Sample post content 1', 4, '2024-09-10', 75, 'private'),
 (10, 10, 'Card Design', 'Sample post content 10', 3, '2024-10-10', 90, 'public');
 

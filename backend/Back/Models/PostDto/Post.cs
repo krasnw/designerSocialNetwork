@@ -3,7 +3,7 @@
 namespace Back.Models;
 
 public class Post(
-    long id,
+    long id,  // Changed from int to long
     User author,
     string title,
     string content,
@@ -17,7 +17,7 @@ public class Post(
 {
     // Enum for post access level
 
-    public long Id { get; set; } = id;
+    public long Id { get; set; } = id;  // Changed from int to long
     public string Title { get; set; } = title;
     public string Content { get; set; } = content;
     public User Author { get; set; } = author;
