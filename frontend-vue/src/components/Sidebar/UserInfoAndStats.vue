@@ -6,6 +6,7 @@ import RubyIcon from '@/assets/Icons/RubyIcon.vue';
 import ShareProfileIcon from '@/assets/Icons/ShareProfileIcon.vue';
 import TasksIcon from '@/assets/Icons/TasksIcon.vue';
 import { userService } from '@/services/user';
+import defaultAvatar from '@/assets/Images/avatar.png';
 
 export default {
   name: "UserInfoAndStats",
@@ -33,7 +34,7 @@ export default {
       user: {
         username: '',
         name: '',
-        image: 'https://placehold.co/600x600',
+        image: defaultAvatar,
         rank: 0,
         rubies: 0,
         tasks: 0,
@@ -44,39 +45,31 @@ export default {
   },
   async created() {
     try {
-      console.log('Page type:', this.page);
-      console.log('Username prop:', this.username);
-
       let userData;
-      if (this.page === 'myProfile') {
+      if (this.page === 'myProfile' || this.page === 'editProfile') {
         userData = await userService.getMyData();
         console.log('My profile data:', userData);
-      } else if (this.page === 'userProfile') {
+      } else if (this.page === 'portfolio' || this.page === 'addTask') {
+        // Get username from the closest route that has the parameter
         const usernameFromRoute = this.$route.params.username;
         userData = await userService.getUserData(usernameFromRoute);
-        console.log('User profile data:', userData);
+        console.table('User profile data:', userData);
       } else {
         console.log('No username provided, redirecting to 404');
         this.$router.push('/error/404');
         return;
       }
 
-      console.log('Processed user data:', {
-        username: userData.username,
-        name: `${userData.firstName} ${userData.lastName}`,
-        image: userData.profileImage || 'https://placehold.co/600x600',
-        rank: userData.ratingPositions?.Logo || 0,
-        rubies: userData.rubies
-      });
-
       this.user = {
         username: userData.username,
         name: `${userData.firstName} ${userData.lastName}`,
-        image: userData.profileImage || 'https://placehold.co/600x600',
-        rank: userData.ratingPositions?.Logo || 0,
+        image: userData.profileImage || defaultAvatar,
+        // Fix here - access first rating position if it exists
+        rankName: userData.ratingPositions[0]?.name || 'No Rank',
+        rank: userData.ratingPositions[0]?.value || 0,
         rubies: userData.rubies,
-        tasks: 0,
-        likes: 0,
+        tasks: userData.completedTasks,
+        likes: userData.totalLikes,
         description: userData.description || 'Użytkownik nie dodał jeszcze opisu'
       };
     } catch (error) {
@@ -106,7 +99,13 @@ export default {
   },
   methods: {
     copyLink() {
-      navigator.clipboard.writeText('http://localhost:8080/profile/' + this.user.username);
+      navigator.clipboard.writeText('http://localhost:8080/' + this.user.username + '/portfolio');
+    },
+    editPath() {
+      this.$router.push('/profile/me/edit');
+    },
+    requestModal() {
+      this.$router.push('/' + this.user.username + '/add-task');
     }
   }
 };
@@ -114,14 +113,14 @@ export default {
 
 <template>
   <span class="wrapper">
-
     <article class="sidebar-profile">
       <div class="username-wrapper">
         <h3 class="username">{{ user.name }}</h3>
       </div>
     </article>
     <article class="profile-statistics">
-      <img class="profile-picture" :src="user.image" alt="Profile picture" />
+      <img class="profile-picture no-select" :src="user.image" alt="Profile picture" onmousedown='return false;'
+        ondragstart='return false;' />
       <div class="stat-info">
         <h3>Statystyka</h3>
         <div class="stats-container">
@@ -129,10 +128,10 @@ export default {
             <span class="stats-icon">
               <RankIcon />
             </span>
-            <span class="stat-label">Miejsce</span>
+            <span class="stat-label">{{ user.rankName }}</span>
             <span class="stat-number">{{ formatNumber(user.rank) }}</span>
           </span>
-          <span class="stat-row" v-if="page === 'myProfile'">
+          <span class="stat-row" v-if="page === 'myProfile' || page === 'editProfile'">
             <span class="stats-icon">
               <RubyIcon />
             </span>
@@ -162,10 +161,12 @@ export default {
       <p class="text-description">{{ user.description }}</p>
     </article>
     <span class="profile-buttons">
-      <button class="main-button" v-if="page === 'myProfile'">Edytuj profil
+      <button class="main-button" v-if="page === 'myProfile'" @click="editPath">Edytuj profil
         <PenIcon />
       </button>
-      <button class="main-button" v-else>Złóż zlecenie
+      <button class="main-button" v-else-if="page === 'editProfile'" @click="$router.go(-1)">Powrót ↩︎
+      </button>
+      <button class="main-button" v-else @click="requestModal">Złóż zlecenie
         <PenIcon />
       </button>
       <button class="copy-button" @click="copyLink">

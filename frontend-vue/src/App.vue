@@ -10,7 +10,8 @@ export default {
   },
   data() {
     return {
-      isSidebarHidden: JSON.parse(localStorage.getItem('sidebarHidden') || 'false')
+      isSidebarHidden: JSON.parse(localStorage.getItem('sidebarHidden') || 'false'),
+      routerViewKey: 0 // добавляем новое свойство
     }
   },
   methods: {
@@ -20,6 +21,9 @@ export default {
     },
     handleSidebarState(hidden) {
       this.isSidebarHidden = hidden;
+    },
+    reloadView() {
+      this.routerViewKey += 1;
     }
   },
   computed: {
@@ -40,7 +44,7 @@ export default {
 <template>
   <NavigationBar />
   <section class="main-content" :style="mainContentStyle">
-    <router-view v-slot="{ Component }">
+    <router-view v-slot="{ Component }" :key="routerViewKey">
       <transition name="move" mode="out-in">
         <component :is="Component" />
       </transition>
@@ -88,7 +92,7 @@ html {
 body {
   margin: 0;
   padding: 0;
-  background-image: url('assets/Images/main_bg3.png');
+  background-image: url('assets/Images/main_bg2.jpg');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;

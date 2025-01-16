@@ -99,7 +99,9 @@ export default {
 
 
     <section v-if="!hidden" class="sidebar">
-      <UserInfoAndStats v-if="page === 'myProfile' || page === 'userProfile'" :page="page" />
+      <UserInfoAndStats
+        v-if="page === 'myProfile' || page === 'editProfile' || page === 'portfolio' || page === 'addTask'"
+        :page="page" />
       <ProfileInfo v-else />
 
       <!-- cases for other pages -->
@@ -107,7 +109,7 @@ export default {
         <Search />
         <Filter />
       </div>
-      <div v-else-if="page === 'myProfile' || page === 'userProfile'" class="wrap">
+      <div v-else-if="page === 'myProfile' || page === 'portfolio'" class="wrap">
         <Filter />
       </div>
       <div v-else-if="page === 'conversations'" class="wrap">

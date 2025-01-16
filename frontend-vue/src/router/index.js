@@ -11,6 +11,10 @@ const routes = [
     redirect: "/profile/me",
   },
   {
+    path: "/:username",
+    redirect: "/:username/portfolio",
+  },
+  {
     path: "/feed",
     name: "feed",
     component: () => import("@/pages/feed/Feed.vue"),
@@ -41,13 +45,26 @@ const routes = [
   {
     path: "/profile/me",
     name: "myProfile",
-    component: () => import("@/pages/profile/Profile.vue"),
+    component: () => import("@/pages/profile/Portfolio.vue"),
     meta: { requiresAuth: true },
   },
   {
-    path: "/profile/:username",
-    name: "userProfile",
-    component: () => import("@/pages/profile/Profile.vue"),
+    path: "/profile/me/edit",
+    name: "editProfile",
+    component: () => import("@/pages/profile/EditProfile.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/:username/portfolio",
+    name: "portfolio",
+    component: () => import("@/pages/profile/Portfolio.vue"),
+    props: true,
+  },
+  {
+    path: "/:username/add-task",
+    name: "addTask",
+    component: () => import("@/pages/profile/AddRequest.vue"),
+    meta: { requiresAuth: true },
     props: true,
   },
   {
@@ -109,10 +126,8 @@ router.beforeEach((to, from, next) => {
   const isAuthenticated = !!localStorage.getItem("JWT");
 
   if (to.meta.requiresAuth && !isAuthenticated) {
-    // Если требуется авторизация, но пользователь не авторизован
     next("/login");
   } else if (to.meta.requiresGuest && isAuthenticated) {
-    // Если страница только для гостей, а пользователь авторизован
     next("/feed");
   } else {
     next();

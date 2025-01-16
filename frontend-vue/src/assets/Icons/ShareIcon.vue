@@ -40,8 +40,5 @@ export default {
   /* свечение */
   animation: glow 0.5s infinite alternate;
   z-index: 3;
-
-
-
 }
 </style>

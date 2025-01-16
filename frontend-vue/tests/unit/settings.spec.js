@@ -5,7 +5,6 @@ describe("Settings.vue", () => {
   let wrapper;
 
   beforeEach(() => {
-    // Mock localStorage
     Storage.prototype.getItem = jest.fn();
     Storage.prototype.setItem = jest.fn();
     wrapper = shallowMount(Settings);

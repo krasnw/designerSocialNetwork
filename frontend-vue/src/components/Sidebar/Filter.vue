@@ -1,6 +1,7 @@
 <script>
 import ReloadIcon from '@/assets/Icons/ReloadIcon.vue';
 import TagView from '../TagView.vue';
+import { filterTagService } from '@/services/filterTag';
 
 export default {
   name: "Filter",
@@ -14,50 +15,37 @@ export default {
       selected_ui: [],
       selected_style: [],
       selected_color: [],
-      selected_order: '',
-      ui: [
-        { value: 'przycisk', text: 'Przycisk' },
-        { value: 'lista', text: 'Lista rozwijana' },
-        { value: 'slider', text: 'Slider' },
-        { value: 'input', text: 'Input' },
-        { value: 'checkbox', text: 'Checkbox' },
-        { value: 'radio', text: 'Radio' },
-        { value: 'toggle', text: 'Toggle' },
-        { value: 'loader', text: 'Loader' },
-        { value: 'calendar', text: 'Calendar' },
-        { value: 'menu', text: 'Menu' },
-        { value: 'sidebar', text: 'Sidebar' },
-        { value: 'navbar', text: 'Navbar' },
-        { value: 'footer', text: 'Footer' },
-        { value: 'form', text: 'Form' },
-        { value: 'typography', text: 'Typography' },
-        { value: 'animation', text: 'Animation' },
-      ],
-      style: [
-        { value: 'glassmorphism', text: 'Glassmorphism' },
-        { value: 'neumorphism', text: 'Neumorphism' },
-        { value: 'minimalism', text: 'Minimalism' },
-        { value: 'material', text: 'Material' },
-        { value: 'flat', text: 'Flat' },
-        { value: '3d', text: '3D' },
-        { value: 'retro', text: 'Retro' },
-      ],
-      color: [
-        { value: 'light', text: 'Light' },
-        { value: 'dark', text: 'Dark' },
-        { value: 'colorful', text: 'Colorful' }
-      ],
-      order: [
-        { value: 'popularne', text: 'Popularne' },
-        { value: 'najnowsze', text: 'Najnowsze' },
-        { value: 'polubione', text: 'Polubione' }
-      ],
+      ui: [],
+      style: [],
+      color: [],
       activeDropdown: null,
       activeToggle: 'public',
       isLoading: false,
       isTagNumChanged: false,
       isSpinning: false,
     };
+  },
+  async created() {
+    try {
+      const tags = await filterTagService.getTags();
+
+      this.ui = tags
+        .filter(tag => tag.tagType === 'UI_ELEMENT')
+        .map(tag => ({ value: tag.name, text: tag.name }));
+
+      this.style = tags
+        .filter(tag => tag.tagType === 'STYLE')
+        .map(tag => ({ value: tag.name, text: tag.name }));
+
+      this.color = tags
+        .filter(tag => tag.tagType === 'COLOR')
+        .map(tag => ({ value: tag.name, text: tag.name }));
+
+      // Load saved filters from SessionStorage
+      this.loadFiltersFromStorage();
+    } catch (error) {
+      console.error('Failed to load tags:', error);
+    }
   },
   mounted() {
     // Добавляем слушатель при монтировании компонента
@@ -77,11 +65,8 @@ export default {
     selected_color(newVal) {
       this.updateSelectedOptions('Kolor', newVal);
     },
-    selected_order(newVal) {
-      if (newVal) {
-        this.selectedOptions = this.selectedOptions.filter(opt => !opt.startsWith('Kolejność:'));
-        this.selectedOptions.push(`Kolejność: ${newVal}`);
-      }
+    activeToggle(newVal) {
+      this.saveFiltersToStorage();
     },
     selectedOptions: {
       handler(newVal, oldVal) {
@@ -93,14 +78,69 @@ export default {
     }
   },
   methods: {
+    // Add new methods
+    saveFiltersToStorage() {
+      const filters = {
+        selected_ui: this.selected_ui,
+        selected_style: this.selected_style,
+        selected_color: this.selected_color,
+        activeToggle: this.activeToggle
+      };
+      sessionStorage.setItem('selectedFilters', JSON.stringify(filters));
+    },
+
+    loadFiltersFromStorage() {
+      const savedFilters = sessionStorage.getItem('selectedFilters');
+      if (savedFilters) {
+        const filters = JSON.parse(savedFilters);
+        this.selected_ui = filters.selected_ui || [];
+        this.selected_style = filters.selected_style || [];
+        this.selected_color = filters.selected_color || [];
+        this.activeToggle = filters.activeToggle || 'public';
+
+        this.updateSelectedOptions('UI', this.selected_ui);
+        this.updateSelectedOptions('Styl', this.selected_style);
+        this.updateSelectedOptions('Kolor', this.selected_color);
+      }
+    },
+
+    removeTagFromStorage(tagText) {
+      const [type, value] = tagText.split(': ');
+      const savedFilters = JSON.parse(sessionStorage.getItem('selectedFilters') || '{}');
+
+      switch (type) {
+        case 'UI':
+          this.selected_ui = this.selected_ui.filter(item => item !== value);
+          savedFilters.selected_ui = (savedFilters.selected_ui || []).filter(item => item !== value);
+          break;
+        case 'Styl':
+          this.selected_style = this.selected_style.filter(item => item !== value);
+          savedFilters.selected_style = (savedFilters.selected_style || []).filter(item => item !== value);
+          break;
+        case 'Kolor':
+          this.selected_color = this.selected_color.filter(item => item !== value);
+          savedFilters.selected_color = (savedFilters.selected_color || []).filter(item => item !== value);
+          break;
+      }
+
+      this.selectedOptions = this.selectedOptions.filter(opt => opt !== tagText);
+      sessionStorage.setItem('selectedFilters', JSON.stringify(savedFilters));
+    },
+
     updateSelectedOptions(type, values) {
-      // Удаляем старые опции данного типа
       this.selectedOptions = this.selectedOptions.filter(opt => !opt.startsWith(`${type}:`));
-      // Добавляем новые опции
       values.forEach(value => {
         this.selectedOptions.push(`${type}: ${value}`);
       });
+      this.saveFiltersToStorage();
     },
+
+    async toggleOption(option) {
+      this.activeToggle = option;
+      await this.$nextTick();
+      await this.handleReload();
+    },
+
     toggleDropdown(id, event) {
       event.stopPropagation();
       this.activeDropdown = this.activeDropdown === id ? null : id;
@@ -113,32 +153,9 @@ export default {
         }
       }
     },
-    removeTag(tagText) {
-      const [type, value] = tagText.split(': ');
-
-      switch (type) {
-        case 'UI':
-          this.selected_ui = this.selected_ui.filter(item => item !== value);
-          break;
-        case 'Styl':
-          this.selected_style = this.selected_style.filter(item => item !== value);
-          break;
-        case 'Kolor':
-          this.selected_color = this.selected_color.filter(item => item !== value);
-          break;
-        case 'Kolejność':
-          this.selected_order = '';
-          break;
-      }
-
-      this.selectedOptions = this.selectedOptions.filter(opt => opt !== tagText);
-    },
-    toggleOption(option) {
-      this.activeToggle = option;
-    },
     toggleCheckbox(event, id) {
       // Добавляем проверку, что клик не по label и не по самому checkbox
-      if (event.target.tagName !== 'LABEL' && event.target.type !== 'checkbox' && event.target.type !== 'radio') {
+      if (event.target.tagName !== 'LABEL' && event.target.type !== 'checkbox') {
         const checkbox = document.getElementById(id);
         if (checkbox) {
           checkbox.checked = !checkbox.checked;
@@ -146,12 +163,13 @@ export default {
         }
       }
     },
-    handleReload() {
+    async handleReload() {
       this.isSpinning = true;
       setTimeout(() => {
         this.isSpinning = false;
         this.isTagNumChanged = false;
-      }, 3000);
+      }, 500);
+      this.$root.reloadView();
     },
   }
 };
@@ -170,7 +188,7 @@ export default {
         <div class="toggle-option" :class="{ active: activeToggle === 'public' }" @click="toggleOption('public')">
           Publiczne
         </div>
-        <div class="toggle-option" :class="{ active: activeToggle === 'purchased' }" @click="toggleOption('purchased')">
+        <div class="toggle-option" :class="{ active: activeToggle === 'private' }" @click="toggleOption('private')">
           Płatne
         </div>
       </div>
@@ -205,19 +223,8 @@ export default {
         </ul>
       </div>
 
-      <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'order' }" ref="order">
-        <span class="anchor" @click="toggleDropdown('order', $event)">Kolejność</span>
-        <ul class="items">
-          <li v-for="option in order" :key="option.value" @click="toggleCheckbox($event, 'order-' + option.value)">
-            <input type="radio" :id="'order-' + option.value" :value="option.value" v-model="selected_order">
-            <label :for="'order-' + option.value">{{ option.text }}</label>
-          </li>
-        </ul>
-      </div>
-
       <section class="selected-tags">
-        <!-- ready tag -->
-        <TagView v-for="option in selectedOptions" :key="option" :text="option" @delete="removeTag" />
+        <TagView v-for="option in selectedOptions" :key="option" :text="option" @delete="removeTagFromStorage" />
       </section>
     </div>
   </div>

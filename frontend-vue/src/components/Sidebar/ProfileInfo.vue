@@ -1,5 +1,6 @@
 <script>
 import { userService } from '@/services/user';
+import defaultAvatar from '@/assets/Images/avatar.png';
 
 export default {
   name: "ProfileInfo",
@@ -8,7 +9,7 @@ export default {
       isLoggedIn: localStorage.getItem('JWT') !== null,
       user: {
         name: '',
-        image: 'https://placehold.co/600x600',
+        image: defaultAvatar,
       }
     }
   },
@@ -100,6 +101,12 @@ export default {
   border: 0.5px solid white;
   padding: 12px 25px;
   color: var(--primery-text-color);
+
+  a {
+    text-decoration: none;
+    color: var(--primery-text-color);
+  }
+
   font-size: 16px;
   font-weight: 700;
 }
@@ -113,8 +120,12 @@ export default {
   background-color: var(--element-light-color);
   border-radius: 7px;
   border: 0.5px solid white;
-  padding: 12px 50px;
+  padding: 12px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
 .username {

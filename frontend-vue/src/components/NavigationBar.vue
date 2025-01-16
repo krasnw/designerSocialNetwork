@@ -6,14 +6,6 @@ import RankingIcon from '@/assets/Icons/RankingIcon.vue';
 import SettingsIcon from '@/assets/Icons/SettingsIcon.vue';
 import TaskListIcon from '@/assets/Icons/TaskListIcon.vue';
 
-const navigationItems = [
-  { name: 'feed', component: FeedIcon, weight: 1 },
-  { name: 'addPost', component: AddPostIcon, weight: 2 },
-  { name: 'conversations', component: ConversationsIcon, weight: 3 },
-  { name: 'ranking', component: RankingIcon, weight: 4 },
-  { name: 'taskList', component: TaskListIcon, weight: 5 }
-]
-
 export default {
   name: "NavigationBar",
   components: {

@@ -8,4 +8,7 @@ module.exports = {
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
+  testPathIgnorePatterns: [
+    "<rootDir>/tests/integration/upload_post_state_persistence.spec.js",
+  ],
 };

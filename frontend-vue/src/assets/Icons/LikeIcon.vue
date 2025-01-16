@@ -1,12 +1,6 @@
 <script>
 export default {
   name: 'LikeIcon',
-  // props: {
-  //   isLiked: {
-  //     type: Boolean,
-  //     default: false
-  //   }
-  // },
   data() {
     return {
       isLiked: false

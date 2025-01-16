@@ -76,7 +76,6 @@ describe("UploadPost.vue", () => {
     wrapper.vm.handleFileChange(event);
     expect(wrapper.vm.selectedFiles.length).toBe(5);
 
-    // Add 3 more files
     const moreFiles = Array(3).fill(new File([""], "test.jpg"));
     const secondEvent = {
       target: {

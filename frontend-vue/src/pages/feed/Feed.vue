@@ -140,6 +140,7 @@ export default {
   padding: 40px 80px;
   border-radius: 10px;
   backdrop-filter: blur(10px);
+  width: max-content;
 }
 
 .sentinel {

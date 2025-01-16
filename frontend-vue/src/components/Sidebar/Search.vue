@@ -26,6 +26,10 @@ export default {
   justify-content: space-between;
 }
 
+.search-container:focus-within {
+  outline: 1px solid white;
+}
+
 .search {
   margin: 0;
   padding: 10px 20px;
@@ -35,6 +39,10 @@ export default {
   background-color: transparent;
   font-weight: 600;
   font-size: 14px;
+}
+
+.search:focus {
+  outline: none;
 }
 
 .search-icon {

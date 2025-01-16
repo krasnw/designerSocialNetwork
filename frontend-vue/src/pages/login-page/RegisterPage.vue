@@ -13,7 +13,6 @@ export default {
       email: '',
       phoneNumber: '',
       firstName: '',
-      // middleName: '',
       lastName: '',
       password: '',
       passwordRepeat: '',
@@ -21,7 +20,6 @@ export default {
         username: null,
         email: null,
         firstName: null,
-        // middleName: null,
         lastName: null,
         password: null,
         passwordRepeat: null,
@@ -124,30 +122,31 @@ export default {
   <main>
     <h2 class="page-name">Rejestracja</h2>
     <section>
-      <form class="form background" @submit="handleRegister">
+      <form class="form background" autocomplete="false" @submit="handleRegister">
         <div class="register-form first-column">
           <h3>Dane logowania</h3>
           <div class="form-group">
-            <input type="text" v-model="username" :class="{ 'error': errors.username }" placeholder="Nazwa użytkownika"
-              @blur="validateField('username')" />
+            <input autocomplete="false" type="text" v-model="username" :class="{ 'error': errors.username }"
+              placeholder="Nazwa użytkownika" @blur="validateField('username')" />
             <span class="error-message" v-if="errors.username">{{ errors.username }}</span>
           </div>
 
           <div class="form-group">
-            <input type="email" v-model="email" :class="{ 'error': errors.email }" placeholder="Email"
-              @blur="validateField('email')" />
+            <input autocomplete="false" type="email" v-model="email" :class="{ 'error': errors.email }"
+              placeholder="Email" @blur="validateField('email')" />
             <span class="error-message" v-if="errors.email">{{ errors.email }}</span>
           </div>
 
           <div class="form-group">
-            <input type="password" v-model="password" :class="{ 'error': errors.password }" placeholder="Hasło"
-              @blur="validateField('password')" />
+            <input autocomplete="false" type="password" v-model="password" :class="{ 'error': errors.password }"
+              placeholder="Hasło" @blur="validateField('password')" />
             <span class="error-message" v-if="errors.password">{{ errors.password }}</span>
           </div>
 
           <div class="form-group">
-            <input type="password" v-model="passwordRepeat" :class="{ 'error': errors.passwordRepeat }"
-              placeholder="Powtórz hasło" @blur="validateField('passwordRepeat')" />
+            <input autocomplete="false" type="password" v-model="passwordRepeat"
+              :class="{ 'error': errors.passwordRepeat }" placeholder="Powtórz hasło"
+              @blur="validateField('passwordRepeat')" />
             <span class="error-message" v-if="errors.passwordRepeat">{{ errors.passwordRepeat }}</span>
           </div>
         </div>
@@ -155,22 +154,18 @@ export default {
         <div class="register-form second-column">
           <h3>Dane o użytkowniku</h3>
           <div class="form-group">
-            <input type="text" v-model="firstName" :class="{ 'error': errors.firstName }" placeholder="Imię"
-              @blur="validateField('firstName')" />
+            <input autocomplete="false" type="text" v-model="firstName" :class="{ 'error': errors.firstName }"
+              placeholder="Imię" @blur="validateField('firstName')" />
             <span class="error-message" v-if="errors.firstName">{{ errors.firstName }}</span>
           </div>
 
-          <!-- <div class="form-group">
-            <input type="text" v-model="middleName" placeholder="Drugie imię (opcjonalnie)" />
-          </div> -->
-
-          <div class="form-group">
+          <div autocomplete="false" class="form-group">
             <input type="text" v-model="phoneNumber" :class="{ 'error': errors.phoneNumber }"
               placeholder="Numer telefonu (+48...)" @blur="validateField('phoneNumber')" />
             <span class="error-message" v-if="errors.phoneNumber">{{ errors.phoneNumber }}</span>
           </div>
 
-          <div class="form-group">
+          <div autocomplete="false" class="form-group">
             <input type="text" v-model="lastName" :class="{ 'error': errors.lastName }" placeholder="Nazwisko"
               @blur="validateField('lastName')" />
             <span class="error-message" v-if="errors.lastName">{{ errors.lastName }}</span>
@@ -286,7 +281,6 @@ export default {
   gap: 20px;
   width: max-content;
   padding: 20px;
-  box-shadow: 0 4px 8px var(--shadow-color);
 }
 
 .form-group {

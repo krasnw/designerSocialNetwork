@@ -4,8 +4,8 @@ import Lock from '@/assets/Icons/Lock.vue';
 import ShareIcon from '@/assets/Icons/ShareIcon.vue';
 import { Splide, SplideSlide } from '@splidejs/vue-splide';
 import '@splidejs/vue-splide/css';
-
-const API_URL = "http://localhost:8088";
+import { API_URL } from '@/services/constants';
+import defaultAvatar from '@/assets/Images/avatar.png';
 
 export default {
   name: 'PostView',
@@ -33,7 +33,7 @@ export default {
         ...this.post,
         username: this.post.author?.username || '',
         displayName: `${this.post.author?.firstName || ''} ${this.post.author?.lastName || ''}`.trim(),
-        userProfilePicture: 'https://placehold.co/300x300',
+        userProfilePicture: this.post.author?.avatar || defaultAvatar,
         postPictures: this.post.mainImageFilePath ? [`${API_URL}${this.post.mainImageFilePath}`] : [],
         tags: this.post.tags || [],
         likes: this.post.likes || 0,
@@ -78,9 +78,9 @@ export default {
   },
 
   methods: {
-    navigateToProfile() {
+    navigateToPortfolio() {
       if (this.formattedPost.username) {
-        this.$router.push(`/profile/${this.formattedPost.username}`);
+        this.$router.push(`/${this.formattedPost.username}/portfolio`);
       }
     }
   }
@@ -92,7 +92,7 @@ export default {
     <div class="post-content">
       <Splide class="picture-slider" :options="splideOptions" aria-label="Post slides">
         <SplideSlide v-for="(picture, index) in formattedPost.postPictures" :key="index">
-          <img class="slide" :src="picture" alt="Post Picture">
+          <img class="slide" :src="picture" alt="Post Picture" onmousedown='return false;' ondragstart='return false;'>
         </SplideSlide>
       </Splide>
       <article class="post-description">
@@ -108,7 +108,7 @@ export default {
     </div>
 
     <header class="post-header">
-      <span class="post-profile" @click="navigateToProfile" role="button">
+      <span class="post-profile" @click="navigateToPortfolio" role="button">
         <img :src="formattedPost.userProfilePicture" alt="User Profile Picture">
         <h4>{{ formattedPost.displayName }}</h4>
       </span>

@@ -1,56 +1,132 @@
 import { getAuthHeaders } from "./auth";
-const API_URL = "http://localhost:8088";
+import { API_URL } from "./constants";
+
+const CACHE_NAME = "user-cache-v1";
+const CACHE_KEY = "/api/user-profile";
+const CACHE_DURATION = 30 * 60 * 1000;
+
+// Error messages
+const ERROR_MESSAGES = {
+  PROFILE_FETCH_FAILED: "Unable to get profile data.",
+  PROFILE_FETCH_ERROR: "Occurred error while fetching profile data:",
+  EMPTY_USERNAME: "Username field is empty.",
+  USER_NOT_FOUND: "There is no user with this username",
+  REQUEST_FAILED: "Unable to send request.",
+  REQUEST_ERROR: "Occurred error while sending request:",
+};
+
+async function fetchUserData(endpoint) {
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+  return response;
+}
+
+// API error handler
+function handleFetchError(response, defaultErrorMessage) {
+  if (response.status === 404) {
+    throw new Error(ERROR_MESSAGES.USER_NOT_FOUND);
+  }
+  if (!response.ok) {
+    throw new Error(defaultErrorMessage);
+  }
+}
 
 export const userService = {
-  async getMyData() {
+  async getMyData(forceRefresh = false) {
     try {
-      const response = await fetch(`${API_URL}/User/profile/me`, {
-        method: "GET",
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error("Не удалось получить данные профиля");
+      if (!forceRefresh) {
+        const cached = await this.getFromCache();
+        if (cached) return cached;
       }
 
-      return await response.json();
+      const response = await fetchUserData("/User/profile/me");
+      handleFetchError(response, ERROR_MESSAGES.PROFILE_FETCH_FAILED);
+      const userData = await response.json();
+
+      await this.saveToCache(userData);
+      return userData;
     } catch (error) {
-      throw new Error("Ошибка при получении данных профиля: " + error.message);
+      throw new Error(`${ERROR_MESSAGES.PROFILE_FETCH_ERROR} ${error.message}`);
     }
+  },
+
+  async getFromCache() {
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      const response = await cache.match(CACHE_KEY);
+
+      if (!response) return null;
+
+      const { timestamp, data } = await response.json();
+      return Date.now() - timestamp > CACHE_DURATION ? null : data;
+    } catch {
+      return null;
+    }
+  },
+
+  async saveToCache(data) {
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      const cacheData = {
+        timestamp: Date.now(),
+        data,
+      };
+      await cache.put(CACHE_KEY, new Response(JSON.stringify(cacheData)));
+    } catch (error) {
+      console.error("Failed to cache user data:", error);
+    }
+  },
+
+  async clearCache() {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.delete(CACHE_KEY);
   },
 
   async getUserData(username) {
     try {
-      console.log("Getting data for username:", username);
-
       if (!username) {
-        throw new Error("Username не может быть пустым");
+        throw new Error(ERROR_MESSAGES.EMPTY_USERNAME);
       }
+      const response = await fetchUserData(`/User/profile/${username}`);
+      handleFetchError(response, ERROR_MESSAGES.PROFILE_FETCH_FAILED);
+      return await response.json();
+    } catch (error) {
+      if (error.message === ERROR_MESSAGES.USER_NOT_FOUND) {
+        throw error; // Case for 404 res code status
+      }
+      throw new Error(`${ERROR_MESSAGES.PROFILE_FETCH_ERROR} ${error.message}`);
+    }
+  },
 
-      const response = await fetch(`${API_URL}/User/profile/${username}`, {
-        method: "GET",
-        headers: getAuthHeaders(),
+  async sendRequest(receiver, description) {
+    try {
+      const requestData = {
+        receiver: receiver.toString(),
+        description: description.toString(),
+      };
+      const response = await fetch(`${API_URL}/Chat/sendRequest`, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestData),
       });
 
-      console.log("Response status:", response.status);
-
-      if (response.status === 404) {
-        throw new Error("404");
-      }
-
       if (!response.ok) {
-        throw new Error("Не удалось получить данные профиля");
+        throw new Error(ERROR_MESSAGES.REQUEST_FAILED);
       }
 
-      const data = await response.json();
-      console.log("Received data:", data);
-      return data;
-    } catch (error) {
-      console.error("Service error:", error);
-      if (error.message === "404") {
-        throw error;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return await response.json();
       }
-      throw new Error("Ошибка при получении данных профиля: " + error.message);
+
+      return { success: true };
+    } catch (error) {
+      throw new Error(`${ERROR_MESSAGES.REQUEST_ERROR} ${error.message}`);
     }
   },
 };

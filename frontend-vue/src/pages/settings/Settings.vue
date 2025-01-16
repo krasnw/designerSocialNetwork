@@ -1,4 +1,6 @@
 <script>
+import { filterTagService } from '@/services/filterTag';
+
 export default {
   name: "SettingsPage",
   data() {
@@ -38,6 +40,16 @@ export default {
       this.isInvalidPages = false;
       localStorage.setItem('postsPerRequest', value);
     },
+    clearData() {
+      filterTagService.clearCache();
+      if (window.caches) {
+        caches.keys().then(names => {
+          names.forEach(name => {
+            caches.delete(name);
+          });
+        });
+      }
+    }
   },
   mounted() {
     // Меняем значение по умолчанию на false
@@ -95,6 +107,11 @@ export default {
               :style="{ border: isInvalidPages ? '0.5px solid var(--delete-button-border-color)' : '0.5px solid var(--element-border-light-color)' }">
           </label>
         </article>
+
+        <article class="settings-cell">
+          <p>Wyczyść pamięć podręczną</p>
+          <button class="button" @click="clearData">Wyczyść</button>
+        </article>
       </section>
 
       <section class="settings background" v-if="isLoggedIn()">
@@ -130,6 +147,10 @@ export default {
   font-weight: 600;
   font-size: 14px;
   width: max-content;
+}
+
+.button:hover {
+  background-color: var(--element-hover-light-color);
 }
 
 .settings {

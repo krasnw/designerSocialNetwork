@@ -14,7 +14,7 @@ export default {
   },
   computed: {
     formattedLikes() {
-      const likes = this.post.like;
+      const likes = this.post.likes;
       if (likes >= 1000) {
         return (likes / 1000).toFixed(1).replace('.', ',') + ' K';
       }
@@ -26,7 +26,8 @@ export default {
 
 <template>
   <article class="post-preview background">
-    <img class="post-preview-img" :src="post.image" alt="post.title">
+    <img class="post-preview-img" :src="post.image" alt="post.title" onmousedown='return false;'
+      ondragstart='return false;'>
     <span class="post-preview-info background">
       <h4 class="post-preview-title">{{ post.title }}</h4>
       <span class="post-like">

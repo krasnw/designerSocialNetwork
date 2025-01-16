@@ -1,29 +1,49 @@
 import { getAuthHeaders } from "./auth";
-const API_URL = "http://localhost:8088";
+import { API_URL } from "./constants";
+import { filterTagController } from "./filterTag";
 
 export const postsContentService = {
-  async getFeedPosts(
-    pageNumber = 1,
-    pageSize = null,
-    tags = null,
-    accessType = null
-  ) {
+  async getFeedPosts(pageNumber = 1) {
     const defaultPageSize = localStorage.getItem("postsPerRequest") || 3;
     const params = new URLSearchParams({
       pageNumber: pageNumber,
-      pageSize: pageSize || defaultPageSize,
+      pageSize: defaultPageSize,
     });
+
+    const tags = filterTagController.getAllSelectedTags();
+    const accessType = filterTagController.getAccessType();
 
     if (tags) params.append("tags", tags);
     if (accessType) params.append("accessType", accessType);
 
     const response = await fetch(`${API_URL}/Post/feed?${params}`, {
       headers: getAuthHeaders(),
+    }).catch((error) => {
+      console.error("Error:", error);
+      throw new Error("Failed to fetch posts");
     });
 
-    if (!response.ok) {
+    return await response.json();
+  },
+};
+
+export const miniPostsContentService = {
+  async getPortfolioPosts(username) {
+    const params = new URLSearchParams({});
+    const tags = filterTagController.getAllSelectedTags();
+    const accessType = filterTagController.getAccessType();
+    if (tags) params.append("tags", tags);
+    if (accessType) params.append("accessType", accessType);
+
+    const response = await fetch(
+      `${API_URL}/Post/profile/${username}/mini?${params}`,
+      {
+        headers: getAuthHeaders(),
+      }
+    ).catch((error) => {
+      console.error("Error:", error);
       throw new Error("Failed to fetch posts");
-    }
+    });
 
     return await response.json();
   },
