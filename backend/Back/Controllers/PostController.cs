@@ -219,19 +219,33 @@ public class PostController : ControllerBase
                 });
             }
 
+            var mainImageIndex = 0;
+            if (request.MainImageIndex!=null && request.MainImageIndex >= 0 && request.MainImageIndex < uploadedPaths.Count)
+            {
+                mainImageIndex = request.MainImageIndex;
+            }
+
             var createRequest = new PostCreationData
             {
                 Title = request.Title,
                 Content = request.Content,
                 ImagePaths = uploadedPaths,
-                MainImagePath = uploadedPaths[request.MainImageIndex],
+                MainImagePath = uploadedPaths[mainImageIndex],
                 Tags = request.Tags ?? new List<string>(),
                 AccessLevel = request.AccessLevel
             };
 
             var post = await _postService.CreatePost(username, createRequest);
             if (post != null)
-                return Ok(PostDto.MapToPostDto(post));
+            {
+                string? protectedAccessLink = null;
+                if (post.Access.Equals("protected", StringComparison.OrdinalIgnoreCase))
+                {
+                    var hash = _postService.GenerateProtectedAccessHash(post.Id);
+                    protectedAccessLink = $"{Request.Scheme}://{Request.Host}/post/protected/{hash}";
+                }
+                return Ok(PostDto.MapToPostDto(post, protectedAccessLink));
+            }
 
             // If post creation failed, cleanup uploaded images
             foreach (var path in uploadedPaths)
@@ -261,9 +275,6 @@ public class PostController : ControllerBase
     {
         if (string.IsNullOrEmpty(request.Title))
             return "Title is required";
-            
-        if (string.IsNullOrEmpty(request.Content))
-            return "Content is required";
             
         if (!request.Images.Any())
             return "At least one image is required";
