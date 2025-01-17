@@ -486,9 +486,6 @@ public class PostService : IPostService
         if (request.ImagePaths.Count > 10)
             throw new ArgumentException("Maximum 10 images allowed per post");
 
-        if (!request.ImagePaths.Contains(request.MainImagePath))
-            throw new ArgumentException("Main image must be one of the uploaded images");
-
         try
         {
             // 1. Create image container
@@ -504,9 +501,10 @@ public class PostService : IPostService
 
             // 4. Return the created post
             var post = GetPost(postId);
+            if (post == null) throw new Exception("Post creation failed, post is null");
 
             // Generate protected access hash if post is protected
-            if (post != null && post.Access.Equals("protected", StringComparison.OrdinalIgnoreCase))
+            if (post.Access.Equals("protected", StringComparison.OrdinalIgnoreCase))
             {
                 var hash = GenerateProtectedAccessHash(post.Id);
                 // Add hash to response or handle it as needed
@@ -516,12 +514,22 @@ public class PostService : IPostService
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"Error in CreatePost: {ex.Message}");
             throw new Exception($"Failed to create post: {ex.Message}", ex);
         }
     }
 
     private long CreateImageContainer(List<string> imagePaths, string mainImagePath, string username)
     {
+        if (imagePaths == null || !imagePaths.Any())
+            throw new ArgumentException("Image paths cannot be null or empty");
+
+        if (string.IsNullOrEmpty(mainImagePath))
+            throw new ArgumentException("Main image path cannot be null or empty");
+
+        if (string.IsNullOrEmpty(username))
+            throw new ArgumentException("Username cannot be null or empty");
+
         NpgsqlConnection connection = null;
         NpgsqlCommand command = null;
         var containerId = 0;
@@ -634,6 +642,10 @@ public class PostService : IPostService
 
     private long CreatePostRecord(string username, PostCreationData request, long containerId)
     {
+        // Add null checks and default values
+        var accessLevel = string.IsNullOrEmpty(request.AccessLevel) ? "public" : request.AccessLevel.ToLower();
+        var title = request.Title ?? throw new ArgumentException("Title cannot be null");
+
         var query = @"
             INSERT INTO api_schema.post (
                 user_id, post_name, post_text, container_id, 
@@ -649,10 +661,10 @@ public class PostService : IPostService
         var parameters = new Dictionary<string, object>
         {
             { "@username", username },
-            { "@title", request.Title },
-            { "@content", (object?)request.Content ?? DBNull.Value }, // Handle null content
+            { "@title", title },
+            { "@content", (object?)request.Content ?? DBNull.Value },
             { "@containerId", containerId },
-            { "@accessLevel", request.AccessLevel.ToLower() }
+            { "@accessLevel", accessLevel }
         };
 
         NpgsqlConnection connection = null;
@@ -676,8 +688,13 @@ public class PostService : IPostService
 
     private void AddPostTags(long postId, List<string> tags)
     {
+        // Add null check for tags
+        if (tags == null) return;
+
         foreach (var tag in tags)
         {
+            if (string.IsNullOrEmpty(tag)) continue;
+
             // First ensure tag exists
             var tagQuery = @"
                 INSERT INTO api_schema.tags (tag_name, tag_type)

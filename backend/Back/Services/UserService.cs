@@ -165,7 +165,7 @@ public class UserService : IUserService
             var user = new User(username, email, password, firstName, lastName, phoneNumber,
                 0, AccountTypes.Status.active.ToString(), AccountTypes.Level.user.ToString(), 
                 "Użytkownik nie dodał jeszcze opisu.", 
-                string.IsNullOrEmpty(profileImage) ? "default.jpg" : profileImage);
+                "default.png");  // Always set default.png here
 
             string uniqueErrorMessage;
             if (!IsUnique(user, out uniqueErrorMessage))
@@ -203,7 +203,7 @@ public class UserService : IUserService
                 { "@accountStatus", AccountTypes.Status.active.ToString() },
                 { "@accountLevel", AccountTypes.Level.user.ToString() },
                 { "@description", "Użytkownik nie dodał jeszcze opisu." },
-                { "@profileImage", profileImage }
+                { "@profileImage", "default.png" }  // Always use default.png here
             };
 
             using var command = new NpgsqlCommand(userQuery, connection);
