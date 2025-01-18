@@ -154,14 +154,18 @@ p {
 
 .button {
   border: 0.5px solid;
-  border-radius: 10px;
-  padding: 10px 30px;
+  border-radius: 12px;
+  padding: 10px;
+  width: 100px;
   color: rgba(255, 255, 255, 0.8);
   font-weight: 700;
-  font-size: 17px;
+  font-size: 14px;
   backdrop-filter: blur(40px);
   box-shadow: 5px 5px 25px 0px rgba(0, 0, 0, 0.25);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   -webkit-user-select: none;
   -ms-user-select: none;
   user-select: none;

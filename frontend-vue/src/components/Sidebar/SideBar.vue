@@ -29,6 +29,7 @@ export default {
       hidden: sidebarAlwaysOpen ? false : (JSON.parse(localStorage.getItem('sidebarHidden')) || false),
       rotated: sidebarAlwaysOpen ? true : (JSON.parse(localStorage.getItem('sidebarRotated')) || true),
       alwaysOpen: sidebarAlwaysOpen,
+      // TODO: Вынести чаты в отдельный компонент
       users: [
         {
           name: 'Steve Jobs',
@@ -116,6 +117,7 @@ export default {
         <Search />
         <article class="profile-badges">
           <h3>Czaty</h3>
+
           <ProfileBadge v-for="user in users" :key="user.name" :user="user" />
         </article>
       </div>

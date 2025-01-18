@@ -15,6 +15,7 @@ export default {
   methods: {
     logout() {
       localStorage.removeItem('JWT');
+      this.clearData();
       window.dispatchEvent(new Event('loginStatusChanged'));
       this.$router.push({ name: 'login' });
     },

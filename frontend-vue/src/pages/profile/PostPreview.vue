@@ -1,16 +1,26 @@
 <script>
 import LikeIcon from '@/assets/Icons/LikeIcon.vue';
+import PostView from '@/components/PostView.vue';
+import { postsContentService } from '@/services/postsContent';
 
 export default {
   name: 'PostPreview',
   components: {
     LikeIcon,
+    PostView
+  },
+  data() {
+    return {
+      isLoading: false,
+      fullPostVisible: false,
+      fullPost: null
+    }
   },
   props: {
     post: {
       type: Object,
       required: true
-    }
+    },
   },
   computed: {
     formattedLikes() {
@@ -21,29 +31,72 @@ export default {
       return likes;
     }
   },
+  methods: {
+    async showPost() {
+      this.isLoading = true;
+      this.fullPost = await postsContentService.getPost(this.post.id).finally(() => {
+        this.isLoading = false;
+      });
+      this.fullPostVisible = true;
+    },
+    hidePost() {
+      this.fullPostVisible = false;
+    },
+    async deletePost() {
+      await postsContentService.deletePost(this.post.id);
+      this.$root.reloadView();
+    },
+  }
 }
 </script>
 
 <template>
-  <article class="post-preview background">
-    <img class="post-preview-img" :src="post.image" alt="post.title" onmousedown='return false;'
-      ondragstart='return false;'>
-    <span class="post-preview-info background">
-      <h4 class="post-preview-title">{{ post.title }}</h4>
-      <span class="post-like">
-        <LikeIcon />
-        <h4>{{ formattedLikes }}</h4>
+  <section class="post-wrapper">
+    <article v-if="!fullPostVisible" class="post-preview background" @click="showPost">
+      <img class="post-preview-img" :src="post.image" alt="post.title" onmousedown='return false;'
+        ondragstart='return false;'>
+      <span class="post-preview-info background">
+        <h4 class="post-preview-title">{{ post.title }}</h4>
+        <span class="post-like">
+          <LikeIcon />
+          <h4>{{ formattedLikes }}</h4>
+        </span>
       </span>
-    </span>
-  </article>
+    </article>
+    <div v-if="isLoading" class="loading">Ładowanie
+      <Spinner class="spinner" />
+    </div>
+    <article v-if="fullPostVisible" class="post-view">
+      <PostView :post="fullPost" />
+      <section class="post-control-buttons">
+        <button class="accept-button button" @click="hidePost">Schowaj</button>
+        <button class="delete-button button" v-if="!$route.params.username" @click="deletePost">Usuń</button>
+        <button class="delete-button button" v-else>Report</button>
+      </section>
+    </article>
+  </section>
 </template>
 
 <style scoped>
+.post-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .post-preview {
   display: flex;
   flex-direction: column;
   width: fit-content;
   transition: transform 0.3s ease;
+  cursor: pointer;
+}
+
+.post-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
 }
 
 .post-preview:hover {
@@ -89,5 +142,22 @@ export default {
   h4 {
     font-weight: 600;
   }
+}
+
+.post-control-buttons {
+  display: flex;
+  width: max-content;
+  gap: 15px;
+  /* padding: 20px; */
+}
+
+.delete-button {
+  background: var(--delete-button-color);
+  border-color: var(--delete-button-border-color);
+}
+
+.accept-button {
+  background: var(--element-light-color);
+  border-color: var(--element-border-light-color);
 }
 </style>

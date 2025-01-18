@@ -111,7 +111,6 @@ export default {
   height: 100%;
   overflow-y: auto;
   position: relative;
-  /* Минимальная высота для корректной работы прокрутки */
 }
 
 .loading,

@@ -25,6 +25,27 @@ export const postsContentService = {
 
     return await response.json();
   },
+  async getPost(postId) {
+    const response = await fetch(`${API_URL}/Post/${postId}`, {
+      headers: getAuthHeaders(),
+    }).catch((error) => {
+      console.error("Error:", error);
+      throw new Error("Failed to fetch post");
+    });
+
+    return await response.json();
+  },
+  async deletePost(postId) {
+    const response = await fetch(`${API_URL}/Post/${postId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    }).catch((error) => {
+      console.error("Error:", error);
+      throw new Error("Failed to delete post");
+    });
+
+    return await response.json();
+  },
 };
 
 export const miniPostsContentService = {
