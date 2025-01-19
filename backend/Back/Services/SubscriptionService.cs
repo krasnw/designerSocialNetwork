@@ -9,18 +9,19 @@ public class SubscriptionService : ISubscriptionService
     private static class SqlQueries
     {
         public const string BuyAccess = @"
-            INSERT INTO api_schema.private_access (buyer_id, seller_id, transaction_id, price_at_time, access_date)
-            SELECT 
-                (SELECT id FROM api_schema.user WHERE username = @BuyerId),
-                (SELECT id FROM api_schema.user WHERE username = @SellerId),
+            INSERT INTO api_schema.private_access (
+                buyer_id, 
+                seller_id, 
+                transaction_id, 
+                price_at_time, 
+                access_date
+            )
+            VALUES (
+                (SELECT id FROM api_schema.user WHERE username = @BuyerUsername),
+                (SELECT id FROM api_schema.user WHERE username = @SellerUsername),
                 @TransactionId,
                 @PriceAtTime,
                 @AccessDate
-            WHERE NOT EXISTS (
-                SELECT 1 FROM api_schema.private_access
-                WHERE buyer_id = (SELECT id FROM api_schema.user WHERE username = @BuyerId)
-                AND seller_id = (SELECT id FROM api_schema.user WHERE username = @SellerId)
-                AND access_date > CURRENT_DATE
             )";
 
         public const string CancelSubscription = @"
@@ -29,15 +30,20 @@ public class SubscriptionService : ISubscriptionService
             AND seller_id = (SELECT id FROM api_schema.user WHERE username = @SellerId)";
 
         public const string CheckSubscription = @"
-            SELECT COUNT(*) FROM api_schema.private_access
-            WHERE buyer_id = (SELECT id FROM api_schema.user WHERE username = @BuyerId)
-            AND seller_id = (SELECT id FROM api_schema.user WHERE username = @SellerId)
-            AND access_date > CURRENT_DATE";
+            SELECT COUNT(*) 
+            FROM api_schema.private_access pa
+            JOIN api_schema.user buyer ON pa.buyer_id = buyer.id
+            JOIN api_schema.user seller ON pa.seller_id = seller.id
+            WHERE buyer.username = @BuyerUsername 
+            AND seller.username = @SellerUsername
+            AND pa.access_date > CURRENT_DATE";
 
         public const string GetSubscriptions = @"
-            SELECT DISTINCT u.* FROM api_schema.user u
+            SELECT DISTINCT u.* 
+            FROM api_schema.user u
             JOIN api_schema.private_access pa ON u.id = pa.seller_id
-            WHERE pa.buyer_id = (SELECT id FROM api_schema.user WHERE username = @BuyerId)
+            JOIN api_schema.user buyer ON pa.buyer_id = buyer.id
+            WHERE buyer.username = @BuyerUsername
             AND pa.access_date > CURRENT_DATE";
 
         public const string GetSubscribers = @"
@@ -51,24 +57,32 @@ public class SubscriptionService : ISubscriptionService
             WHERE username = @SellerId";
 
         public const string GetWalletBalance = @"
-            SELECT amount FROM api_schema.wallet 
-            WHERE user_id = (SELECT id FROM api_schema.user WHERE username = @Username)";
+            SELECT w.amount 
+            FROM api_schema.wallet w
+            JOIN api_schema.user u ON w.user_id = u.id
+            WHERE u.username = @Username";
 
         public const string UpdateWalletBalance = @"
-            UPDATE api_schema.wallet 
-            SET amount = amount + @Amount 
-            WHERE user_id = (SELECT id FROM api_schema.user WHERE username = @Username)";
+            UPDATE api_schema.wallet w
+            SET amount = amount + @Amount
+            FROM api_schema.user u
+            WHERE w.user_id = u.id AND u.username = @Username";
 
         public const string CreateInnerTransaction = @"
-            INSERT INTO api_schema.inner_transaction (amount, transaction_date, user_id, wallet_id)
-            VALUES (
+            INSERT INTO api_schema.inner_transaction (
+                amount, 
+                transaction_date, 
+                user_id, 
+                wallet_id
+            )
+            SELECT 
                 @Amount,
                 @TransactionDate,
-                (SELECT id FROM api_schema.user WHERE username = @Username),
-                (SELECT w.id FROM api_schema.wallet w 
-                 JOIN api_schema.user u ON w.user_id = u.id 
-                 WHERE u.username = @Username)
-            )
+                u.id,
+                w.id
+            FROM api_schema.user u
+            JOIN api_schema.wallet w ON w.user_id = u.id
+            WHERE u.username = @Username
             RETURNING id";
 
         public const string GetExpiringSubscriptions = @"
@@ -162,12 +176,12 @@ public class SubscriptionService : ISubscriptionService
         }
     }
 
-    private async Task ProcessWalletTransactions(string buyerId, string sellerId, float amount)
+    private async Task ProcessWalletTransactions(string buyerUsername, string sellerUsername, float amount)
     {
         // Deduct from buyer's wallet
         var deductParams = new Dictionary<string, object>
         {
-            { "@Username", buyerId },
+            { "@Username", buyerUsername },
             { "@Amount", -amount }
         };
         await _databaseService.ExecuteNonQueryAsync(SqlQueries.UpdateWalletBalance, deductParams);
@@ -175,7 +189,7 @@ public class SubscriptionService : ISubscriptionService
         // Add to seller's wallet
         var addParams = new Dictionary<string, object>
         {
-            { "@Username", sellerId },
+            { "@Username", sellerUsername },
             { "@Amount", amount }
         };
         await _databaseService.ExecuteNonQueryAsync(SqlQueries.UpdateWalletBalance, addParams);
