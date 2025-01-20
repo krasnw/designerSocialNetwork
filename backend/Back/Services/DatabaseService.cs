@@ -59,6 +59,21 @@ public class DatabaseService : IDatabaseService
     }
 
     public DbDataReader ExecuteQuery(string query, out NpgsqlConnection connection, out NpgsqlCommand command,
+    public async Task ExecuteNonQueryAsync(string query, Dictionary<string, object>? parameters = null)
+    {
+        using var connection = GetConnection();
+        using var command = new NpgsqlCommand(query, connection);
+        if (parameters != null)
+        {
+            foreach (var param in parameters)
+            {
+                command.Parameters.AddWithValue(param.Key, param.Value);
+            }
+        }
+        await command.ExecuteNonQueryAsync();
+    }
+
+    public NpgsqlDataReader ExecuteQuery(string query, out NpgsqlConnection connection, out NpgsqlCommand command,
         Dictionary<string, object>? parameters = null)
     {
         connection = GetConnection();
@@ -71,5 +86,19 @@ public class DatabaseService : IDatabaseService
             }
         }
         return command.ExecuteReader();
+    }
+
+    public async Task<NpgsqlDataReader> ExecuteQueryAsync(string query, Dictionary<string, object>? parameters = null)
+    {
+        var connection = GetConnection();
+        var command = new NpgsqlCommand(query, connection);
+        if (parameters != null)
+        {
+            foreach (var param in parameters)
+            {
+                command.Parameters.AddWithValue(param.Key, param.Value);
+            }
+        }
+        return await command.ExecuteReaderAsync();
     }
 }

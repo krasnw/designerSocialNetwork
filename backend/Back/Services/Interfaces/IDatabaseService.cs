@@ -8,6 +8,6 @@ public interface IDatabaseService
     NpgsqlConnection GetConnection();
     DbDataReader ExecuteQuery(string query, out NpgsqlConnection connection, out NpgsqlCommand command, Dictionary<string, object>? parameters = null);
     void ExecuteNonQuery(string query, Dictionary<string, object>? parameters = null);
-    // void ExecuteNonQuery(string query, Dictionary<string, object> parameters, NpgsqlConnection connection, NpgsqlTransaction transaction);
-    // object ExecuteScalar(string query, Dictionary<string, object> parameters, NpgsqlConnection connection, NpgsqlTransaction transaction);
+    Task ExecuteNonQueryAsync(string query, Dictionary<string, object>? parameters = null);
+    Task<NpgsqlDataReader> ExecuteQueryAsync(string query, Dictionary<string, object>? parameters = null);
 }

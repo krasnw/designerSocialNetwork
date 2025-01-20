@@ -82,7 +82,8 @@ CREATE TABLE api_schema.private_access (
     seller_id INTEGER REFERENCES "user"(id),
     transaction_id INTEGER REFERENCES inner_transaction(id),
     price_at_time INTEGER NOT NULL,
-    access_date DATE NOT NULL
+    access_date DATE NOT NULL,
+    auto_renewal BOOLEAN DEFAULT false NOT NULL
 );
 -- end of inner payment block
 
