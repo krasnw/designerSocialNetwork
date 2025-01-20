@@ -11,9 +11,9 @@ public class DatabaseService : IDatabaseService
 
     public DatabaseService(IConfiguration configuration)
     {
-        var baseConnectionString = configuration.GetConnectionString("DefaultConnection") 
+        var baseConnectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-        
+
         // Build connection string with custom pooling settings
         var builder = new NpgsqlConnectionStringBuilder(baseConnectionString)
         {
@@ -23,7 +23,7 @@ public class DatabaseService : IDatabaseService
             // Remove Timeout or set it to 0 for no timeout
             CommandTimeout = 0
         };
-        
+
         _connectionString = builder.ToString();
     }
 
@@ -58,7 +58,6 @@ public class DatabaseService : IDatabaseService
         command.ExecuteNonQuery();
     }
 
-    public DbDataReader ExecuteQuery(string query, out NpgsqlConnection connection, out NpgsqlCommand command,
     public async Task ExecuteNonQueryAsync(string query, Dictionary<string, object>? parameters = null)
     {
         using var connection = GetConnection();
@@ -73,7 +72,7 @@ public class DatabaseService : IDatabaseService
         await command.ExecuteNonQueryAsync();
     }
 
-    public NpgsqlDataReader ExecuteQuery(string query, out NpgsqlConnection connection, out NpgsqlCommand command,
+    public DbDataReader ExecuteQuery(string query, out NpgsqlConnection connection, out NpgsqlCommand command,
         Dictionary<string, object>? parameters = null)
     {
         connection = GetConnection();
