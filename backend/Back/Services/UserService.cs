@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Data.Common;
+using System.Text.RegularExpressions;
 using Back.Models;
 using Npgsql;
 using Back.Services.Interfaces;
@@ -448,9 +449,9 @@ public class UserService : IUserService
     }
 }
 
-// Extension method for NpgsqlDataReader
-public static class NpgsqlDataReaderExtensions
+// Extension method for DbDataReader
+public static class DbDataReaderExtensions
 {
-    public static string GetStringOrDefault(this NpgsqlDataReader reader, int ordinal, string defaultValue = "") =>
+    public static string GetStringOrDefault(this DbDataReader reader, int ordinal, string defaultValue = "") =>
         reader.IsDBNull(ordinal) ? defaultValue : reader.GetString(ordinal);
 }

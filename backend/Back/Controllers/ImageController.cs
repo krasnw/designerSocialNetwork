@@ -32,7 +32,7 @@ public class ImageController : ControllerBase
             }
 
             var filename = await _imageService.UploadImageAsync(file, username);
-            return Ok(new { filename });
+            return Ok(new ImageUploadResponse { Filename = filename });
         }
         catch (ArgumentException ex)
         {
@@ -85,5 +85,10 @@ public class ImageController : ControllerBase
 
         var images = await _imageService.GetUserImagesAsync(username);
         return Ok(images);
+    }
+
+    public class ImageUploadResponse
+    {
+        public string Filename { get; set; }
     }
 }

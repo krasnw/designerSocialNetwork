@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Data.Common;
 using System.Text.RegularExpressions;
 using Back.Models;
 using Back.Models.PostDto;
@@ -26,7 +27,7 @@ public class PostService : IPostService
         _userService = userService;
     }
 
-    private T ExecuteQueryWithDisposable<T>(string query, Dictionary<string, object> parameters, Func<NpgsqlDataReader, T> processor)
+    private T ExecuteQueryWithDisposable<T>(string query, Dictionary<string, object> parameters, Func<DbDataReader, T> processor)
     {
         NpgsqlConnection connection = null;
         NpgsqlCommand command = null;
@@ -66,7 +67,7 @@ public class PostService : IPostService
             reader => !reader.HasRows ? null : ReadMultiplePosts(reader)
         );
 
-    private List<Post> ReadMultiplePosts(NpgsqlDataReader reader)
+    private List<Post> ReadMultiplePosts(DbDataReader reader)
     {
         var posts = new List<Post>();
         while (reader.Read())
@@ -467,7 +468,7 @@ public class PostService : IPostService
         }
     }
 
-    private Post CompilePost(NpgsqlDataReader reader) =>
+    private Post CompilePost(DbDataReader reader) =>
         new(
             reader.GetInt32(0),
             _userService.GetUser(reader.GetInt32(1)),

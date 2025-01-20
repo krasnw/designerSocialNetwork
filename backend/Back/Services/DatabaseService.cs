@@ -1,4 +1,5 @@
-﻿using Npgsql;
+﻿using System.Data.Common;
+using Npgsql;
 using Back.Services.Interfaces;
 using Microsoft.Extensions.Configuration;
 
@@ -57,7 +58,7 @@ public class DatabaseService : IDatabaseService
         command.ExecuteNonQuery();
     }
 
-    public NpgsqlDataReader ExecuteQuery(string query, out NpgsqlConnection connection, out NpgsqlCommand command,
+    public DbDataReader ExecuteQuery(string query, out NpgsqlConnection connection, out NpgsqlCommand command,
         Dictionary<string, object>? parameters = null)
     {
         connection = GetConnection();
