@@ -14,4 +14,5 @@ public interface IPostService
     bool DeletePost(long id, string username);
     Post? GetProtectedPost(string hash);
     string GenerateProtectedAccessHash(long postId);
+    List<PostMini>? GetUserPosts(string username, string? currentUser, int pageNumber, int pageSize, string? tags = null, string? accessType = null);
 }

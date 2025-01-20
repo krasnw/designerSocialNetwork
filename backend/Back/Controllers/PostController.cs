@@ -98,58 +98,20 @@ public class PostController : ControllerBase
     }
 
     [HttpGet("profile/{username}/mini")]
-    public IActionResult GetUserPosts(string username, string? tags = null, string? accessType = null)
+    public IActionResult GetUserPosts(string username, int pageNumber = 1, int pageSize = 10, string? tags = null, string? accessType = null)
     {
+        if (pageNumber < 1) return BadRequest("Page number must be greater than 0.");
+        if (pageSize < 1) return BadRequest("Page size must be greater than 0.");
+        
         var currentUser = User.Identity?.Name;
-        var posts = _postService.GetAllUserPosts(username);
+        var posts = _postService.GetUserPosts(username, currentUser, pageNumber, pageSize, tags, accessType);
         
         if (posts == null || !posts.Any())
-        {
-            return NotFound("No posts found for this user.");
-        }
-
-        // Filter posts based on access rights
-        if (string.IsNullOrEmpty(currentUser))
-        {
-            // Not logged in - show only public posts
-            posts = posts.Where(post => 
-                post.Access.Equals("public", StringComparison.OrdinalIgnoreCase)
-            ).ToList();
-        }
-        else
-        {
-            // Logged in - show public posts and private posts if access was bought
-            posts = posts.Where(post => 
-                post.Access.Equals("public", StringComparison.OrdinalIgnoreCase) ||
-                (post.Access.Equals("private", StringComparison.OrdinalIgnoreCase) && 
-                 _postService.HasUserAccessToPost(currentUser, post.Id))
-            ).ToList();
-        }
-
-        // Apply additional access type filter if specified
-        if (!string.IsNullOrEmpty(accessType))
-        {
-            posts = posts.Where(post => 
-                post.Access.Equals(accessType, StringComparison.OrdinalIgnoreCase)
-            ).ToList();
-        }
-
-        // Apply tag filtering if specified
-        if (!string.IsNullOrEmpty(tags))
-        {
-            var tagList = tags.Split(',').Select(tag => tag.Trim()).ToList();
-            posts = posts.Where(post => 
-                post.Tags.Any(tag => tagList.Contains(tag.Name))
-            ).ToList();
-        }
-
-        if (!posts.Any())
         {
             return NotFound("No posts found matching the specified criteria.");
         }
 
-        var minis = posts.Select(PostMini.MapToPostMini).ToList();
-        return Ok(minis);
+        return Ok(posts);
     }
 
     //delete post

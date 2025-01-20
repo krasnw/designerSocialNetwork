@@ -158,53 +158,106 @@ public class PostService : IPostService
     }
 
     //get al user's posts by page
-    public List<PostMini>? GetUserPosts(string username, int pageNumber, int pageSize)
-    {
-        string query = @"
-    SELECT p.id, p.post_name, i.image_file_path, p.likes
+    public List<PostMini>? GetUserPosts(string username, string? currentUser, int pageNumber, int pageSize, string? tags = null, string? accessType = null)
+{
+    string query = @"
+    SELECT p.id, p.post_name, p.access_level, i.image_file_path, p.likes, 
+           array_agg(DISTINCT t.tag_name) as tags
     FROM api_schema.post p
     JOIN api_schema.image_container c ON p.container_id = c.id
     JOIN api_schema.image i ON c.main_image_id = i.id
     JOIN api_schema.user u ON p.user_id = u.id
+    LEFT JOIN api_schema.post_tags pt ON p.id = pt.post_id
+    LEFT JOIN api_schema.tags t ON pt.tag_id = t.id
     WHERE u.username = @username
+    {0}
+    GROUP BY p.id, p.post_name, p.access_level, i.image_file_path, p.likes
+    {1}
     ORDER BY p.post_date DESC
     LIMIT @pageSize OFFSET @offset";
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
-        try
-        {
-            var offset = ((pageNumber - 1) * pageSize);
-            offset = offset < 0 ? 0 : offset;
-            var parameters = new Dictionary<string, object>
-            {
-                { "@username", username },
-                { "@pageSize", pageSize },
-                { "@offset", offset }
-            };
-            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
 
-            if (!reader.HasRows) return null;
+    var offset = (pageNumber - 1) * pageSize;
+    if (offset < 0) offset = 0;
 
-            var posts = new List<PostMini>();
-            while (reader.Read())
-            {
-                posts.Add(new PostMini
-                {
-                    Id = reader.GetInt32(0),
-                    Title = reader.GetString(1),
-                    MainImageFilePath = reader.GetString(2),
-                    Likes = reader.GetInt32(3)
-                });
-            }
+    var parameters = new Dictionary<string, object>
+    {
+        { "@username", username },
+        { "@pageSize", pageSize },
+        { "@offset", offset }
+    };
 
-            return posts;
-        }
-        finally
-        {
-            command?.Dispose();
-            connection?.Dispose();
-        }
+    // Build access filter
+    string accessFilter = "";
+    if (string.IsNullOrEmpty(currentUser))
+    {
+        accessFilter = "AND p.access_level = 'public'";
     }
+    else if (currentUser != username)
+    {
+        accessFilter = @"AND (p.access_level = 'public' 
+            OR (p.access_level = 'private' 
+                AND EXISTS (
+                    SELECT 1 FROM api_schema.private_access pa 
+                    JOIN api_schema.user u2 ON pa.buyer_id = u2.id 
+                    WHERE u2.username = @currentUser 
+                    AND pa.seller_id = p.user_id
+                )
+            ))";
+        parameters.Add("@currentUser", currentUser);
+    }
+
+    // Add access type filter if specified
+    if (!string.IsNullOrEmpty(accessType))
+    {
+        accessFilter += " AND p.access_level = @accessType";
+        parameters.Add("@accessType", accessType.ToLower());
+    }
+
+    // Build tag filter
+    string tagFilter = "";
+    if (!string.IsNullOrEmpty(tags))
+    {
+        var tagList = tags.Split(',').Select(t => t.Trim().ToLower()).ToArray();
+        tagFilter = "HAVING array_agg(DISTINCT LOWER(t.tag_name)) && @tagList";
+        parameters.Add("@tagList", tagList);
+    }
+
+    // Format the final query
+    query = string.Format(query, accessFilter, tagFilter);
+
+    NpgsqlConnection connection = null;
+    NpgsqlCommand command = null;
+
+    try
+    {
+        using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
+        
+        if (!reader.HasRows) return null;
+
+        var posts = new List<PostMini>();
+        while (reader.Read())
+        {
+            posts.Add(new PostMini
+            {
+                Id = reader.GetInt32(0),
+                Title = reader.GetString(1),
+                Access = reader.GetString(2),
+                MainImageFilePath = reader.GetString(3),
+                Likes = reader.GetInt32(4),
+                Tags = reader.GetValue(5) != DBNull.Value 
+                    ? ((string[])reader.GetValue(5)).Where(t => t != null).ToList() 
+                    : new List<string>()
+            });
+        }
+
+        return posts;
+    }
+    finally
+    {
+        command?.Dispose();
+        connection?.Dispose();
+    }
+}
 
     //check if user has access to post
     public bool HasUserAccessToPost(string username, long postId)
