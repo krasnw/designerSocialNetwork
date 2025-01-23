@@ -13,6 +13,6 @@ public interface IUserService
     User? GetUser(string username);
     UserProfile? GetOwnProfile(string username);
     UserProfile? GetProfile(string username);
-    User.EditRequest? EditData(string username);
-    bool EditProfile(string username, User.EditRequest request);
+    User.EditDataResponse? EditData(string username);
+    Task<bool> EditProfile(string username, User.EditRequest request);
 }

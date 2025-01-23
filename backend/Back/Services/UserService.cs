@@ -70,10 +70,12 @@ public class UserService : IUserService
 
     private readonly HashSet<string> _loggedInUsers = new();
     private readonly IDatabaseService _databaseService;
+    private readonly IImageService _imageService; // Add this field
 
-    public UserService(IDatabaseService databaseService)
+    public UserService(IDatabaseService databaseService, IImageService imageService)
     {
         _databaseService = databaseService;
+        _imageService = imageService;
     }
 
     private void ValidateUserData(string username, string email, string password, string firstName,
@@ -368,7 +370,7 @@ public class UserService : IUserService
 
     public UserProfile GetProfile(string username) => GetProfile(username, false);
 
-    public User.EditRequest EditData(string username)
+    public User.EditDataResponse EditData(string username)
     {
         var query = @"
             SELECT email, first_name, last_name, phone_number, profile_description, 
@@ -383,10 +385,9 @@ public class UserService : IUserService
             if (!reader.HasRows) return null;
 
             reader.Read();
-            return new User.EditRequest
+            return new User.EditDataResponse
             {
                 Email = reader.GetString(0),
-                Password = "",
                 FirstName = reader.GetString(1),
                 LastName = reader.GetString(2),
                 PhoneNumber = reader.GetString(3),
@@ -402,41 +403,79 @@ public class UserService : IUserService
         }
     }
 
-    public bool EditProfile(string username, User.EditRequest request)
+    public async Task<bool> EditProfile(string username, User.EditRequest request)
     {
-        ValidateUserData(null, request.Email, request.Password, request.FirstName, 
-            request.LastName, request.PhoneNumber, false);
+        var parameters = new Dictionary<string, object>();
+        var setStatements = new List<string>();
 
-        var passwordClause = !string.IsNullOrEmpty(request.Password) 
-            ? ", user_password = @Password" 
-            : "";
-        
-        var query = string.Format(SqlQueries.UpdateUser, passwordClause);
-        var parameters = new Dictionary<string, object>
+        if (!string.IsNullOrEmpty(request.Email))
         {
-            { "@Email", request.Email },
-            { "@FirstName", request.FirstName },
-            { "@LastName", request.LastName },
-            { "@PhoneNumber", request.PhoneNumber },
-            { "@Description", request.Description },
-            { "@ProfileImage", request.ProfileImage },
-            { "@AccessFee", request.AccessFee },
-            { "@Username", username }
-        };
+            setStatements.Add("email = @email");
+            parameters.Add("@email", request.Email);
+        }
 
         if (!string.IsNullOrEmpty(request.Password))
         {
-            parameters.Add("@Password", BCrypt.Net.BCrypt.HashPassword(request.Password));
+            setStatements.Add("password = @password");
+            parameters.Add("@password", BCrypt.Net.BCrypt.HashPassword(request.Password));
         }
+
+        if (!string.IsNullOrEmpty(request.FirstName))
+        {
+            setStatements.Add("first_name = @firstName");
+            parameters.Add("@firstName", request.FirstName);
+        }
+
+        if (!string.IsNullOrEmpty(request.LastName))
+        {
+            setStatements.Add("last_name = @lastName");
+            parameters.Add("@lastName", request.LastName);
+        }
+
+        if (!string.IsNullOrEmpty(request.PhoneNumber))
+        {
+            setStatements.Add("phone_number = @phoneNumber");
+            parameters.Add("@phoneNumber", request.PhoneNumber);
+        }
+
+        if (!string.IsNullOrEmpty(request.Description))
+        {
+            setStatements.Add("profile_description = @description");
+            parameters.Add("@description", request.Description);
+        }
+
+        if (request.AccessFee.HasValue)
+        {
+            setStatements.Add("access_fee = @accessFee");
+            parameters.Add("@accessFee", request.AccessFee.Value);
+        }
+
+        if (request.ProfileImage != null)
+        {
+            var imagePath = await _imageService.UploadImageAsync(request.ProfileImage, username);
+            setStatements.Add("profile_picture = @profilePicture");
+            parameters.Add("@profilePicture", imagePath);
+        }
+
+        if (!setStatements.Any())
+        {
+            return true; // Nothing to update
+        }
+
+        parameters.Add("@username", username);
+
+        var query = $@"
+            UPDATE api_schema.user 
+            SET {string.Join(", ", setStatements)}
+            WHERE username = @username";
 
         try
         {
             _databaseService.ExecuteNonQuery(query, parameters);
             return true;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            Console.WriteLine(e.Message);
             return false;
         }
     }

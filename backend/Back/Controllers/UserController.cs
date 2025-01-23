@@ -56,7 +56,7 @@ public class UserController : ControllerBase
     
     [Authorize]
     [HttpPut("profile/me/edit")]
-    public IActionResult EditMyProfile([FromBody] User.EditRequest request)
+    public async Task<IActionResult> EditMyProfile([FromForm] User.EditRequest request)
     {
         var uniqueName = User.Identity?.Name;
         if (string.IsNullOrEmpty(uniqueName)) 
@@ -64,14 +64,14 @@ public class UserController : ControllerBase
         
         try 
         {
-            var success = _userService.EditProfile(uniqueName, request);
+            var success = await _userService.EditProfile(uniqueName, request);
             return success ? Ok() : NotFound();
         }
         catch (ArgumentException ex)
         {
             return BadRequest(new { error = ex.Message });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             return StatusCode(500, new { error = "An unexpected error occurred while updating the profile." });
         }

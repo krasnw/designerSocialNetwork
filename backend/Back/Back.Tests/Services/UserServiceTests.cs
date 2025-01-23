@@ -11,12 +11,14 @@ namespace Back.Tests.Services
     public class UserServiceTests
     {
         private readonly Mock<IDatabaseService> _mockDbService;
+        private readonly Mock<IImageService> _mockImageService;  // Add this
         private readonly UserService _userService;
 
         public UserServiceTests()
         {
             _mockDbService = new Mock<IDatabaseService>();
-            _userService = new UserService(_mockDbService.Object);
+            _mockImageService = new Mock<IImageService>();  // Add this
+            _userService = new UserService(_mockDbService.Object, _mockImageService.Object);
         }
 
        
@@ -91,7 +93,7 @@ namespace Back.Tests.Services
         }
 
         [Fact]
-        public void dEditProfile_WithValidData_ReturnsTrue()
+        public async Task EditProfile_WithValidData_ReturnsTrue()  // Make async
         {
             // Arrange
             var username = "testUser";
@@ -103,17 +105,37 @@ namespace Back.Tests.Services
                 LastName = "Doe",
                 PhoneNumber = "+48123456789",
                 Description = "New description",
-                ProfileImage = "newimage.png",
+                ProfileImage = CreateMockFormFile(new byte[] { 0x00 }, "test.png", "image/png"),  // Use mock IFormFile
                 AccessFee = 100
             };
 
             SetupMockDbForSuccessfulEdit();
+            SetupMockImageServiceForSuccessfulUpload();  // Add this setup
 
             // Act
-            var result = _userService.EditProfile(username, request);
+            var result = await _userService.EditProfile(username, request);  // Add await
 
             // Assert
             Assert.True(result);
+        }
+
+        private IFormFile CreateMockFormFile(byte[] content, string filename, string contentType)
+        {
+            var stream = new MemoryStream(content);
+            var fileMock = new Mock<IFormFile>();
+            fileMock.Setup(f => f.FileName).Returns(filename);
+            fileMock.Setup(f => f.Length).Returns(content.Length);
+            fileMock.Setup(f => f.ContentType).Returns(contentType);
+            fileMock.Setup(f => f.OpenReadStream()).Returns(stream);
+            return fileMock.Object;
+        }
+
+        private void SetupMockImageServiceForSuccessfulUpload()
+        {
+            _mockImageService.Setup(x => x.UploadImageAsync(
+                It.IsAny<IFormFile>(),
+                It.IsAny<string>()
+            )).ReturnsAsync("test.png");
         }
 
         private void SetupMockDbForSuccessfulSignUp()

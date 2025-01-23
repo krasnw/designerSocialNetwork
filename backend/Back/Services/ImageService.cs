@@ -6,28 +6,24 @@ public class ImageService : IImageService
 {
     private readonly string _uploadDirectory;
     private readonly IDatabaseService _databaseService;
-    private readonly IUserService _userService;
     private readonly ILogger<ImageService> _logger;
     private readonly string[] _allowedExtensions = { ".jpg", ".jpeg", ".png", ".gif" };
     private const int MaxFileSizeBytes = 5 * 1024 * 1024; // 5MB
 
-    public ImageService(IDatabaseService databaseService, IUserService userService, IWebHostEnvironment environment, ILogger<ImageService> logger)
+    public ImageService(IDatabaseService databaseService, IWebHostEnvironment environment, ILogger<ImageService> logger)
     {
         _databaseService = databaseService;
-        _userService = userService;
         _logger = logger;
         
         try
         {
-            // Fallback to current directory if WebRootPath is null
             var rootPath = environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
             _uploadDirectory = Path.Combine(rootPath, "images");
             _logger.LogInformation("Upload directory set to: {Directory}", _uploadDirectory);
             
-            Directory.CreateDirectory(_uploadDirectory); // Creates all directories in path if they don't exist
+            Directory.CreateDirectory(_uploadDirectory);
             _logger.LogInformation("Ensured directory exists: {Directory}", _uploadDirectory);
 
-            // Test write permissions
             var testFile = Path.Combine(_uploadDirectory, "test.txt");
             File.WriteAllText(testFile, "test");
             File.Delete(testFile);
@@ -40,9 +36,30 @@ public class ImageService : IImageService
         }
     }
 
+    private int? GetUserIdByUsername(string username)
+    {
+        var query = "SELECT id FROM api_schema.user WHERE username = @username";
+        var parameters = new Dictionary<string, object> { { "@username", username } };
+
+        using var reader = _databaseService.ExecuteQuery(query, out var connection, out var command, parameters);
+        try
+        {
+            if (reader.Read())
+            {
+                return reader.GetInt32(0);
+            }
+            return null;
+        }
+        finally
+        {
+            command?.Dispose();
+            connection?.Dispose();
+        }
+    }
+
     private string GenerateSecureImageId()
     {
-        var bytes = new byte[12]; // 12 bytes = 16 base64 chars
+        var bytes = new byte[12];
         using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
         {
             rng.GetBytes(bytes);
@@ -63,8 +80,8 @@ public class ImageService : IImageService
             throw new ArgumentException("Invalid image file");
         }
 
-        var user = _userService.GetUser(username);
-        if (user == null)
+        var userId = GetUserIdByUsername(username);
+        if (!userId.HasValue)
         {
             _logger.LogWarning("User not found: {Username}", username);
             throw new ArgumentException("User not found");
@@ -75,8 +92,6 @@ public class ImageService : IImageService
         var filename = $"{secureId}{extension}";
         var filePath = Path.Combine(_uploadDirectory, filename);
 
-        _logger.LogInformation("Saving file: {Filename} to {FilePath}", filename, filePath);
-
         try
         {
             using (var fileStream = new FileStream(filePath, FileMode.Create))
@@ -85,22 +100,21 @@ public class ImageService : IImageService
                 await uploadStream.CopyToAsync(fileStream);
             }
 
-            if (!System.IO.File.Exists(filePath))
+            if (!File.Exists(filePath))
             {
                 throw new IOException("File was not created successfully");
             }
 
             _logger.LogInformation("File saved successfully: {Filename}", filename);
 
-            // Save to database
             var query = @"
                 INSERT INTO api_schema.image (image_file_path, user_id)
-                VALUES (@filepath, (SELECT id FROM api_schema.user WHERE username = @username))";
+                VALUES (@filepath, @userId)";
 
             var parameters = new Dictionary<string, object>
             {
                 { "@filepath", filename },
-                { "@username", username }
+                { "@userId", userId.Value }
             };
 
             _databaseService.ExecuteNonQuery(query, parameters);
@@ -111,9 +125,9 @@ public class ImageService : IImageService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save image: {Filename}", filename);
-            if (System.IO.File.Exists(filePath))
+            if (File.Exists(filePath))
             {
-                System.IO.File.Delete(filePath);
+                File.Delete(filePath);
                 _logger.LogInformation("Cleaned up failed upload file: {Filename}", filename);
             }
             throw new Exception($"Failed to save image: {ex.Message}");
@@ -195,7 +209,6 @@ public class ImageService : IImageService
         return _allowedExtensions.Contains(extension);
     }
 
-    // Add method to get content type
     public string GetContentType(string filename)
     {
         var extension = Path.GetExtension(filename).ToLowerInvariant();

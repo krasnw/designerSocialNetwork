@@ -46,15 +46,26 @@ public class User(
         public string PhoneNumber { get; set; }
     }
     
+    public class EditDataResponse
+    {
+        public string? Email { get; set; }
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+        public string? PhoneNumber { get; set; }
+        public string? Description { get; set; }
+        public string? ProfileImage { get; set; }  // This remains string for existing image path
+        public int? AccessFee { get; set; }
+    }
+
     public class EditRequest
     {
-        public string Email { get; set; }
-        public string Password { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public string PhoneNumber { get; set; }
-        public string Description { get; set; }
-        public string ProfileImage { get; set; }
-        public int AccessFee { get; set; }
+        public string? Email { get; set; }
+        public string? Password { get; set; }
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+        public string? PhoneNumber { get; set; }
+        public string? Description { get; set; }
+        public IFormFile? ProfileImage { get; set; }  // This remains IFormFile for file upload
+        public int? AccessFee { get; set; }
     }
 }

@@ -13,7 +13,6 @@ namespace Back.Tests.Services
     public class ImageServiceTests
     {
         private readonly Mock<IDatabaseService> _mockDbService;
-        private readonly Mock<IUserService> _mockUserService;
         private readonly Mock<IWebHostEnvironment> _mockEnvironment;
         private readonly Mock<ILogger<ImageService>> _mockLogger;
         private readonly string _testDirectory;
@@ -23,7 +22,6 @@ namespace Back.Tests.Services
         public ImageServiceTests()
         {
             _mockDbService = new Mock<IDatabaseService>();
-            _mockUserService = new Mock<IUserService>();
             _mockEnvironment = new Mock<IWebHostEnvironment>();
             _mockLogger = new Mock<ILogger<ImageService>>();
             
@@ -33,7 +31,6 @@ namespace Back.Tests.Services
 
             _imageService = new ImageService(
                 _mockDbService.Object,
-                _mockUserService.Object,
                 _mockEnvironment.Object,
                 _mockLogger.Object
             );
@@ -53,8 +50,8 @@ namespace Back.Tests.Services
             var content = new byte[] { 0x89, 0x50, 0x4E, 0x47 }; // PNG file header
             var file = CreateMockFormFile(content, "test.png", "image/png");
             
-            SetupMockUserService(username);
             SetupMockDbForSuccessfulUpload();
+            SetupMockDbForUserExists(username);
 
             // Act
             var result = await _imageService.UploadImageAsync(file, username);
@@ -73,7 +70,7 @@ namespace Back.Tests.Services
             var content = new byte[] { 0x89, 0x50, 0x4E, 0x47 };
             var file = CreateMockFormFile(content, "test.png", "image/png");
             
-            _mockUserService.Setup(s => s.GetUser(username)).Returns((Models.User)null);
+            SetupMockDbForUserNotExists();
 
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(
@@ -91,7 +88,7 @@ namespace Back.Tests.Services
             var content = new byte[] { 0x00 };
             var file = CreateMockFormFile(content, filename, contentType);
             
-            SetupMockUserService(username);
+            SetupMockDbForUserExists(username);
 
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentException>(
@@ -206,13 +203,6 @@ namespace Back.Tests.Services
             return fileMock.Object;
         }
 
-        private void SetupMockUserService(string username)
-        {
-            _mockUserService.Setup(s => s.GetUser(username))
-                .Returns(new Models.User(username, "test@example.com", "password", 
-                    "John", "Doe", "123456789", 0, "active", "user", "", "default.png"));
-        }
-
         private void SetupMockDbForSuccessfulUpload()
         {
             _mockDbService.Setup(db => db.ExecuteNonQuery(
@@ -251,6 +241,35 @@ namespace Back.Tests.Services
 
             _mockDbService.Setup(db => db.ExecuteQuery(
                 It.IsAny<string>(),
+                out It.Ref<NpgsqlConnection>.IsAny,
+                out It.Ref<NpgsqlCommand>.IsAny,
+                It.IsAny<Dictionary<string, object>>()
+            )).Returns(mockReader.Object);
+        }
+
+        private void SetupMockDbForUserExists(string username)
+        {
+            var mockReader = new Mock<DbDataReader>();
+            mockReader.SetupSequence(r => r.Read())
+                .Returns(true)
+                .Returns(false);
+            mockReader.Setup(r => r.GetInt32(0)).Returns(1);
+
+            _mockDbService.Setup(db => db.ExecuteQuery(
+                It.Is<string>(s => s.Contains("SELECT id FROM api_schema.user")),
+                out It.Ref<NpgsqlConnection>.IsAny,
+                out It.Ref<NpgsqlCommand>.IsAny,
+                It.Is<Dictionary<string, object>>(d => d.ContainsKey("@username"))
+            )).Returns(mockReader.Object);
+        }
+
+        private void SetupMockDbForUserNotExists()
+        {
+            var mockReader = new Mock<DbDataReader>();
+            mockReader.Setup(r => r.Read()).Returns(false);
+
+            _mockDbService.Setup(db => db.ExecuteQuery(
+                It.Is<string>(s => s.Contains("SELECT id FROM api_schema.user")),
                 out It.Ref<NpgsqlConnection>.IsAny,
                 out It.Ref<NpgsqlCommand>.IsAny,
                 It.IsAny<Dictionary<string, object>>()
