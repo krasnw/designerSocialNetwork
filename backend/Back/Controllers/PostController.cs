@@ -106,9 +106,14 @@ public class PostController : ControllerBase
         var currentUser = User.Identity?.Name;
         var posts = _postService.GetUserPosts(username, currentUser, pageNumber, pageSize, tags, accessType);
         
-        if (posts == null || !posts.Any())
+        if (posts == null)
         {
-            return NotFound("No posts found matching the specified criteria.");
+            return NotFound($"No posts found for user '{username}' with the specified criteria.");
+        }
+
+        if (!posts.Any())
+        {
+            return Ok(new List<PostMini>()); // Return empty list instead of 404
         }
 
         return Ok(posts);

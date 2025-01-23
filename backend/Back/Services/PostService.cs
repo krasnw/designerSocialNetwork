@@ -161,17 +161,23 @@ public class PostService : IPostService
     public List<PostMini>? GetUserPosts(string username, string? currentUser, int pageNumber, int pageSize, string? tags = null, string? accessType = null)
 {
     string query = @"
-    SELECT p.id, p.post_name, p.access_level, i.image_file_path, p.likes, 
-           array_agg(DISTINCT t.tag_name) as tags
+    WITH post_tags AS (
+        SELECT pt.post_id, array_agg(t.tag_name) as tags
+        FROM api_schema.post_tags pt
+        JOIN api_schema.tags t ON pt.tag_id = t.id
+        GROUP BY pt.post_id
+    )
+    SELECT p.id, p.post_name, p.access_level, 
+           COALESCE(i.image_file_path, 'default.jpg') as image_file_path, 
+           p.likes,
+           COALESCE(pt.tags, ARRAY[]::text[]) as tags
     FROM api_schema.post p
-    JOIN api_schema.image_container c ON p.container_id = c.id
-    JOIN api_schema.image i ON c.main_image_id = i.id
     JOIN api_schema.user u ON p.user_id = u.id
-    LEFT JOIN api_schema.post_tags pt ON p.id = pt.post_id
-    LEFT JOIN api_schema.tags t ON pt.tag_id = t.id
+    LEFT JOIN api_schema.image_container c ON p.container_id = c.id
+    LEFT JOIN api_schema.image i ON c.main_image_id = i.id
+    LEFT JOIN post_tags pt ON p.id = pt.post_id
     WHERE u.username = @username
     {0}
-    GROUP BY p.id, p.post_name, p.access_level, i.image_file_path, p.likes
     {1}
     ORDER BY p.post_date DESC
     LIMIT @pageSize OFFSET @offset";
