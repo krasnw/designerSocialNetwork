@@ -8,7 +8,7 @@ public class Post(
     string title,
     string? content,
     ImageContainer images,
-    DateOnly createdAt,
+    DateTime createdAt,  // Changed from DateOnly to DateTime
     long likes,
     string access,
     List<Tag>? tags,
@@ -23,7 +23,7 @@ public class Post(
     public User Author { get; set; } = author;
     public ImageContainer Images { get; set; } = images;
     public long Likes { get; set; } = likes;
-    public DateOnly CreatedAt { get; init; } = createdAt;
+    public DateTime CreatedAt { get; init; } = createdAt;  // Changed from DateOnly to DateTime
     public string Access { get; set; } = access;
     public List<Tag> Tags { get; set; } = tags ?? new List<Tag>();
     public List<Rating> Ratings { get; set; } = ratings ?? new List<Rating>();

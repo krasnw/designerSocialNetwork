@@ -534,7 +534,7 @@ public class PostService : IPostService
             reader.GetString(2),
             reader.GetString(3),
             GetPostImages(reader.GetInt32(0)),
-            DateOnly.FromDateTime(reader.GetDateTime(5)),
+            reader.GetDateTime(5),  // Changed from DateOnly.FromDateTime()
             reader.GetInt32(6),
             reader.GetString(7),
             _tagService.GetPostTags(reader.GetInt32(0)),
@@ -713,7 +713,7 @@ public class PostService : IPostService
             )
             SELECT 
                 u.id, @title, COALESCE(@content, ''), @containerId, 
-                CURRENT_DATE, 0, @accessLevel::api_schema.access_level
+                CURRENT_TIMESTAMP, 0, @accessLevel::api_schema.access_level  -- Changed from CURRENT_DATE
             FROM api_schema.user u
             WHERE u.username = @username
             RETURNING id";

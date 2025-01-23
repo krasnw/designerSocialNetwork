@@ -10,7 +10,7 @@ public class PostDto
     public UserMiniDto Author { get; set; } = null!;
     public List<string> Images { get; set; }
     public long Likes { get; set; }
-    public DateOnly CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; }  // Changed from DateOnly to DateTime
     public string Access { get; set; }
     public List<string>? Tags { get; set; }
     public string? ProtectedAccessLink { get; set; }

@@ -52,7 +52,7 @@ namespace Back.Tests.Controllers
             var posts = new List<Post>
             {
                 new Post(1, new User("test", "test@test.com", "password", "Test", "User", "123456789", 0, "active", "user", "", "default.jpg"),
-                    "Test Post", "Content", new ImageContainer(1, new Image(1, "test.jpg"), new List<Image>()), DateOnly.FromDateTime(DateTime.Now), 0, "public", new List<Tag>(), new List<Rating>())
+                    "Test Post", "Content", new ImageContainer(1, new Image(1, "test.jpg"), new List<Image>()), DateTime.Now, 0, "public", new List<Tag>(), new List<Rating>())
             };
 
             _postServiceMock.Setup(x => x.GetNewestPosts(pageNumber, pageSize, null, "public"))
@@ -96,7 +96,7 @@ namespace Back.Tests.Controllers
                 new User("test", "test@test.com", "password", "Test", "User", "123456789", 0, "active", "user", "", "default.jpg"),
                 "Test Post", "Content", 
                 new ImageContainer(1, new Image(1, "test.jpg"), new List<Image>()), 
-                DateOnly.FromDateTime(DateTime.Now), 0, "public", 
+                DateTime.Now, 0, "public", 
                 new List<Tag>(), new List<Rating>());
 
             _postServiceMock.Setup(x => x.GetPost(postId))
@@ -144,7 +144,7 @@ namespace Back.Tests.Controllers
                     new User(username, "test@test.com", "password", "Test", "User", "123456789", 0, "active", "user", "", "default.jpg"),
                     "Test Post", "Content", 
                     new ImageContainer(1, new Image(1, "test.jpg"), new List<Image>()), 
-                    DateOnly.FromDateTime(DateTime.Now), 0, "public", 
+                    DateTime.Now, 0, "public", 
                     new List<Tag>(), new List<Rating>())
             };
 
@@ -226,7 +226,7 @@ namespace Back.Tests.Controllers
                 new User("test", "test@test.com", "password", "Test", "User", "123456789", 0, "active", "user", "", "default.jpg"),
                 "Test Post", "Content", 
                 new ImageContainer(1, new Image(1, "test.jpg"), new List<Image>()), 
-                DateOnly.FromDateTime(DateTime.Now), 0, "protected", 
+                DateTime.Now, 0, "protected", 
                 new List<Tag>(), new List<Rating>());
 
             _postServiceMock.Setup(x => x.GetProtectedPost(hash))

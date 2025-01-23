@@ -120,7 +120,7 @@ CREATE TABLE api_schema.post (
     post_name VARCHAR(50) NOT NULL,
     post_text TEXT NOT NULL,
     container_id INTEGER REFERENCES image_container(id),
-    post_date DATE NOT NULL,
+    post_date TIMESTAMP NOT NULL,
     likes INTEGER NOT NULL,
     access_level access_level NOT NULL
 );

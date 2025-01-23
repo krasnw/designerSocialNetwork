@@ -131,16 +131,16 @@ INSERT INTO api_schema.tags (tag_name, tag_type) VALUES
 
 INSERT INTO api_schema.post (user_id, post_name, post_text, container_id, post_date, likes, access_level) 
 VALUES
-(1, 'UI Design', 'Sample post content 1', 1, '2024-01-10', 10, 'public'),
-(2, 'Logo Design', 'Sample post content 2', 2, '2024-02-10', 20, 'public'),
-(3, 'Button Design', 'Sample post content 3', 3, '2024-03-10', 15, 'private'),
-(4, 'Icon Design', 'Sample post content 4', 4, '2024-04-10', 5, 'protected'),
-(5, 'UX Design', 'Sample post content 5', 1, '2024-05-10', 50, 'public'),
-(6, 'Glass Morphism', 'Sample post content 2', 1, '2024-06-10', 100, 'private'),
-(7, 'Website Layout', 'Sample post content 3', 2, '2024-07-10', 25, 'public'),
-(8, 'App Design', 'Sample post content 8', 4, '2024-08-10', 30, 'protected'),
-(9, 'Dashboard Design', 'Sample post content 1', 4, '2024-09-10', 75, 'private'),
-(10, 'Card Design', 'Sample post content 10', 3, '2024-10-10', 90, 'public');
+(1, 'UI Design', 'Sample post content 1', 1, '2024-01-10 10:30:00', 10, 'public'),
+(2, 'Logo Design', 'Sample post content 2', 2, '2024-02-10 11:45:00', 20, 'public'),
+(3, 'Button Design', 'Sample post content 3', 3, '2024-03-10 14:20:00', 15, 'private'),
+(4, 'Icon Design', 'Sample post content 4', 4, '2024-04-10 09:15:00', 5, 'protected'),
+(5, 'UX Design', 'Sample post content 5', 1, '2024-05-10 16:00:00', 50, 'public'),
+(6, 'Glass Morphism', 'Sample post content 2', 1, '2024-06-10 13:45:00', 100, 'private'),
+(7, 'Website Layout', 'Sample post content 3', 2, '2024-07-10 08:30:00', 25, 'public'),
+(8, 'App Design', 'Sample post content 8', 4, '2024-08-10 11:00:00', 30, 'protected'),
+(9, 'Dashboard Design', 'Sample post content 1', 4, '2024-09-10 14:50:00', 75, 'private'),
+(10, 'Card Design', 'Sample post content 10', 3, '2024-10-10 10:10:00', 90, 'public');
 
 INSERT INTO api_schema.post_tags (post_id, tag_id)
 SELECT p.id, t.id
