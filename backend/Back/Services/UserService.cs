@@ -166,7 +166,7 @@ public class UserService : IUserService
             var user = new User(username, email, password, firstName, lastName, phoneNumber,
                 0, AccountTypes.Status.active.ToString(), AccountTypes.Level.user.ToString(), 
                 "Użytkownik nie dodał jeszcze opisu.", 
-                "default.png");  // Always set default.png here
+                null);
 
             string uniqueErrorMessage;
             if (!IsUnique(user, out uniqueErrorMessage))
@@ -177,7 +177,6 @@ public class UserService : IUserService
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
             var joinDate = DateTime.Now.Date;
 
-            // Insert user with all required fields
             var userQuery = @"
                 INSERT INTO api_schema.user (
                     username, email, user_password, first_name, last_name, phone_number,
@@ -191,28 +190,22 @@ public class UserService : IUserService
                     @description, @profileImage
                 ) RETURNING id";
 
-            var parameters = new Dictionary<string, object>
-            {
-                { "@username", username },
-                { "@email", email },
-                { "@password", hashedPassword },
-                { "@firstName", firstName },
-                { "@lastName", lastName },
-                { "@phoneNumber", phoneNumber },
-                { "@joinDate", joinDate },
-                { "@accessFee", 0 },
-                { "@accountStatus", AccountTypes.Status.active.ToString() },
-                { "@accountLevel", AccountTypes.Level.user.ToString() },
-                { "@description", "Użytkownik nie dodał jeszcze opisu." },
-                { "@profileImage", null }  // Changed from "default.png" to null
-            };
-
             using var command = new NpgsqlCommand(userQuery, connection);
-            foreach (var param in parameters)
-            {
-                command.Parameters.AddWithValue(param.Key, param.Value);
-            }
             
+            // Add parameters with explicit DbType for nullable values
+            command.Parameters.AddWithValue("@username", username);
+            command.Parameters.AddWithValue("@email", email);
+            command.Parameters.AddWithValue("@password", hashedPassword);
+            command.Parameters.AddWithValue("@firstName", firstName);
+            command.Parameters.AddWithValue("@lastName", lastName);
+            command.Parameters.AddWithValue("@phoneNumber", phoneNumber);
+            command.Parameters.AddWithValue("@joinDate", joinDate);
+            command.Parameters.AddWithValue("@accessFee", 0);
+            command.Parameters.AddWithValue("@accountStatus", AccountTypes.Status.active.ToString());
+            command.Parameters.AddWithValue("@accountLevel", AccountTypes.Level.user.ToString());
+            command.Parameters.AddWithValue("@description", "Użytkownik nie dodał jeszcze opisu.");
+            command.Parameters.AddWithValue("@profileImage", DBNull.Value);
+
             var userId = (int)command.ExecuteScalar();
 
             // Create wallet for the user

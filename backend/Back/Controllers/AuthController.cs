@@ -34,9 +34,8 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var image = "default.jpg";
             var signUpResult = _userService.SignUp(request.Username, request.Email, request.Password,
-                request.FirstName, request.LastName, request.PhoneNumber, image);
+                request.FirstName, request.LastName, request.PhoneNumber, null);
 
             if (!string.IsNullOrEmpty(signUpResult))
             {
