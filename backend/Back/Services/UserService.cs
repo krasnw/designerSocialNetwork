@@ -204,7 +204,7 @@ public class UserService : IUserService
                 { "@accountStatus", AccountTypes.Status.active.ToString() },
                 { "@accountLevel", AccountTypes.Level.user.ToString() },
                 { "@description", "Użytkownik nie dodał jeszcze opisu." },
-                { "@profileImage", "default.png" }  // Always use default.png here
+                { "@profileImage", null }  // Changed from "default.png" to null
             };
 
             using var command = new NpgsqlCommand(userQuery, connection);
@@ -303,7 +303,7 @@ public class UserService : IUserService
                 reader.GetString(reader.GetOrdinal("account_status")),
                 reader.GetString(reader.GetOrdinal("account_level")),
                 reader.GetStringOrDefault(reader.GetOrdinal("profile_description")),
-                reader.GetStringOrDefault(reader.GetOrdinal("profile_picture"), "default.png")
+                reader.GetStringOrDefault(reader.GetOrdinal("profile_picture"))  // Removed default value
             );
         }
         finally
