@@ -1,4 +1,5 @@
 using Back.Models;
+using static Back.Services.SubscriptionService;
 
 namespace Back.Services.Interfaces
 {
@@ -7,8 +8,8 @@ namespace Back.Services.Interfaces
         Task<bool> BuyAccess(string buyerId, string sellerId);
         Task<bool> Cancel(string buyerId, string sellerId);
         Task<bool> IsSubscribed(string buyerId, string sellerId);
-        Task<List<User>> GetAllSubscriptions(string buyerId);
-        Task<List<User>> GetAllSubscribers(string sellerId);
+        Task<List<SubscriptionInfo>> GetAllSubscriptions(string buyerId);
+        Task<List<SubscriptionInfo>> GetAllSubscribers(string sellerId); // Updated return type
         Task<float> GetAccessFee(string sellerId);
         Task<bool> EnableAutoRenewal(string buyerId, string sellerId);
         Task<bool> DisableAutoRenewal(string buyerId, string sellerId);

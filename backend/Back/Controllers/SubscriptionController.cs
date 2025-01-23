@@ -35,15 +35,17 @@ public class SubscriptionController : ControllerBase
             if (seller == null)
                 return NotFound("Seller not found");
 
-            var result = await _subscriptionService.BuyAccess(buyerUsername, sellerUsername);
-            if (!result)
-                return BadRequest("Failed to process subscription. Please check your wallet balance.");
-
+            await _subscriptionService.BuyAccess(buyerUsername, sellerUsername);
             return Ok("Subscription successful");
         }
         catch (Exception ex)
         {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
+            return ex.Message switch
+            {
+                "You already have an active subscription to this user" => BadRequest(ex.Message),
+                "Insufficient funds" => BadRequest(ex.Message),
+                _ => StatusCode(500, $"Internal server error: {ex.Message}")
+            };
         }
     }
 
@@ -57,12 +59,16 @@ public class SubscriptionController : ControllerBase
             if (string.IsNullOrEmpty(buyerUsername))
                 return Unauthorized("User not authenticated");
 
-            var result = await _subscriptionService.Cancel(buyerUsername, sellerUsername);
-            return result ? Ok("Subscription cancelled") : BadRequest("Failed to cancel subscription");
+            await _subscriptionService.Cancel(buyerUsername, sellerUsername);
+            return Ok("Subscription cancelled successfully");
         }
         catch (Exception ex)
         {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
+            return ex.Message switch
+            {
+                "No active subscription found to cancel" => BadRequest(ex.Message),
+                _ => StatusCode(500, $"Internal server error: {ex.Message}")
+            };
         }
     }
 

@@ -16,40 +16,57 @@ public class SubscriptionService : ISubscriptionService
                 price_at_time, 
                 access_date
             )
-            VALUES (
-                (SELECT id FROM api_schema.user WHERE username = @BuyerUsername),
-                (SELECT id FROM api_schema.user WHERE username = @SellerUsername),
+            SELECT 
+                buyer.id,
+                seller.id,
                 @TransactionId,
                 @PriceAtTime,
                 @AccessDate
-            )";
+            FROM api_schema.user buyer
+            CROSS JOIN api_schema.user seller
+            WHERE buyer.username = @BuyerUsername
+            AND seller.username = @SellerUsername";
 
+        // Fix table name in CancelSubscription query
         public const string CancelSubscription = @"
-            DELETE FROM api_schema.subscription
+            DELETE FROM api_schema.private_access
             WHERE buyer_id = (SELECT id FROM api_schema.user WHERE username = @BuyerId)
             AND seller_id = (SELECT id FROM api_schema.user WHERE username = @SellerId)";
 
+        // Fix parameter names in CheckSubscription query
         public const string CheckSubscription = @"
             SELECT COUNT(*) 
             FROM api_schema.private_access pa
             JOIN api_schema.user buyer ON pa.buyer_id = buyer.id
             JOIN api_schema.user seller ON pa.seller_id = seller.id
-            WHERE buyer.username = @BuyerUsername 
-            AND seller.username = @SellerUsername
+            WHERE buyer.username = @BuyerId 
+            AND seller.username = @SellerId
             AND pa.access_date > CURRENT_DATE";
 
+        // Update GetSubscriptions query to select only needed fields
         public const string GetSubscriptions = @"
-            SELECT DISTINCT u.* 
+            SELECT DISTINCT 
+                u.username,
+                u.first_name,
+                u.last_name,
+                COALESCE(u.profile_picture, '') as profile_picture
             FROM api_schema.user u
             JOIN api_schema.private_access pa ON u.id = pa.seller_id
             JOIN api_schema.user buyer ON pa.buyer_id = buyer.id
-            WHERE buyer.username = @BuyerUsername
+            WHERE buyer.username = @BuyerId
             AND pa.access_date > CURRENT_DATE";
 
+        // Update GetSubscribers query to match GetSubscriptions format
         public const string GetSubscribers = @"
-            SELECT DISTINCT u.* FROM api_schema.user u
+            SELECT DISTINCT 
+                u.username,
+                u.first_name,
+                u.last_name,
+                COALESCE(u.profile_picture, '') as profile_picture
+            FROM api_schema.user u
             JOIN api_schema.private_access pa ON u.id = pa.buyer_id
-            WHERE pa.seller_id = (SELECT id FROM api_schema.user WHERE username = @SellerId)
+            JOIN api_schema.user seller ON pa.seller_id = seller.id
+            WHERE seller.username = @SellerId
             AND pa.access_date > CURRENT_DATE";
 
         public const string GetAccessFee = @"
@@ -117,6 +134,26 @@ public class SubscriptionService : ISubscriptionService
             WHERE buyer_id = (SELECT id FROM api_schema.user WHERE username = @BuyerId)
             AND seller_id = (SELECT id FROM api_schema.user WHERE username = @SellerId)
             AND access_date > CURRENT_DATE";
+
+        // Add new query to check for existing active subscription
+        public const string CheckExistingSubscription = @"
+            SELECT COUNT(*) 
+            FROM api_schema.private_access pa
+            JOIN api_schema.user buyer ON pa.buyer_id = buyer.id
+            JOIN api_schema.user seller ON pa.seller_id = seller.id
+            WHERE buyer.username = @BuyerUsername 
+            AND seller.username = @SellerUsername
+            AND pa.access_date > CURRENT_DATE";
+
+        // Add new query to check if subscription exists before canceling
+        public const string CheckCancelableSubscription = @"
+            SELECT COUNT(*) 
+            FROM api_schema.private_access pa
+            JOIN api_schema.user buyer ON pa.buyer_id = buyer.id
+            JOIN api_schema.user seller ON pa.seller_id = seller.id
+            WHERE buyer.username = @BuyerId 
+            AND seller.username = @SellerId
+            AND pa.access_date > CURRENT_DATE";
     }
 
     private readonly IDatabaseService _databaseService;
@@ -128,6 +165,7 @@ public class SubscriptionService : ISubscriptionService
         _userService = userService;
     }
 
+    // Fix BuyAccess method to properly handle the transaction
     public async Task<bool> BuyAccess(string buyerId, string sellerId)
     {
         using var connection = _databaseService.GetConnection();
@@ -135,35 +173,63 @@ public class SubscriptionService : ISubscriptionService
 
         try
         {
-            var accessFee = await GetAccessFee(sellerId);
+            // Check if subscription already exists
+            var checkParams = new Dictionary<string, object>
+            {
+                { "@BuyerUsername", buyerId },
+                { "@SellerUsername", sellerId }
+            };
+
+            using (var checkReader = await _databaseService.ExecuteQueryAsync(
+                SqlQueries.CheckExistingSubscription,
+                checkParams,
+                connection,
+                transaction))
+            {
+                if (checkReader.Read() && checkReader.GetInt32(0) > 0)
+                {
+                    throw new Exception("You already have an active subscription to this user");
+                }
+            }
+
+            var accessFee = await GetAccessFee(sellerId, connection, transaction);
+            if (accessFee <= 0)
+                throw new Exception("Invalid access fee");
             
             // Check buyer's balance
             var buyerBalanceParams = new Dictionary<string, object> { { "@Username", buyerId } };
-            using var balanceReader = await _databaseService.ExecuteQueryAsync(SqlQueries.GetWalletBalance, buyerBalanceParams);
-            if (!balanceReader.Read())
-                throw new Exception("Buyer wallet not found");
+            int buyerBalance;
+            using (var balanceReader = await _databaseService.ExecuteQueryAsync(
+                SqlQueries.GetWalletBalance, 
+                buyerBalanceParams, 
+                connection, 
+                transaction))
+            {
+                if (!balanceReader.Read())
+                    throw new Exception("Buyer wallet not found");
+                buyerBalance = balanceReader.GetInt32(0);
+            } // Reader is disposed here
 
-            var buyerBalance = balanceReader.GetInt32(0);
             if (buyerBalance < accessFee)
                 throw new Exception("Insufficient funds");
 
             // Process wallet transactions
-            await ProcessWalletTransactions(buyerId, sellerId, accessFee);
+            await ProcessWalletTransactions(buyerId, sellerId, accessFee, connection, transaction);
 
             // Create buyer's transaction record and get its ID
-            var buyerTransactionId = await CreateTransactionRecord(buyerId, -accessFee);
+            var buyerTransactionId = await CreateTransactionRecord(buyerId, -accessFee, connection, transaction);
 
             // Create subscription with transaction reference
             var subscriptionParams = new Dictionary<string, object>
             {
-                { "@BuyerId", buyerId },
-                { "@SellerId", sellerId },
+                { "@BuyerUsername", buyerId },
+                { "@SellerUsername", sellerId },
                 { "@TransactionId", buyerTransactionId },
                 { "@PriceAtTime", accessFee },
                 { "@AccessDate", DateTime.UtcNow.AddDays(30) } // Set access for 30 days
             };
 
-            await _databaseService.ExecuteNonQueryAsync(SqlQueries.BuyAccess, subscriptionParams);
+            await _databaseService.ExecuteNonQueryAsync(SqlQueries.BuyAccess, subscriptionParams, connection, transaction);
 
             await transaction.CommitAsync();
             return true;
@@ -172,11 +238,13 @@ public class SubscriptionService : ISubscriptionService
         {
             await transaction.RollbackAsync();
             Console.WriteLine($"Error in subscription transaction: {ex.Message}");
-            return false;
+            throw; // Rethrow to let controller handle the error
         }
     }
 
-    private async Task ProcessWalletTransactions(string buyerUsername, string sellerUsername, float amount)
+    // Update ProcessWalletTransactions to use the same transaction
+    private async Task ProcessWalletTransactions(string buyerUsername, string sellerUsername, float amount, 
+        NpgsqlConnection connection, NpgsqlTransaction transaction)
     {
         // Deduct from buyer's wallet
         var deductParams = new Dictionary<string, object>
@@ -184,7 +252,7 @@ public class SubscriptionService : ISubscriptionService
             { "@Username", buyerUsername },
             { "@Amount", -amount }
         };
-        await _databaseService.ExecuteNonQueryAsync(SqlQueries.UpdateWalletBalance, deductParams);
+        await _databaseService.ExecuteNonQueryAsync(SqlQueries.UpdateWalletBalance, deductParams, connection, transaction);
 
         // Add to seller's wallet
         var addParams = new Dictionary<string, object>
@@ -192,10 +260,12 @@ public class SubscriptionService : ISubscriptionService
             { "@Username", sellerUsername },
             { "@Amount", amount }
         };
-        await _databaseService.ExecuteNonQueryAsync(SqlQueries.UpdateWalletBalance, addParams);
+        await _databaseService.ExecuteNonQueryAsync(SqlQueries.UpdateWalletBalance, addParams, connection, transaction);
     }
 
-    private async Task<int> CreateTransactionRecord(string username, float amount)
+    // Update CreateTransactionRecord to use the same transaction
+    private async Task<int> CreateTransactionRecord(string username, float amount, 
+        NpgsqlConnection connection, NpgsqlTransaction transaction)
     {
         var transactionParams = new Dictionary<string, object>
         {
@@ -204,7 +274,12 @@ public class SubscriptionService : ISubscriptionService
             { "@Username", username }
         };
 
-        using var reader = await _databaseService.ExecuteQueryAsync(SqlQueries.CreateInnerTransaction, transactionParams);
+        using var reader = await _databaseService.ExecuteQueryAsync(
+            SqlQueries.CreateInnerTransaction, 
+            transactionParams, 
+            connection, 
+            transaction);
+
         if (reader.Read())
         {
             return reader.GetInt32(0);
@@ -212,23 +287,76 @@ public class SubscriptionService : ISubscriptionService
         throw new Exception("Failed to create transaction record");
     }
 
-    public async Task<bool> Cancel(string buyerId, string sellerId)
+    // Update GetAccessFee to use provided connection and transaction when available
+    private async Task<float> GetAccessFee(string sellerId, NpgsqlConnection? connection = null, NpgsqlTransaction? transaction = null)
     {
         try
         {
-            var parameters = new Dictionary<string, object>
+            var parameters = new Dictionary<string, object> { { "@SellerId", sellerId } };
+
+            if (connection != null && transaction != null)
+            {
+                using var reader = await _databaseService.ExecuteQueryAsync(
+                    SqlQueries.GetAccessFee, 
+                    parameters, 
+                    connection, 
+                    transaction);
+                return reader.Read() ? reader.GetFloat(0) : 0;
+            }
+            else
+            {
+                using var reader = await _databaseService.ExecuteQueryAsync(SqlQueries.GetAccessFee, parameters);
+                return reader.Read() ? reader.GetFloat(0) : 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting access fee: {ex.Message}");
+            return 0;
+        }
+    }
+
+    public async Task<bool> Cancel(string buyerId, string sellerId)
+    {
+        using var connection = _databaseService.GetConnection();
+        using var transaction = await connection.BeginTransactionAsync();
+
+        try
+        {
+            // Check if subscription exists and is active
+            var checkParams = new Dictionary<string, object>
             {
                 { "@BuyerId", buyerId },
                 { "@SellerId", sellerId }
             };
 
-            await _databaseService.ExecuteNonQueryAsync(SqlQueries.CancelSubscription, parameters);
+            using (var checkReader = await _databaseService.ExecuteQueryAsync(
+                SqlQueries.CheckCancelableSubscription,
+                checkParams,
+                connection,
+                transaction))
+            {
+                if (!checkReader.Read() || checkReader.GetInt32(0) == 0)
+                {
+                    throw new Exception("No active subscription found to cancel");
+                }
+            }
+
+            // Proceed with cancellation
+            await _databaseService.ExecuteNonQueryAsync(
+                SqlQueries.CancelSubscription, 
+                checkParams, 
+                connection, 
+                transaction);
+
+            await transaction.CommitAsync();
             return true;
         }
         catch (Exception ex)
         {
+            await transaction.RollbackAsync();
             Console.WriteLine($"Error canceling subscription: {ex.Message}");
-            return false;
+            throw; // Rethrow to let controller handle the error
         }
     }
 
@@ -256,9 +384,18 @@ public class SubscriptionService : ISubscriptionService
         }
     }
 
-    public async Task<List<User>> GetAllSubscriptions(string buyerId)
+    // Create a small record for subscription response
+    public record SubscriptionInfo(
+        string Username,
+        string FirstName,
+        string LastName,
+        string ProfileImage
+    );
+
+    // Update the GetAllSubscriptions method to return SubscriptionInfo
+    public async Task<List<SubscriptionInfo>> GetAllSubscriptions(string buyerId)
     {
-        var subscriptions = new List<User>();
+        var subscriptions = new List<SubscriptionInfo>();
         try
         {
             var parameters = new Dictionary<string, object>
@@ -269,18 +406,11 @@ public class SubscriptionService : ISubscriptionService
             using var reader = await _databaseService.ExecuteQueryAsync(SqlQueries.GetSubscriptions, parameters);
             while (reader.Read())
             {
-                subscriptions.Add(new User(
+                subscriptions.Add(new SubscriptionInfo(
                     reader.GetString(reader.GetOrdinal("username")),
-                    reader.GetString(reader.GetOrdinal("email")),
-                    reader.GetString(reader.GetOrdinal("user_password")),
                     reader.GetString(reader.GetOrdinal("first_name")),
                     reader.GetString(reader.GetOrdinal("last_name")),
-                    reader.GetString(reader.GetOrdinal("phone_number")),
-                    reader.GetDecimal(reader.GetOrdinal("access_fee")),
-                    reader.GetString(reader.GetOrdinal("account_status")),
-                    reader.GetString(reader.GetOrdinal("account_level")),
-                    reader.GetStringOrDefault(reader.GetOrdinal("profile_description")),
-                    reader.GetStringOrDefault(reader.GetOrdinal("profile_picture"))
+                    reader.GetString(reader.GetOrdinal("profile_picture"))
                 ));
             }
             return subscriptions;
@@ -288,13 +418,16 @@ public class SubscriptionService : ISubscriptionService
         catch (Exception ex)
         {
             Console.WriteLine($"Error getting subscriptions: {ex.Message}");
-            return new List<User>();
+            throw;
         }
     }
 
-    public async Task<List<User>> GetAllSubscribers(string sellerId)
+    // Remove the unused GetValueOrDefault helper method since we're handling nulls directly
+    
+    // Update GetAllSubscribers to return SubscriptionInfo
+    public async Task<List<SubscriptionInfo>> GetAllSubscribers(string sellerId)
     {
-        var subscribers = new List<User>();
+        var subscribers = new List<SubscriptionInfo>();
         try
         {
             var parameters = new Dictionary<string, object>
@@ -305,18 +438,11 @@ public class SubscriptionService : ISubscriptionService
             using var reader = await _databaseService.ExecuteQueryAsync(SqlQueries.GetSubscribers, parameters);
             while (reader.Read())
             {
-                subscribers.Add(new User(
+                subscribers.Add(new SubscriptionInfo(
                     reader.GetString(reader.GetOrdinal("username")),
-                    reader.GetString(reader.GetOrdinal("email")),
-                    reader.GetString(reader.GetOrdinal("user_password")),
                     reader.GetString(reader.GetOrdinal("first_name")),
                     reader.GetString(reader.GetOrdinal("last_name")),
-                    reader.GetString(reader.GetOrdinal("phone_number")),
-                    reader.GetDecimal(reader.GetOrdinal("access_fee")),
-                    reader.GetString(reader.GetOrdinal("account_status")),
-                    reader.GetString(reader.GetOrdinal("account_level")),
-                    reader.GetStringOrDefault(reader.GetOrdinal("profile_description")),
-                    reader.GetStringOrDefault(reader.GetOrdinal("profile_picture"))
+                    reader.GetString(reader.GetOrdinal("profile_picture"))
                 ));
             }
             return subscribers;
@@ -324,7 +450,7 @@ public class SubscriptionService : ISubscriptionService
         catch (Exception ex)
         {
             Console.WriteLine($"Error getting subscribers: {ex.Message}");
-            return new List<User>();
+            return new List<SubscriptionInfo>();
         }
     }
 
