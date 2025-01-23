@@ -33,7 +33,7 @@ CREATE TABLE api_schema."user" (
     last_name VARCHAR(50) NOT NULL COLLATE "ucs_basic",
     phone_number VARCHAR(25) NOT NULL UNIQUE,
     profile_description TEXT,
-    profile_picture VARCHAR(100) DEFAULT 'default.png' NOT NULL,
+    profile_picture VARCHAR(100),
     join_date DATE NOT NULL,
     account_status account_status NOT NULL,
     account_level account_level NOT NULL,
