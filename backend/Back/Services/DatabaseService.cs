@@ -100,4 +100,26 @@ public class DatabaseService : IDatabaseService
         }
         return await command.ExecuteReaderAsync();
     }
+
+    public async Task<NpgsqlDataReader> ExecuteQueryAsync(string query, Dictionary<string, object> parameters,
+        NpgsqlConnection connection, NpgsqlTransaction transaction)
+    {
+        var command = new NpgsqlCommand(query, connection, transaction);
+        foreach (var param in parameters)
+        {
+            command.Parameters.AddWithValue(param.Key, param.Value);
+        }
+        return await command.ExecuteReaderAsync();
+    }
+
+    public async Task<int> ExecuteNonQueryAsync(string query, Dictionary<string, object> parameters,
+        NpgsqlConnection connection, NpgsqlTransaction transaction)
+    {
+        var command = new NpgsqlCommand(query, connection, transaction);
+        foreach (var param in parameters)
+        {
+            command.Parameters.AddWithValue(param.Key, param.Value);
+        }
+        return await command.ExecuteNonQueryAsync();
+    }
 }
