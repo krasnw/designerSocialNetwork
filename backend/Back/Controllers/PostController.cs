@@ -26,6 +26,16 @@ public class PostController : ControllerBase
         var actualPageSize = pageSize ?? 10;
         if (actualPageSize < 1) return BadRequest("Page size must be greater than 0.");
 
+        // Validate access type
+        if (!string.IsNullOrEmpty(accessType))
+        {
+            var normalizedAccessType = accessType.ToLower();
+            if (normalizedAccessType != "public" && normalizedAccessType != "private")
+            {
+                return BadRequest("Access type must be either 'public' or 'private'");
+            }
+        }
+
         // Default to public posts for unauthenticated users
         if (string.IsNullOrEmpty(User.Identity?.Name))
         {
@@ -36,9 +46,11 @@ public class PostController : ControllerBase
         
         if (posts == null || !posts.Any())
         {
-            return NotFound(tags != null 
-                ? "No posts found with the specified tags." 
-                : "No posts found.");
+            if (!string.IsNullOrEmpty(tags))
+                return NotFound("No posts found with the specified tags.");
+            if (!string.IsNullOrEmpty(accessType))
+                return NotFound($"No {accessType} posts found.");
+            return NotFound("No posts found.");
         }
 
         return Ok(PostDto.MapToPostDtoList(posts));

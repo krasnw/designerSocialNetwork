@@ -83,29 +83,37 @@ public class PostService : IPostService
         string? accessType = null, string? currentUser = null)
     {
         string query = @"
-            SELECT DISTINCT p.id, p.user_id, p.post_name, p.post_text, p.container_id, 
-                   p.post_date, p.likes, p.access_level
-            FROM api_schema.post p
-            JOIN api_schema.user u ON p.user_id = u.id
-            LEFT JOIN api_schema.post_tags pt ON p.id = pt.post_id
-            LEFT JOIN api_schema.tags t ON pt.tag_id = t.id
-            WHERE 1=1 ";  // Start with true condition for easier concatenation
-    
+        SELECT DISTINCT p.id, p.user_id, p.post_name, p.post_text, p.container_id, 
+               p.post_date, p.likes, p.access_level
+        FROM api_schema.post p
+        JOIN api_schema.user u ON p.user_id = u.id
+        LEFT JOIN api_schema.post_tags pt ON p.id = pt.post_id
+        LEFT JOIN api_schema.tags t ON pt.tag_id = t.id
+        WHERE 1=1 ";
+
         var parameters = new Dictionary<string, object>
         {
             { "@pageSize", pageSize },
             { "@offset", (pageNumber - 1) * pageSize }
         };
-    
+
         // Access control
-        if (string.IsNullOrEmpty(currentUser))
+        if (!string.IsNullOrEmpty(accessType))
         {
-            query += " AND p.access_level = 'public'";
+            // If specific access type is requested, use it with proper enum casting
+            query += " AND p.access_level::text = @accessType::text";
+            parameters.Add("@accessType", accessType.ToLower());
+        }
+        else if (string.IsNullOrEmpty(currentUser))
+        {
+            // If no user and no specific access type, show only public
+            query += " AND p.access_level::text = 'public'";
         }
         else
         {
-            query += @" AND (p.access_level = 'public' 
-                OR (p.access_level = 'private' 
+            // If user is logged in and no specific access type, show public and accessible private
+            query += @" AND (p.access_level::text = 'public' 
+                OR (p.access_level::text = 'private' 
                     AND EXISTS (
                         SELECT 1 FROM api_schema.private_access pa 
                         WHERE pa.buyer_id = u.id 
@@ -113,35 +121,36 @@ public class PostService : IPostService
                         AND pa.access_date > CURRENT_DATE
                     )
                 ))";
-            parameters.Add("@currentUser", currentUser);
-            
-            // Add ownership filter
-            query += " AND u.username != @currentUser";
         }
-    
-        // Access type filter
-        if (!string.IsNullOrEmpty(accessType))
+
+        // Add ownership filter only if user is logged in
+        if (!string.IsNullOrEmpty(currentUser))
         {
-            query += " AND p.access_level = @accessType";
-            parameters.Add("@accessType", accessType.ToLower());
+            query += " AND u.username != @currentUser";
+            parameters.Add("@currentUser", currentUser);
         }
-    
+
         // Tag filter
         if (!string.IsNullOrEmpty(tags))
         {
-            query += " AND t.tag_name = ANY(@tags)";
-            parameters.Add("@tags", tags.Split(',').Select(t => t.Trim().ToLower()).ToArray());
+            query += @" AND EXISTS (
+                SELECT 1 FROM api_schema.post_tags pt2
+                JOIN api_schema.tags t2 ON pt2.tag_id = t2.id
+                WHERE pt2.post_id = p.id
+                AND LOWER(t2.tag_name) = ANY(LOWER(@tags::text)::text[])
+            )";
+            parameters.Add("@tags", tags.Split(',').Select(t => t.Trim()).ToArray());
         }
-    
+
         // Add ordering and pagination
         query += @" ORDER BY p.post_date DESC
                    LIMIT @pageSize OFFSET @offset";
-    
+
         try
         {
             Console.WriteLine($"Executing query: {query}"); // Debug line
             Console.WriteLine($"Parameters: {string.Join(", ", parameters.Select(p => $"{p.Key}={p.Value}"))}"); // Debug line
-    
+
             var posts = ExecuteQueryWithDisposable(query, parameters, reader =>
             {
                 var result = new List<Post>();
@@ -160,7 +169,7 @@ public class PostService : IPostService
                 }
                 return result;
             });
-    
+
             Console.WriteLine($"Found {posts.Count} posts"); // Debug line
             return posts;
         }
