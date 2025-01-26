@@ -214,11 +214,9 @@ public class PostService : IPostService
     LEFT JOIN api_schema.image_container c ON p.container_id = c.id
     LEFT JOIN api_schema.image i ON c.main_image_id = i.id
     LEFT JOIN post_tags pt ON p.id = pt.post_id
-    WHERE u.username = @username
-    {0}
-    {1}
-    ORDER BY p.post_date DESC
-    LIMIT @pageSize OFFSET @offset";
+    LEFT JOIN api_schema.post_tags pt2 ON p.id = pt2.post_id
+    LEFT JOIN api_schema.tags t2 ON pt2.tag_id = t2.id
+    WHERE u.username = @username";
 
     var offset = (pageNumber - 1) * pageSize;
     if (offset < 0) offset = 0;
@@ -234,12 +232,12 @@ public class PostService : IPostService
     string accessFilter = "";
     if (string.IsNullOrEmpty(currentUser))
     {
-        accessFilter = "AND p.access_level = 'public'";
+        accessFilter = " AND p.access_level::text = 'public'";
     }
     else if (currentUser != username)
     {
-        accessFilter = @"AND (p.access_level = 'public' 
-            OR (p.access_level = 'private' 
+        accessFilter = @" AND (p.access_level::text = 'public' 
+            OR (p.access_level::text = 'private' 
                 AND EXISTS (
                     SELECT 1 FROM api_schema.private_access pa 
                     JOIN api_schema.user u2 ON pa.buyer_id = u2.id 
@@ -253,7 +251,7 @@ public class PostService : IPostService
     // Add access type filter if specified
     if (!string.IsNullOrEmpty(accessType))
     {
-        accessFilter += " AND p.access_level = @accessType";
+        accessFilter += " AND p.access_level::text = @accessType::text";
         parameters.Add("@accessType", accessType.ToLower());
     }
 
@@ -261,19 +259,29 @@ public class PostService : IPostService
     string tagFilter = "";
     if (!string.IsNullOrEmpty(tags))
     {
-        var tagList = tags.Split(',').Select(t => t.Trim().ToLower()).ToArray();
-        tagFilter = "HAVING array_agg(DISTINCT LOWER(t.tag_name)) && @tagList";
-        parameters.Add("@tagList", tagList);
+        tagFilter = @" AND EXISTS (
+            SELECT 1 FROM api_schema.post_tags pt_inner
+            JOIN api_schema.tags t_inner ON pt_inner.tag_id = t_inner.id
+            WHERE pt_inner.post_id = p.id
+            AND LOWER(t_inner.tag_name) = ANY(LOWER(@tags::text)::text[])
+        )";
+        parameters.Add("@tags", tags.Split(',').Select(t => t.Trim()).ToArray());
     }
 
-    // Format the final query
-    query = string.Format(query, accessFilter, tagFilter);
+    // Add group by clause to handle tags properly
+    query += accessFilter + tagFilter;
+    query += @" GROUP BY p.id, p.post_name, p.access_level, i.image_file_path, p.likes, pt.tags
+                ORDER BY p.post_date DESC
+                LIMIT @pageSize OFFSET @offset";
 
     NpgsqlConnection connection = null;
     NpgsqlCommand command = null;
 
     try
     {
+        Console.WriteLine($"Executing query: {query}"); // Debug line
+        Console.WriteLine($"Parameters: {string.Join(", ", parameters.Select(p => $"{p.Key}={p.Value}"))}"); // Debug line
+
         using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
         
         if (!reader.HasRows) return null;
@@ -295,6 +303,12 @@ public class PostService : IPostService
         }
 
         return posts;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in GetUserPosts: {ex.Message}");
+        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        throw;
     }
     finally
     {
