@@ -98,4 +98,81 @@ public class ChatService : IChatService
 
         return requests;
     }
+
+    public async Task<List<string>> GetChatUsers(string username)
+    {
+        var query = @"
+            SELECT DISTINCT u.username
+            FROM api_schema.chat c
+            JOIN api_schema.""user"" u ON 
+                (u.id = c.buyer_id OR u.id = c.seller_id)
+            JOIN api_schema.""user"" currentUser ON 
+                (currentUser.id = c.buyer_id OR currentUser.id = c.seller_id)
+            WHERE currentUser.username = @Username AND u.username != @Username
+            ORDER BY u.username";
+
+        var users = new List<string>();
+        using var connection = _databaseService.GetConnection();
+        using var command = new NpgsqlCommand(query, connection);
+        command.Parameters.AddWithValue("@Username", username);
+
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            users.Add(reader.GetString(0));
+        }
+
+        return users;
+    }
+
+    public async Task<bool> AcceptRequest(int requestId)
+    {
+        var query = @"
+            UPDATE api_schema.request 
+            SET request_status = 'accepted'::api_schema.request_status
+            WHERE id = @RequestId;
+
+            INSERT INTO api_schema.chat (buyer_id, seller_id, history_file_path, start_date, chat_status)
+            SELECT r.buyer_id, r.seller_id, 
+                   '/chats/chat_' || r.buyer_id || r.seller_id || '_' || EXTRACT(EPOCH FROM now())::integer || '.txt',
+                   CURRENT_DATE,
+                   'active'::api_schema.chat_status
+            FROM api_schema.request r
+            WHERE r.id = @RequestId;";
+
+        using var connection = _databaseService.GetConnection();
+        using var command = new NpgsqlCommand(query, connection);
+        command.Parameters.AddWithValue("@RequestId", requestId);
+
+        try
+        {
+            await command.ExecuteNonQueryAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error accepting request: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteRequest(int requestId)
+    {
+        var query = @"DELETE FROM api_schema.request WHERE id = @RequestId";
+
+        using var connection = _databaseService.GetConnection();
+        using var command = new NpgsqlCommand(query, connection);
+        command.Parameters.AddWithValue("@RequestId", requestId);
+
+        try
+        {
+            var rowsAffected = await command.ExecuteNonQueryAsync();
+            return rowsAffected > 0;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting request: {ex.Message}");
+            return false;
+        }
+    }
 }

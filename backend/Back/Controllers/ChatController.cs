@@ -45,4 +45,52 @@ public class ChatController : ControllerBase
             return BadRequest($"Error retrieving requests: {ex.Message}");
         }
     }
+
+    [Authorize]
+    [HttpGet("users")]
+    public async Task<ActionResult<List<string>>> GetChatUsers()
+    {
+        var username = User.Identity?.Name;
+        if (string.IsNullOrEmpty(username)) return Unauthorized("Blame the token, relog please");
+
+        try
+        {
+            var users = await _chatService.GetChatUsers(username);
+            return Ok(users);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Error retrieving chat users: {ex.Message}");
+        }
+    }
+
+    [Authorize]
+    [HttpPost("requests/{requestId}/accept")]
+    public async Task<IActionResult> AcceptRequest(int requestId)
+    {
+        try
+        {
+            var success = await _chatService.AcceptRequest(requestId);
+            return success ? Ok() : BadRequest("Could not accept request");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Error accepting request: {ex.Message}");
+        }
+    }
+
+    [Authorize]
+    [HttpDelete("requests/{requestId}")]
+    public async Task<IActionResult> DeleteRequest(int requestId)
+    {
+        try
+        {
+            var success = await _chatService.DeleteRequest(requestId);
+            return success ? Ok() : BadRequest("Could not delete request");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Error deleting request: {ex.Message}");
+        }
+    }
 }
