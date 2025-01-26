@@ -6,7 +6,7 @@ using Back.Services.Interfaces;
 namespace Back.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     public class ReportController : ControllerBase
     {
         private readonly IReportService _reportService;

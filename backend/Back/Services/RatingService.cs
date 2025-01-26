@@ -56,7 +56,7 @@ public class RatingService : IRatingService
                     u.username,
                     u.first_name,
                     u.last_name,
-                    u.profile_picture,
+                    COALESCE(u.profile_picture, '') as profile_picture,
                     ur.total_likes,
                     ROW_NUMBER() OVER (ORDER BY ur.total_likes DESC) as place
                 FROM api_schema.user_rating ur
