@@ -286,4 +286,27 @@ public class PostController : ControllerBase
             });
         }
     }
+
+    [Authorize]
+    [HttpGet("own")]
+    public IActionResult GetOwnPosts(int pageNumber = 1, int pageSize = 10, string? tags = null, string? accessType = null)
+    {
+        var username = User.Identity?.Name;
+        if (string.IsNullOrEmpty(username))
+        {
+            return Unauthorized(new { message = "User authentication required" });
+        }
+
+        if (pageNumber < 1) return BadRequest("Page number must be greater than 0.");
+        if (pageSize < 1) return BadRequest("Page size must be greater than 0.");
+
+        var posts = _postService.GetOwnPosts(username, pageNumber, pageSize, tags, accessType);
+
+        if (posts == null || !posts.Any())
+        {
+            return NotFound(new { message = "No posts found." });
+        }
+
+        return Ok(posts);
+    }
 }
