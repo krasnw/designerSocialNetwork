@@ -100,4 +100,56 @@ public class UserController : ControllerBase
             return StatusCode(500, new { error = "An unexpected error occurred while updating the profile." });
         }
     }   
+
+    [Authorize]
+    [HttpPut("profile/me/edit/basic")]
+    public async Task<IActionResult> EditBasicInfo([FromForm] User.EditBasicRequest request)
+    {
+        var uniqueName = User.Identity?.Name;
+        if (string.IsNullOrEmpty(uniqueName)) 
+            return Unauthorized("Blame the token, relog please");
+        
+        try 
+        {
+            var success = await _userService.EditBasicProfile(uniqueName, request);
+            return success ? Ok() : NotFound();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new { error = "An unexpected error occurred while updating the profile." });
+        }
+    }
+
+    [Authorize]
+    [HttpPut("profile/me/edit/sensitive")]
+    public async Task<IActionResult> EditSensitiveInfo([FromBody] User.EditSensitiveRequest request)
+    {
+        var uniqueName = User.Identity?.Name;
+        if (string.IsNullOrEmpty(uniqueName)) 
+            return Unauthorized("Blame the token, relog please");
+        
+        if (string.IsNullOrEmpty(request.CurrentPassword))
+            return BadRequest(new { error = "Current password is required" });
+
+        try 
+        {
+            var success = await _userService.EditSensitiveProfile(uniqueName, request);
+            if (!success)
+                return BadRequest(new { error = "Current password is incorrect" });
+                
+            return Ok();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new { error = "An unexpected error occurred while updating the profile." });
+        }
+    }
 }

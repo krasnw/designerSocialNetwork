@@ -15,4 +15,7 @@ public interface IUserService
     UserProfile? GetProfile(string username);
     User.EditDataResponse? EditData(string username);
     Task<bool> EditProfile(string username, User.EditRequest request);
+    // Add these two new methods
+    Task<bool> EditBasicProfile(string username, User.EditBasicRequest request);
+    Task<bool> EditSensitiveProfile(string username, User.EditSensitiveRequest request);
 }

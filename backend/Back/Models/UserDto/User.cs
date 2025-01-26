@@ -68,4 +68,22 @@ public class User(
         public IFormFile? ProfileImage { get; set; }  // This remains IFormFile for file upload
         public int? AccessFee { get; set; }
     }
+
+    public class EditBasicRequest
+    {
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+        public string? Description { get; set; }
+        public IFormFile? ProfileImage { get; set; }
+    }
+
+    public class EditSensitiveRequest
+    {
+        public string CurrentPassword { get; set; } // Required for verification
+        public string? NewUsername { get; set; }
+        public string? NewEmail { get; set; }
+        public string? NewPassword { get; set; }
+        public string? NewPhoneNumber { get; set; }
+        public int? NewAccessFee { get; set; }
+    }
 }

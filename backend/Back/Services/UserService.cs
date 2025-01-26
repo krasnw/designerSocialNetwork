@@ -479,6 +479,137 @@ public class UserService : IUserService
             return false;
         }
     }
+
+    public async Task<bool> EditBasicProfile(string username, User.EditBasicRequest request)
+    {
+        var parameters = new Dictionary<string, object>();
+        var setStatements = new List<string>();
+
+        if (!string.IsNullOrEmpty(request.FirstName))
+        {
+            if (!Regex.IsMatch(request.FirstName, ValidationPatterns.Name))
+                throw new ArgumentException("Invalid first name format");
+                
+            setStatements.Add("first_name = @firstName");
+            parameters.Add("@firstName", request.FirstName);
+        }
+
+        if (!string.IsNullOrEmpty(request.LastName))
+        {
+            if (!Regex.IsMatch(request.LastName, ValidationPatterns.Name))
+                throw new ArgumentException("Invalid last name format");
+                
+            setStatements.Add("last_name = @lastName");
+            parameters.Add("@lastName", request.LastName);
+        }
+
+        if (!string.IsNullOrEmpty(request.Description))
+        {
+            setStatements.Add("profile_description = @description");
+            parameters.Add("@description", request.Description);
+        }
+
+        if (request.ProfileImage != null)
+        {
+            var imagePath = await _imageService.UploadImageAsync(request.ProfileImage, username);
+            setStatements.Add("profile_picture = @profilePicture");
+            parameters.Add("@profilePicture", imagePath);
+        }
+
+        if (!setStatements.Any())
+            return true; // Nothing to update
+
+        parameters.Add("@username", username);
+
+        var query = $@"
+            UPDATE api_schema.user 
+            SET {string.Join(", ", setStatements)}
+            WHERE username = @username";
+
+        try
+        {
+            _databaseService.ExecuteNonQuery(query, parameters);
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> EditSensitiveProfile(string username, User.EditSensitiveRequest request)
+    {
+        // First verify the current password
+        var user = GetUser(username);
+        if (user == null || !BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.Password))
+            return false;
+
+        var parameters = new Dictionary<string, object>();
+        var setStatements = new List<string>();
+
+        if (!string.IsNullOrEmpty(request.NewUsername))
+        {
+            if (!Regex.IsMatch(request.NewUsername, ValidationPatterns.Username))
+                throw new ArgumentException("Invalid username format");
+                
+            setStatements.Add("username = @newUsername");
+            parameters.Add("@newUsername", request.NewUsername);
+        }
+
+        if (!string.IsNullOrEmpty(request.NewEmail))
+        {
+            if (!Regex.IsMatch(request.NewEmail, ValidationPatterns.Email))
+                throw new ArgumentException("Invalid email format");
+                
+            setStatements.Add("email = @newEmail");
+            parameters.Add("@newEmail", request.NewEmail);
+        }
+
+        if (!string.IsNullOrEmpty(request.NewPassword))
+        {
+            if (!Regex.IsMatch(request.NewPassword, ValidationPatterns.Password))
+                throw new ArgumentException("Invalid password format");
+                
+            var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            setStatements.Add("user_password = @newPassword");
+            parameters.Add("@newPassword", hashedPassword);
+        }
+
+        if (!string.IsNullOrEmpty(request.NewPhoneNumber))
+        {
+            if (!Regex.IsMatch(request.NewPhoneNumber, ValidationPatterns.Phone))
+                throw new ArgumentException("Invalid phone number format");
+                
+            setStatements.Add("phone_number = @newPhoneNumber");
+            parameters.Add("@newPhoneNumber", request.NewPhoneNumber);
+        }
+
+        if (request.NewAccessFee.HasValue)
+        {
+            setStatements.Add("access_fee = @newAccessFee");
+            parameters.Add("@newAccessFee", request.NewAccessFee.Value);
+        }
+
+        if (!setStatements.Any())
+            return true; // Nothing to update
+
+        parameters.Add("@username", username);
+
+        var query = $@"
+            UPDATE api_schema.user 
+            SET {string.Join(", ", setStatements)}
+            WHERE username = @username";
+
+        try
+        {
+            _databaseService.ExecuteNonQuery(query, parameters);
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
 }
 
 // Extension method for DbDataReader
