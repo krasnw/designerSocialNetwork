@@ -82,125 +82,93 @@ public class PostService : IPostService
     public List<Post> GetNewestPosts(int pageNumber = 1, int pageSize = 10, string? tags = null,
         string? accessType = null, string? currentUser = null)
     {
-        string queryWithTags = @"
-    SELECT DISTINCT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
-    FROM api_schema.post p
-    LEFT JOIN api_schema.post_tags pt ON p.id = pt.post_id
-    LEFT JOIN api_schema.tags t ON pt.tag_id = t.id
-    WHERE t.tag_name = ANY(@tags)
-    AND CASE 
-        WHEN @accessType = 'public' THEN p.access_level = 'public'
-        WHEN @accessType = 'private' THEN (
-            p.access_level = 'private'
-            AND EXISTS (
-                SELECT 1 FROM api_schema.private_access pa
-                JOIN api_schema.user u ON pa.buyer_id = u.id
-                WHERE u.username = @currentUser
-                AND pa.seller_id = p.user_id
-                AND pa.access_date > CURRENT_DATE
-            )
-        )
-        ELSE (
-            p.access_level = 'public'
-            OR (
-                p.access_level = 'private'
-                AND EXISTS (
-                    SELECT 1 FROM api_schema.private_access pa
-                    JOIN api_schema.user u ON pa.buyer_id = u.id
-                    WHERE u.username = @currentUser
-                    AND pa.seller_id = p.user_id
-                    AND pa.access_date > CURRENT_DATE
-                )
-            )
-        )
-    END
-    AND NOT EXISTS (
-        SELECT 1 FROM api_schema.user u 
-        WHERE u.id = p.user_id 
-        AND u.username = @currentUser
-    )
-    ORDER BY p.post_date DESC
-    LIMIT @pageSize OFFSET @offset";
-
-        string queryWithoutTags = @"
-    SELECT DISTINCT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
-    FROM api_schema.post p
-    WHERE CASE 
-        WHEN @accessType = 'public' THEN p.access_level = 'public'
-        WHEN @accessType = 'private' THEN (
-            p.access_level = 'private'
-            AND EXISTS (
-                SELECT 1 FROM api_schema.private_access pa
-                JOIN api_schema.user u ON pa.buyer_id = u.id
-                WHERE u.username = @currentUser
-                AND pa.seller_id = p.user_id
-                AND pa.access_date > CURRENT_DATE
-            )
-        )
-        ELSE (
-            p.access_level = 'public'
-            OR (
-                p.access_level = 'private'
-                AND EXISTS (
-                    SELECT 1 FROM api_schema.private_access pa
-                    JOIN api_schema.user u ON pa.buyer_id = u.id
-                    WHERE u.username = @currentUser
-                    AND pa.seller_id = p.user_id
-                    AND pa.access_date > CURRENT_DATE
-                )
-            )
-        )
-    END
-    AND NOT EXISTS (
-        SELECT 1 FROM api_schema.user u 
-        WHERE u.id = p.user_id 
-        AND u.username = @currentUser
-    )
-    ORDER BY p.post_date DESC
-    LIMIT @pageSize OFFSET @offset";
-
-        var offset = (pageNumber - 1) * pageSize;
-        if (offset < 0) offset = 0;
-
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
+        string query = @"
+            SELECT DISTINCT p.id, p.user_id, p.post_name, p.post_text, p.container_id, 
+                   p.post_date, p.likes, p.access_level
+            FROM api_schema.post p
+            JOIN api_schema.user u ON p.user_id = u.id
+            LEFT JOIN api_schema.post_tags pt ON p.id = pt.post_id
+            LEFT JOIN api_schema.tags t ON pt.tag_id = t.id
+            WHERE 1=1 ";  // Start with true condition for easier concatenation
+    
+        var parameters = new Dictionary<string, object>
+        {
+            { "@pageSize", pageSize },
+            { "@offset", (pageNumber - 1) * pageSize }
+        };
+    
+        // Access control
+        if (string.IsNullOrEmpty(currentUser))
+        {
+            query += " AND p.access_level = 'public'";
+        }
+        else
+        {
+            query += @" AND (p.access_level = 'public' 
+                OR (p.access_level = 'private' 
+                    AND EXISTS (
+                        SELECT 1 FROM api_schema.private_access pa 
+                        WHERE pa.buyer_id = u.id 
+                        AND pa.seller_id = p.user_id
+                        AND pa.access_date > CURRENT_DATE
+                    )
+                ))";
+            parameters.Add("@currentUser", currentUser);
+            
+            // Add ownership filter
+            query += " AND u.username != @currentUser";
+        }
+    
+        // Access type filter
+        if (!string.IsNullOrEmpty(accessType))
+        {
+            query += " AND p.access_level = @accessType";
+            parameters.Add("@accessType", accessType.ToLower());
+        }
+    
+        // Tag filter
+        if (!string.IsNullOrEmpty(tags))
+        {
+            query += " AND t.tag_name = ANY(@tags)";
+            parameters.Add("@tags", tags.Split(',').Select(t => t.Trim().ToLower()).ToArray());
+        }
+    
+        // Add ordering and pagination
+        query += @" ORDER BY p.post_date DESC
+                   LIMIT @pageSize OFFSET @offset";
+    
         try
         {
-            string query;
-            var parameters = new Dictionary<string, object>
+            Console.WriteLine($"Executing query: {query}"); // Debug line
+            Console.WriteLine($"Parameters: {string.Join(", ", parameters.Select(p => $"{p.Key}={p.Value}"))}"); // Debug line
+    
+            var posts = ExecuteQueryWithDisposable(query, parameters, reader =>
             {
-                { "@pageSize", pageSize },
-                { "@offset", offset },
-                { "@accessType", accessType ?? "all" }
-            };
-
-            if (!string.IsNullOrEmpty(currentUser))
-            {
-                parameters.Add("@currentUser", currentUser);
-            }
-
-            // Select query based on tags
-            query = string.IsNullOrEmpty(tags) ? queryWithoutTags : queryWithTags;
-            if (!string.IsNullOrEmpty(tags))
-            {
-                parameters.Add("@tags", tags.Split(',').Select(tag => tag.Trim()).ToArray());
-            }
-
-            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
-            var posts = new List<Post>();
-            while (reader.Read())
-            {
-                var post = CompilePost(reader);
-                posts.Add(post);
-                Console.WriteLine(post.ToString()); // Log each post to ensure it is being processed
-            }
-
+                var result = new List<Post>();
+                while (reader.Read())
+                {
+                    try
+                    {
+                        var post = CompilePost(reader);
+                        result.Add(post);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error compiling post: {ex.Message}");
+                        throw;
+                    }
+                }
+                return result;
+            });
+    
+            Console.WriteLine($"Found {posts.Count} posts"); // Debug line
             return posts;
         }
-        finally
+        catch (Exception ex)
         {
-            command?.Dispose();
-            connection?.Dispose();
+            Console.WriteLine($"Error in GetNewestPosts: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return new List<Post>();
         }
     }
 
@@ -360,8 +328,6 @@ public class PostService : IPostService
 
         string deletePostReportQuery = "DELETE FROM api_schema.post_report WHERE reported_id = @post_id";
 
-        string deletePostPopularityQuery = "DELETE FROM api_schema.post_popularity WHERE post_id = @post_id";
-
         string deleteQuery = "DELETE FROM api_schema.post WHERE id = @id";
 
         NpgsqlConnection connection = null;
@@ -419,13 +385,6 @@ public class PostService : IPostService
 
             // Delete related post reports
             using (command = new NpgsqlCommand(deletePostReportQuery, connection))
-            {
-                command.Parameters.AddWithValue("@post_id", id);
-                command.ExecuteNonQuery();
-            }
-
-            // Delete related post popularity
-            using (command = new NpgsqlCommand(deletePostPopularityQuery, connection))
             {
                 command.Parameters.AddWithValue("@post_id", id);
                 command.ExecuteNonQuery();
@@ -538,54 +497,17 @@ public class PostService : IPostService
         }
     }
 
-    public List<Rating> GetPostRatings(long id)
-    {
-        string query = @"
-        SELECT p.rating, t.id, t.tag_name, t.tag_type
-        FROM api_schema.post_popularity p
-        JOIN api_schema.popular_list l ON p.list_id = l.id
-        JOIN api_schema.tags t ON l.tag_id = t.id
-        WHERE p.post_id = @post_id";
-        NpgsqlConnection connection = null;
-        NpgsqlCommand command = null;
-        try
-        {
-            var parameters = new Dictionary<string, object>
-            {
-                { "@post_id", id }
-            };
-
-            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
-            var ratings = new List<Rating>();
-            while (reader.Read())
-            {
-                var tagTypeStr = reader.GetString(3).ToUpper().Replace(" ", "_");
-                Enum.TryParse<TagType>(tagTypeStr, out var tagType);
-                ratings.Add(new Rating(reader.GetInt32(0),
-                    new Tag(reader.GetInt32(1), reader.GetString(2), tagType)));
-            }
-
-            return ratings;
-        }
-        finally
-        {
-            command?.Dispose();
-            connection?.Dispose();
-        }
-    }
-
     private Post CompilePost(DbDataReader reader) =>
         new(
             reader.GetInt32(0),
             _userService.GetUser(reader.GetInt32(1)),
             reader.GetString(2),
-            reader.GetString(3),
+            reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
             GetPostImages(reader.GetInt32(0)),
-            reader.GetDateTime(5),  // Changed from DateOnly.FromDateTime()
+            reader.GetDateTime(5),
             reader.GetInt32(6),
             reader.GetString(7),
-            _tagService.GetPostTags(reader.GetInt32(0)),
-            GetPostRatings(reader.GetInt32(0))
+            _tagService.GetPostTags(reader.GetInt32(0))
         );
 
     private Post CompilePost(DbDataReader reader, string? currentUser = null)
@@ -595,13 +517,12 @@ public class PostService : IPostService
             postId,
             _userService.GetUser(reader.GetInt32(1)),
             reader.GetString(2),
-            reader.GetString(3),
+            reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
             GetPostImages(postId),
             reader.GetDateTime(5),
             reader.GetInt32(6),
             reader.GetString(7),
-            _tagService.GetPostTags(postId),
-            GetPostRatings(postId)
+            _tagService.GetPostTags(postId)
         );
     }
 

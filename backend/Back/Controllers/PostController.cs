@@ -25,26 +25,23 @@ public class PostController : ControllerBase
         if (pageNumber < 1) return BadRequest("Page number must be greater than 0.");
         var actualPageSize = pageSize ?? 10;
         if (actualPageSize < 1) return BadRequest("Page size must be greater than 0.");
-        
-        var currentUser = User.Identity?.Name;
 
-        // Handle private posts access
-        if (accessType?.Equals("private", StringComparison.OrdinalIgnoreCase) == true && string.IsNullOrEmpty(currentUser))
+        // Default to public posts for unauthenticated users
+        if (string.IsNullOrEmpty(User.Identity?.Name))
         {
-            return Unauthorized("You must be logged in to view private posts.");
+            accessType = "public";
         }
 
-        // Get posts with subscription access
-        var posts = _postService.GetNewestPosts(pageNumber, actualPageSize, tags, accessType, currentUser);
+        var posts = _postService.GetNewestPosts(pageNumber, actualPageSize, tags, accessType, User.Identity?.Name);
         
-        if (!posts.Any())
+        if (posts == null || !posts.Any())
         {
             return NotFound(tags != null 
                 ? "No posts found with the specified tags." 
                 : "No posts found.");
         }
 
-        return new JsonResult(PostDto.MapToPostDtoList(posts));
+        return Ok(PostDto.MapToPostDtoList(posts));
     }
 
     [HttpGet("protected/{hash}")]

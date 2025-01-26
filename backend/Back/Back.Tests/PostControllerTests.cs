@@ -51,8 +51,17 @@ namespace Back.Tests.Controllers
             var pageSize = 10;
             var posts = new List<Post>
             {
-                new Post(1, new User("test", "test@test.com", "password", "Test", "User", "123456789", 0, "active", "user", "", "default.jpg"),
-                    "Test Post", "Content", new ImageContainer(1, new Image(1, "test.jpg"), new List<Image>()), DateTime.Now, 0, "public", new List<Tag>(), new List<Rating>())
+                new Post(
+                    1,
+                    new User("test", "test@test.com", "password", "Test", "User", "123456789", 0, "active", "user", "", "default.jpg"),
+                    "Test Post",
+                    "Content",
+                    new ImageContainer(1, new Image(1, "test.jpg"), new List<Image>()),
+                    DateTime.Now,
+                    0,
+                    "public",
+                    new List<Tag>()
+                )
             };
 
             _postServiceMock.Setup(x => x.GetNewestPosts(pageNumber, pageSize, null, "public", null))
@@ -92,12 +101,14 @@ namespace Back.Tests.Controllers
         {
             // Arrange
             var postId = 1L;
-            var post = new Post(postId, 
+            var post = new Post(
+                postId, 
                 new User("test", "test@test.com", "password", "Test", "User", "123456789", 0, "active", "user", "", "default.jpg"),
                 "Test Post", "Content", 
                 new ImageContainer(1, new Image(1, "test.jpg"), new List<Image>()), 
                 DateTime.Now, 0, "public", 
-                new List<Tag>(), new List<Rating>());
+                new List<Tag>()
+            );
 
             _postServiceMock.Setup(x => x.GetPost(postId))
                 .Returns(post);
@@ -140,12 +151,14 @@ namespace Back.Tests.Controllers
             var username = "testUser";
             var posts = new List<Post>
             {
-                new Post(1, 
+                new Post(
+                    1, 
                     new User(username, "test@test.com", "password", "Test", "User", "123456789", 0, "active", "user", "", "default.jpg"),
                     "Test Post", "Content", 
                     new ImageContainer(1, new Image(1, "test.jpg"), new List<Image>()), 
                     DateTime.Now, 0, "public", 
-                    new List<Tag>(), new List<Rating>())
+                    new List<Tag>()
+                )
             };
 
             _postServiceMock.Setup(x => x.GetAllUserPosts(username))
@@ -222,12 +235,14 @@ namespace Back.Tests.Controllers
         {
             // Arrange
             var hash = "validHash";
-            var post = new Post(1, 
+            var post = new Post(
+                1, 
                 new User("test", "test@test.com", "password", "Test", "User", "123456789", 0, "active", "user", "", "default.jpg"),
                 "Test Post", "Content", 
                 new ImageContainer(1, new Image(1, "test.jpg"), new List<Image>()), 
                 DateTime.Now, 0, "protected", 
-                new List<Tag>(), new List<Rating>());
+                new List<Tag>()
+            );
 
             _postServiceMock.Setup(x => x.GetProtectedPost(hash))
                 .Returns(post);
