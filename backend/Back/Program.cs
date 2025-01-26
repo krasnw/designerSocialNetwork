@@ -52,6 +52,7 @@ builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IRatingService, RatingService>();
 builder.Services.AddHostedService<SubscriptionRenewalService>();
 
 DotNetEnv.Env.Load();

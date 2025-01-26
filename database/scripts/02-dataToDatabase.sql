@@ -274,55 +274,18 @@ VALUES
 
 
 
-
-INSERT INTO api_schema.rating_list (tag_id, list_file_path)
+-- Add this new section instead
+INSERT INTO api_schema.user_rating (user_id, total_likes, last_updated)
 VALUES
-(1, '/ratings/design_ratings.txt'),
-(2, '/ratings/ui_ratings.txt'),
-(3, '/ratings/ux_ratings.txt'),
-(4, '/ratings/logo_ratings.txt'),
-(5, '/ratings/web_ratings.txt'),
-(6, '/ratings/app_ratings.txt'),
-(7, '/ratings/dashboard_ratings.txt'),
-(8, '/ratings/graphics_ratings.txt');
-
-
-
-INSERT INTO api_schema.user_rating (user_id, list_id, rating)
-VALUES
-(1, 1, 5),
-(2, 2, 4),
-(3, 3, 3),
-(4, 4, 5),
-(5, 5, 4),
-(6, 6, 5),
-(7, 7, 3),
-(8, 8, 4),
-(9, 1, 5),
-(10, 2, 3);
-
-
-INSERT INTO api_schema.popular_list (list_id, list_file_path)
-VALUES
-(1, '/popular/design_popular.txt'),
-(2, '/popular/ui_popular.txt'),
-(3, '/popular/ux_popular.txt'),
-(4, '/popular/logo_popular.txt'),
-(5, '/popular/web_popular.txt'),
-(6, '/popular/app_popular.txt');
-
-
-INSERT INTO api_schema.post_popularity (post_id, list_id, rating)
-VALUES
-(1, 1, 90),
-(2, 2, 85),
-(3, 3, 80),
-(4, 4, 95),
-(5, 5, 75),
-(6, 6, 70),
-(7, 1, 65),
-(8, 2, 60),
-(9, 3, 55),
-(10, 4, 50);
+(1, 100, CURRENT_TIMESTAMP),
+(2, 85, CURRENT_TIMESTAMP),
+(3, 150, CURRENT_TIMESTAMP),
+(4, 75, CURRENT_TIMESTAMP),
+(5, 200, CURRENT_TIMESTAMP),
+(6, 90, CURRENT_TIMESTAMP),
+(7, 120, CURRENT_TIMESTAMP),
+(8, 180, CURRENT_TIMESTAMP),
+(9, 95, CURRENT_TIMESTAMP),
+(10, 160, CURRENT_TIMESTAMP);
 
 

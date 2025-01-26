@@ -242,32 +242,21 @@ CREATE TABLE api_schema.chat_image_report (
 -- end of report block
 
 -- Rating block
-CREATE TABLE api_schema.rating_list (
-    id SERIAL PRIMARY KEY,
-    tag_id INTEGER REFERENCES tags(id),
-    list_file_path VARCHAR(100) NOT NULL
-);
+-- Remove these tables
+DROP TABLE IF EXISTS api_schema.post_popularity CASCADE;
+DROP TABLE IF EXISTS api_schema.popular_list CASCADE;
+DROP TABLE IF EXISTS api_schema.user_rating CASCADE;
+DROP TABLE IF EXISTS api_schema.rating_list CASCADE;
 
+-- Add new rating table
 CREATE TABLE api_schema.user_rating (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES "user"(id),
-    list_id INTEGER REFERENCES rating_list(id),
-    rating INTEGER NOT NULL
+    total_likes INTEGER NOT NULL DEFAULT 0,
+    last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE api_schema.popular_list (
-    id SERIAL PRIMARY KEY,
-    list_id INTEGER REFERENCES rating_list(id),
-    list_file_path VARCHAR(100) NOT NULL,
-    tag_id INTEGER REFERENCES tags(id)
-);
-
-CREATE TABLE api_schema.post_popularity (
-    id SERIAL PRIMARY KEY,
-    post_id INTEGER REFERENCES post(id),
-    list_id INTEGER REFERENCES rating_list(id),
-    rating INTEGER NOT NULL
-);
+CREATE INDEX idx_user_rating_total_likes ON api_schema.user_rating(total_likes DESC);
 -- end of rating block
 
 -- Grant privileges to everything in the schema/database
