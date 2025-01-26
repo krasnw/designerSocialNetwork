@@ -152,10 +152,18 @@ public class ChatService : IChatService
 
     public async Task<bool> AcceptRequest(int requestId)
     {
-        var query = @"
+        // First check if request exists and is in pending state
+        var checkQuery = @"
+            SELECT COUNT(*) 
+            FROM api_schema.request 
+            WHERE id = @RequestId 
+            AND request_status = 'pending'";
+
+        var updateQuery = @"
             UPDATE api_schema.request 
             SET request_status = 'accepted'::api_schema.request_status
-            WHERE id = @RequestId;
+            WHERE id = @RequestId
+            AND request_status = 'pending';
 
             INSERT INTO api_schema.chat (buyer_id, seller_id, history_file_path, start_date, chat_status)
             SELECT r.buyer_id, r.seller_id, 
@@ -166,12 +174,24 @@ public class ChatService : IChatService
             WHERE r.id = @RequestId;";
 
         using var connection = _databaseService.GetConnection();
-        using var command = new NpgsqlCommand(query, connection);
-        command.Parameters.AddWithValue("@RequestId", requestId);
+        
+        // Check if request exists
+        using var checkCommand = new NpgsqlCommand(checkQuery, connection);
+        checkCommand.Parameters.AddWithValue("@RequestId", requestId);
+        var requestExists = (long)await checkCommand.ExecuteScalarAsync() > 0;
+
+        if (!requestExists)
+        {
+            return false;
+        }
+
+        // If request exists, proceed with update
+        using var updateCommand = new NpgsqlCommand(updateQuery, connection);
+        updateCommand.Parameters.AddWithValue("@RequestId", requestId);
 
         try
         {
-            await command.ExecuteNonQueryAsync();
+            await updateCommand.ExecuteNonQueryAsync();
             return true;
         }
         catch (Exception ex)

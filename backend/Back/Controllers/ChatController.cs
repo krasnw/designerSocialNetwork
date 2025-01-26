@@ -82,7 +82,9 @@ public class ChatController : ControllerBase
         try
         {
             var success = await _chatService.AcceptRequest(requestId);
-            return success ? Ok() : BadRequest("Could not accept request");
+            return success 
+                ? Ok() 
+                : NotFound("Request not found or is not in pending state");
         }
         catch (Exception ex)
         {
