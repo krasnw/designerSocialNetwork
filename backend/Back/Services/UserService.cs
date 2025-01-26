@@ -349,7 +349,6 @@ public class UserService : IUserService
                 reader.GetString(reader.GetOrdinal("username")),
                 reader.GetString(reader.GetOrdinal("first_name")),
                 reader.GetString(reader.GetOrdinal("last_name")),
-                GetUserRatings(username),
                 reader.GetStringOrDefault(reader.GetOrdinal("profile_description")),
                 reader.GetStringOrDefault(reader.GetOrdinal("profile_picture")),
                 includeWallet ? (reader.IsDBNull(reader.GetOrdinal("amount")) ? 0 : reader.GetInt32(reader.GetOrdinal("amount"))) : 0,
@@ -368,7 +367,45 @@ public class UserService : IUserService
 
     public UserProfile GetOwnProfile(string username) => GetProfile(username, true);
 
-    public UserProfile GetProfile(string username) => GetProfile(username, false);
+    public UserProfile GetProfile(string username)
+    {
+        var sql = @"
+            SELECT 
+                u.username,
+                u.first_name,
+                u.last_name,
+                u.profile_description,
+                u.profile_picture,
+                COALESCE(ur.total_likes, 0) as total_likes,
+                (SELECT COUNT(*) FROM api_schema.post p WHERE p.user_id = u.id) as completed_tasks
+            FROM api_schema.""user"" u
+            LEFT JOIN api_schema.user_rating ur ON ur.user_id = u.id
+            WHERE u.username = @Username";
+
+        using var reader = _databaseService.ExecuteQuery(sql, out var connection, out var command,
+            new Dictionary<string, object> { { "@Username", username } });
+        try
+        {
+            if (!reader.HasRows) return null;
+
+            reader.Read();
+            return new UserProfile(
+                reader.GetString(reader.GetOrdinal("username")),
+                reader.GetString(reader.GetOrdinal("first_name")),
+                reader.GetString(reader.GetOrdinal("last_name")),
+                reader.GetStringOrDefault(reader.GetOrdinal("profile_description")),
+                reader.GetStringOrDefault(reader.GetOrdinal("profile_picture")),
+                null, // rubies
+                reader.GetInt32(reader.GetOrdinal("total_likes")),
+                reader.GetInt32(reader.GetOrdinal("completed_tasks"))
+            );
+        }
+        finally
+        {
+            command?.Dispose();
+            connection?.Dispose();
+        }
+    }
 
     public User.EditDataResponse EditData(string username)
     {

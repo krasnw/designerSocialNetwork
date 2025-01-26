@@ -12,11 +12,16 @@ public class UserController : ControllerBase
 {
     private readonly IUserService _userService;
     private readonly ISubscriptionService _subscriptionService;
+    private readonly IRatingService _ratingService;
 
-    public UserController(IUserService userService, ISubscriptionService subscriptionService)
+    public UserController(
+        IUserService userService, 
+        ISubscriptionService subscriptionService,
+        IRatingService ratingService)
     {
         _userService = userService;
         _subscriptionService = subscriptionService;
+        _ratingService = ratingService;
     }
 
     [Authorize]
@@ -40,29 +45,24 @@ public class UserController : ControllerBase
         }
 
         var user = _userService.GetProfile(username);
+        if (user == null) return NotFound("User not found");
+
         var isSubscribed = await _subscriptionService.IsSubscribed(uniqueName, username);
-        if (user != null)
+        var position = await _ratingService.GetRatingPosition(username);
+
+        return Ok(new
         {
-            return Ok(
-                new
-                {
-                    user.Username,
-                    user.FirstName,
-                    user.LastName,
-                    user.RatingPositions,
-                    user.Description,
-                    user.ProfileImage,
-                    user.Rubies,
-                    user.TotalLikes,
-                    user.CompletedTasks,
-                    IsSubscribedTo = isSubscribed
-                }
-            );
-        } 
-        else
-        {
-            return NotFound("User not found");
-        }
+            user.Username,
+            user.FirstName,
+            user.LastName,
+            user.Description,
+            user.ProfileImage,
+            user.Rubies,
+            user.TotalLikes,
+            user.CompletedTasks,
+            IsSubscribedTo = isSubscribed,
+            RatingPosition = position
+        });
     }
     
     

@@ -17,20 +17,18 @@
         public string Username { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public List<RatingEntry> RatingPositions { get; set; } 
         public string Description { get; set; }
         public string ProfileImage { get; set; }
         public int? Rubies { get; set; }
         public int TotalLikes { get; set; }
         public int CompletedTasks { get; set; }
 
-        public UserProfile(string username, string firstName, string lastName, Dictionary<string, int> ratingPositions,
+        public UserProfile(string username, string firstName, string lastName,
             string description, string profileImage, int? rubies = null, int totalLikes = 0, int completedTasks = 0)
         {
             Username = username;
             FirstName = firstName;
             LastName = lastName;
-            RatingPositions = ratingPositions.Select(r => new RatingEntry(r.Key, r.Value)).ToList();
             Description = description;
             ProfileImage = profileImage;
             Rubies = rubies;

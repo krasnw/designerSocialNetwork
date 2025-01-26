@@ -13,13 +13,18 @@ namespace Back.Tests.Controllers
     {
         private readonly Mock<IUserService> _userServiceMock;
         private readonly Mock<ISubscriptionService> _subscriptionServiceMock;
+        private readonly Mock<IRatingService> _ratingServiceMock;
         private readonly UserController _controller;
 
         public UserControllerTests()
         {
             _userServiceMock = new Mock<IUserService>();
             _subscriptionServiceMock = new Mock<ISubscriptionService>();
-            _controller = new UserController(_userServiceMock.Object, _subscriptionServiceMock.Object);
+            _ratingServiceMock = new Mock<IRatingService>();
+            _controller = new UserController(
+                _userServiceMock.Object, 
+                _subscriptionServiceMock.Object,
+                _ratingServiceMock.Object);
         }
 
         [Fact]
@@ -31,10 +36,11 @@ namespace Back.Tests.Controllers
                 testUsername,
                 "Test",
                 "User",
-                new Dictionary<string, int>(),
                 "Test description",
                 "test.jpg",
-                100
+                100,  // rubies
+                0,    // totalLikes
+                0     // completedTasks
             );
 
             var claims = new List<Claim>
@@ -107,6 +113,39 @@ namespace Back.Tests.Controllers
             // Assert
             var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
             Assert.Equal("Blame the token, relog please", unauthorizedResult.Value);
+        }
+
+        [Fact]
+        public async Task GetUser_ValidUsername_ReturnsOkResult()
+        {
+            // Arrange
+            var testUsername = "testUser";
+            var expectedProfile = new UserProfile(
+                testUsername,
+                "Test",
+                "User",
+                "Test description",
+                "test.jpg",
+                100,  // rubies
+                0,    // totalLikes
+                0     // completedTasks
+            );
+
+            _userServiceMock.Setup(x => x.GetProfile(testUsername))
+                .Returns(expectedProfile);
+            _subscriptionServiceMock.Setup(x => x.IsSubscribed(It.IsAny<string>(), testUsername))
+                .ReturnsAsync(false);
+            _ratingServiceMock.Setup(x => x.GetRatingPosition(testUsername))
+                .ReturnsAsync(1);
+
+            // Act
+            var result = await _controller.GetUser(testUsername);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            dynamic returnedProfile = okResult.Value;
+            Assert.Equal(testUsername, returnedProfile.Username);
+            Assert.Equal(1, returnedProfile.RatingPosition);
         }
     }
 }
