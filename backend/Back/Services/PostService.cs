@@ -865,13 +865,13 @@ public class PostService : IPostService
     {
         try
         {
-            // Check if already liked
-            string checkQuery = @"
+            // First check if user is the post owner
+            string ownerCheckQuery = @"
                 SELECT EXISTS (
                     SELECT 1 
-                    FROM api_schema.post_likes pl
-                    JOIN api_schema.user u ON pl.user_id = u.id
-                    WHERE u.username = @username AND pl.post_id = @postId
+                    FROM api_schema.post p
+                    JOIN api_schema.user u ON p.user_id = u.id
+                    WHERE u.username = @username AND p.id = @postId
                 )";
 
             var parameters = new Dictionary<string, object>
@@ -885,6 +885,23 @@ public class PostService : IPostService
 
             try
             {
+                using (var reader = _databaseService.ExecuteQuery(ownerCheckQuery, out connection, out command, parameters))
+                {
+                    if (reader.Read() && reader.GetBoolean(0))
+                    {
+                        throw new InvalidOperationException("Cannot like your own post");
+                    }
+                }
+
+                // Check if already liked
+                string checkQuery = @"
+                    SELECT EXISTS (
+                        SELECT 1 
+                        FROM api_schema.post_likes pl
+                        JOIN api_schema.user u ON pl.user_id = u.id
+                        WHERE u.username = @username AND pl.post_id = @postId
+                    )";
+
                 bool alreadyLiked = false;
                 using (var reader = _databaseService.ExecuteQuery(checkQuery, out connection, out command, parameters))
                 {

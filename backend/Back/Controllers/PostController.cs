@@ -282,7 +282,11 @@ public class PostController : ControllerBase
                     isLiked = isLiked
                 });
             }
-            return BadRequest(new { message = "Failed to process like/unlike action" });
+            return BadRequest(new { message = "Cannot like own post" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
