@@ -191,9 +191,11 @@ CREATE TABLE api_schema.chat_transaction (
 -- end of chat block
 
 -- Report block
+CREATE TYPE api_schema.reason_type AS ENUM ('user', 'post');
 CREATE TABLE api_schema.reason (
     id SERIAL PRIMARY KEY,
-    reason_name VARCHAR(50) NOT NULL
+    reason_name VARCHAR(50) NOT NULL,
+    reason_type reason_type NOT NULL
 );
 
 CREATE TABLE api_schema.user_report (
@@ -201,6 +203,7 @@ CREATE TABLE api_schema.user_report (
     reporter_id INTEGER REFERENCES "user"(id),
     reported_id INTEGER REFERENCES "user"(id),
     reason_id INTEGER REFERENCES reason(id),
+    description TEXT,
     report_date DATE NOT NULL
 );
 
@@ -209,6 +212,7 @@ CREATE TABLE api_schema.post_report (
     reporter_id INTEGER REFERENCES "user"(id),
     reported_id INTEGER REFERENCES post(id),
     reason_id INTEGER REFERENCES reason(id),
+    description TEXT,
     report_date DATE NOT NULL
 );
 

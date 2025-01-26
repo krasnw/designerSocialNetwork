@@ -212,13 +212,18 @@ VALUES
 (10, 10);
 
 
-INSERT INTO api_schema.reason (reason_name)
+INSERT INTO api_schema.reason (reason_name, reason_type)
 VALUES
-('Spam'),
-('Przemoc'),
-('Nieodpowiednia treść do tematyki platformy'),
-('Kradzież treści'),
-('Inne');
+('Spam', 'user'),
+('Niewłaściwe zachowanie', 'user'),
+('Podszywanie się', 'user'),
+('Nieodpowiedni profil', 'user'),
+('Inne', 'user'),
+('Spam', 'post'),
+('Nieodpowiednia treść', 'post'),
+('Kradzież treści', 'post'),
+('Wprowadzające w błąd informacje', 'post'),
+('Inne', 'post');
 
 
 INSERT INTO api_schema.user_report (reporter_id, reported_id, reason_id, report_date)
