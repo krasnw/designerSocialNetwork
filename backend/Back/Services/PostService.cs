@@ -541,6 +541,23 @@ public class PostService : IPostService
             GetPostRatings(reader.GetInt32(0))
         );
 
+    private Post CompilePost(DbDataReader reader, string? currentUser = null)
+    {
+        var postId = reader.GetInt32(0);
+        return new Post(
+            postId,
+            _userService.GetUser(reader.GetInt32(1)),
+            reader.GetString(2),
+            reader.GetString(3),
+            GetPostImages(postId),
+            reader.GetDateTime(5),
+            reader.GetInt32(6),
+            reader.GetString(7),
+            _tagService.GetPostTags(postId),
+            GetPostRatings(postId)
+        );
+    }
+
     public async Task<Post?> CreatePost(string username, PostCreationData request)
     {
         if (request.ImagePaths.Count > 10)
@@ -842,5 +859,114 @@ public class PostService : IPostService
 
         _databaseService.ExecuteNonQuery(query, parameters);
         return hash;
+    }
+
+    public bool LikePost(string username, long postId)
+    {
+        try
+        {
+            // Check if already liked
+            string checkQuery = @"
+                SELECT EXISTS (
+                    SELECT 1 
+                    FROM api_schema.post_likes pl
+                    JOIN api_schema.user u ON pl.user_id = u.id
+                    WHERE u.username = @username AND pl.post_id = @postId
+                )";
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "@username", username },
+                { "@postId", postId }
+            };
+
+            NpgsqlConnection connection = null;
+            NpgsqlCommand command = null;
+
+            try
+            {
+                bool alreadyLiked = false;
+                using (var reader = _databaseService.ExecuteQuery(checkQuery, out connection, out command, parameters))
+                {
+                    if (reader.Read())
+                    {
+                        alreadyLiked = reader.GetBoolean(0);
+                    }
+                }
+
+                string query;
+                if (alreadyLiked)
+                {
+                    // Unlike: Remove like and decrease counter
+                    query = @"
+                        DELETE FROM api_schema.post_likes pl
+                        USING api_schema.user u
+                        WHERE pl.user_id = u.id 
+                        AND u.username = @username 
+                        AND pl.post_id = @postId;
+
+                        UPDATE api_schema.post
+                        SET likes = likes - 1
+                        WHERE id = @postId;";
+                }
+                else
+                {
+                    // Like: Add like and increase counter
+                    query = @"
+                        INSERT INTO api_schema.post_likes (user_id, post_id)
+                        SELECT u.id, @postId
+                        FROM api_schema.user u
+                        WHERE u.username = @username;
+
+                        UPDATE api_schema.post
+                        SET likes = likes + 1
+                        WHERE id = @postId;";
+                }
+
+                _databaseService.ExecuteNonQuery(query, parameters);
+                return true;
+            }
+            finally
+            {
+                command?.Dispose();
+                connection?.Dispose();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in LikePost: {ex.Message}");
+            return false;
+        }
+    }
+
+    public bool IsPostLikedByUser(string username, long postId)
+    {
+        string query = @"
+            SELECT EXISTS (
+                SELECT 1 
+                FROM api_schema.post_likes pl
+                JOIN api_schema.user u ON pl.user_id = u.id
+                WHERE u.username = @username AND pl.post_id = @postId
+            )";
+
+        var parameters = new Dictionary<string, object>
+        {
+            { "@username", username },
+            { "@postId", postId }
+        };
+
+        NpgsqlConnection connection = null;
+        NpgsqlCommand command = null;
+
+        try
+        {
+            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
+            return reader.Read() && reader.GetBoolean(0);
+        }
+        finally
+        {
+            command?.Dispose();
+            connection?.Dispose();
+        }
     }
 }

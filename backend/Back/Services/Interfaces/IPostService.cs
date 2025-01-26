@@ -15,4 +15,6 @@ public interface IPostService
     Post? GetProtectedPost(string hash);
     string GenerateProtectedAccessHash(long postId);
     List<PostMini>? GetUserPosts(string username, string? currentUser, int pageNumber, int pageSize, string? tags = null, string? accessType = null);
+    bool LikePost(string username, long postId);
+    bool IsPostLikedByUser(string username, long postId);
 }

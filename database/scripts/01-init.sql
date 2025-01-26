@@ -147,6 +147,13 @@ CREATE TABLE api_schema.protected_post_access (
 );
 
 CREATE INDEX idx_protected_post_hash ON api_schema.protected_post_access(access_hash);
+
+CREATE TABLE api_schema.post_likes (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES "user"(id) ON DELETE CASCADE,
+    post_id INTEGER REFERENCES post(id) ON DELETE CASCADE,
+    UNIQUE(user_id, post_id)
+);
 -- end of post block
 
 -- Chat block

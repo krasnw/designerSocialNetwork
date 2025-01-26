@@ -260,4 +260,36 @@ public class PostController : ControllerBase
 
         return null;
     }
+
+    [Authorize]
+    [HttpPost("{id}/like")]
+    public IActionResult LikePost(long id)
+    {
+        var username = User.Identity?.Name;
+        if (string.IsNullOrEmpty(username))
+        {
+            return Unauthorized(new { message = "User authentication required" });
+        }
+
+        try
+        {
+            var success = _postService.LikePost(username, id);
+            if (success)
+            {
+                var isLiked = _postService.IsPostLikedByUser(username, id);
+                return Ok(new { 
+                    message = isLiked ? "Post liked successfully" : "Post unliked successfully",
+                    isLiked = isLiked
+                });
+            }
+            return BadRequest(new { message = "Failed to process like/unlike action" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { 
+                message = "An error occurred while processing the request",
+                error = ex.Message 
+            });
+        }
+    }
 }
