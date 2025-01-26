@@ -373,8 +373,7 @@ public class UserService : IUserService
     public User.EditDataResponse EditData(string username)
     {
         var query = @"
-            SELECT email, first_name, last_name, phone_number, profile_description, 
-                   profile_picture, access_fee
+            SELECT username, email, phone_number, profile_description, access_fee
             FROM api_schema.user
             WHERE username = @Username";
 
@@ -387,96 +386,17 @@ public class UserService : IUserService
             reader.Read();
             return new User.EditDataResponse
             {
-                Email = reader.GetString(0),
-                FirstName = reader.GetString(1),
-                LastName = reader.GetString(2),
-                PhoneNumber = reader.GetString(3),
-                Description = reader.GetStringOrDefault(4),
-                ProfileImage = reader.GetStringOrDefault(5),
-                AccessFee = reader.GetInt32(6)
+                Description = reader.GetStringOrDefault(reader.GetOrdinal("profile_description")),
+                Username = reader.GetString(reader.GetOrdinal("username")),
+                PhoneNumber = reader.GetString(reader.GetOrdinal("phone_number")),
+                Email = reader.GetString(reader.GetOrdinal("email")),
+                AccessFee = reader.GetInt32(reader.GetOrdinal("access_fee"))
             };
         }
         finally
         {
             command?.Dispose();
             connection?.Dispose();
-        }
-    }
-
-    public async Task<bool> EditProfile(string username, User.EditRequest request)
-    {
-        var parameters = new Dictionary<string, object>();
-        var setStatements = new List<string>();
-
-        if (!string.IsNullOrEmpty(request.Email))
-        {
-            setStatements.Add("email = @email");
-            parameters.Add("@email", request.Email);
-        }
-
-        if (!string.IsNullOrEmpty(request.Password))
-        {
-            setStatements.Add("password = @password");
-            parameters.Add("@password", BCrypt.Net.BCrypt.HashPassword(request.Password));
-        }
-
-        if (!string.IsNullOrEmpty(request.FirstName))
-        {
-            setStatements.Add("first_name = @firstName");
-            parameters.Add("@firstName", request.FirstName);
-        }
-
-        if (!string.IsNullOrEmpty(request.LastName))
-        {
-            setStatements.Add("last_name = @lastName");
-            parameters.Add("@lastName", request.LastName);
-        }
-
-        if (!string.IsNullOrEmpty(request.PhoneNumber))
-        {
-            setStatements.Add("phone_number = @phoneNumber");
-            parameters.Add("@phoneNumber", request.PhoneNumber);
-        }
-
-        if (!string.IsNullOrEmpty(request.Description))
-        {
-            setStatements.Add("profile_description = @description");
-            parameters.Add("@description", request.Description);
-        }
-
-        if (request.AccessFee.HasValue)
-        {
-            setStatements.Add("access_fee = @accessFee");
-            parameters.Add("@accessFee", request.AccessFee.Value);
-        }
-
-        if (request.ProfileImage != null)
-        {
-            var imagePath = await _imageService.UploadImageAsync(request.ProfileImage, username);
-            setStatements.Add("profile_picture = @profilePicture");
-            parameters.Add("@profilePicture", imagePath);
-        }
-
-        if (!setStatements.Any())
-        {
-            return true; // Nothing to update
-        }
-
-        parameters.Add("@username", username);
-
-        var query = $@"
-            UPDATE api_schema.user 
-            SET {string.Join(", ", setStatements)}
-            WHERE username = @username";
-
-        try
-        {
-            _databaseService.ExecuteNonQuery(query, parameters);
-            return true;
-        }
-        catch (Exception)
-        {
-            return false;
         }
     }
 

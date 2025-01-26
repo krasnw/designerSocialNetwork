@@ -62,15 +62,14 @@ namespace Back.Tests.Controllers
         }
 
         [Fact]
-        public void EditMyProfile_UnauthorizedUser_ReturnsUnauthorized()
+        public async Task EditBasicInfo_UnauthorizedUser_ReturnsUnauthorized()
         {
             // Arrange
-            var editRequest = new User.EditRequest
+            var editRequest = new User.EditBasicRequest
             {
-                Email = "test@test.com",
                 FirstName = "Test",
                 LastName = "User",
-                PhoneNumber = "+48123456789"
+                Description = "Test description"
             };
 
             _controller.ControllerContext = new ControllerContext
@@ -79,7 +78,31 @@ namespace Back.Tests.Controllers
             };
 
             // Act
-            var result = _controller.EditMyProfile(editRequest);
+            var result = await _controller.EditBasicInfo(editRequest);
+
+            // Assert
+            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
+            Assert.Equal("Blame the token, relog please", unauthorizedResult.Value);
+        }
+
+        [Fact]
+        public async Task EditSensitiveInfo_UnauthorizedUser_ReturnsUnauthorized()
+        {
+            // Arrange
+            var editRequest = new User.EditSensitiveRequest
+            {
+                CurrentPassword = "oldPassword",
+                NewEmail = "test@test.com",
+                NewPhoneNumber = "+48123456789"
+            };
+
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            };
+
+            // Act
+            var result = await _controller.EditSensitiveInfo(editRequest);
 
             // Assert
             var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);

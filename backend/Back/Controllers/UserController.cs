@@ -79,29 +79,6 @@ public class UserController : ControllerBase
     }
     
     [Authorize]
-    [HttpPut("profile/me/edit")]
-    public async Task<IActionResult> EditMyProfile([FromForm] User.EditRequest request)
-    {
-        var uniqueName = User.Identity?.Name;
-        if (string.IsNullOrEmpty(uniqueName)) 
-            return Unauthorized("Blame the token, relog please");
-        
-        try 
-        {
-            var success = await _userService.EditProfile(uniqueName, request);
-            return success ? Ok() : NotFound();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { error = "An unexpected error occurred while updating the profile." });
-        }
-    }   
-
-    [Authorize]
     [HttpPut("profile/me/edit/basic")]
     public async Task<IActionResult> EditBasicInfo([FromForm] User.EditBasicRequest request)
     {
