@@ -12,12 +12,14 @@ namespace Back.Tests.Controllers
     public class UserControllerTests
     {
         private readonly Mock<IUserService> _userServiceMock;
+        private readonly Mock<ISubscriptionService> _subscriptionServiceMock;
         private readonly UserController _controller;
 
         public UserControllerTests()
         {
             _userServiceMock = new Mock<IUserService>();
-            _controller = new UserController(_userServiceMock.Object);
+            _subscriptionServiceMock = new Mock<ISubscriptionService>();
+            _controller = new UserController(_userServiceMock.Object, _subscriptionServiceMock.Object);
         }
 
         [Fact]

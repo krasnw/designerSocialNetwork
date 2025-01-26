@@ -11,10 +11,12 @@ namespace Back.Controllers;
 public class UserController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly ISubscriptionService _subscriptionService;
 
-    public UserController(IUserService userService)
+    public UserController(IUserService userService, ISubscriptionService subscriptionService)
     {
         _userService = userService;
+        _subscriptionService = subscriptionService;
     }
 
     [Authorize]
@@ -27,7 +29,7 @@ public class UserController : ControllerBase
     }
 
     [HttpGet("profile/{username}")]
-    public IActionResult GetUser(string username)
+    public async Task<IActionResult> GetUser(string username)
     {
         if (string.IsNullOrEmpty(username)) return BadRequest("Username is required");
 
@@ -37,8 +39,30 @@ public class UserController : ControllerBase
             return RedirectToAction(nameof(GetMyProfile));
         }
 
-        var user = _userService.GetProfile(username);  // Use instance method
-        return user != null ? Ok(user) : NotFound();
+        var user = _userService.GetProfile(username);
+        var isSubscribed = await _subscriptionService.IsSubscribed(uniqueName, username);
+        if (user != null)
+        {
+            return Ok(
+                new
+                {
+                    user.Username,
+                    user.FirstName,
+                    user.LastName,
+                    user.RatingPositions,
+                    user.Description,
+                    user.ProfileImage,
+                    user.Rubies,
+                    user.TotalLikes,
+                    user.CompletedTasks,
+                    IsSubscribedTo = isSubscribed
+                }
+            );
+        } 
+        else
+        {
+            return NotFound("User not found");
+        }
     }
     
     
