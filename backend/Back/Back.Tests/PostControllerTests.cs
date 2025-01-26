@@ -55,7 +55,7 @@ namespace Back.Tests.Controllers
                     "Test Post", "Content", new ImageContainer(1, new Image(1, "test.jpg"), new List<Image>()), DateTime.Now, 0, "public", new List<Tag>(), new List<Rating>())
             };
 
-            _postServiceMock.Setup(x => x.GetNewestPosts(pageNumber, pageSize, null, "public"))
+            _postServiceMock.Setup(x => x.GetNewestPosts(pageNumber, pageSize, null, "public", null))
                 .Returns(posts);
 
             // Setup HttpContext

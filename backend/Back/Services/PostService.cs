@@ -80,7 +80,7 @@ public class PostService : IPostService
 
     //get newest posts by page
     public List<Post> GetNewestPosts(int pageNumber = 1, int pageSize = 10, string? tags = null,
-        string? accessType = null)
+        string? accessType = null, string? currentUser = null)
     {
         string queryWithTags = @"
     SELECT DISTINCT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
@@ -88,30 +88,69 @@ public class PostService : IPostService
     LEFT JOIN api_schema.post_tags pt ON p.id = pt.post_id
     LEFT JOIN api_schema.tags t ON pt.tag_id = t.id
     WHERE t.tag_name = ANY(@tags)
-    AND p.access_level = @accessType::api_schema.access_level
+    AND CASE 
+        WHEN @accessType = 'public' THEN p.access_level = 'public'
+        WHEN @accessType = 'private' THEN (
+            p.access_level = 'private'
+            AND EXISTS (
+                SELECT 1 FROM api_schema.private_access pa
+                JOIN api_schema.user u ON pa.buyer_id = u.id
+                WHERE u.username = @currentUser
+                AND pa.seller_id = p.user_id
+                AND pa.access_date > CURRENT_DATE
+            )
+        )
+        ELSE (
+            p.access_level = 'public'
+            OR (
+                p.access_level = 'private'
+                AND EXISTS (
+                    SELECT 1 FROM api_schema.private_access pa
+                    JOIN api_schema.user u ON pa.buyer_id = u.id
+                    WHERE u.username = @currentUser
+                    AND pa.seller_id = p.user_id
+                    AND pa.access_date > CURRENT_DATE
+                )
+            )
+        )
+    END
     ORDER BY p.post_date DESC
     LIMIT @pageSize OFFSET @offset";
 
         string queryWithoutTags = @"
-    SELECT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
-    FROM api_schema.post p
-    WHERE p.access_level = @accessType::api_schema.access_level
-    ORDER BY p.post_date DESC
-    LIMIT @pageSize OFFSET @offset";
-
-        string queryForPrivatePosts = @"
     SELECT DISTINCT p.id, p.user_id, p.post_name, p.post_text, p.container_id, p.post_date, p.likes, p.access_level
     FROM api_schema.post p
-    JOIN api_schema.private_access pa ON p.user_id = pa.seller_id
-    JOIN api_schema.user u ON pa.buyer_id = u.id
-    WHERE p.access_level = 'private'
-    AND u.username = @username
+    WHERE CASE 
+        WHEN @accessType = 'public' THEN p.access_level = 'public'
+        WHEN @accessType = 'private' THEN (
+            p.access_level = 'private'
+            AND EXISTS (
+                SELECT 1 FROM api_schema.private_access pa
+                JOIN api_schema.user u ON pa.buyer_id = u.id
+                WHERE u.username = @currentUser
+                AND pa.seller_id = p.user_id
+                AND pa.access_date > CURRENT_DATE
+            )
+        )
+        ELSE (
+            p.access_level = 'public'
+            OR (
+                p.access_level = 'private'
+                AND EXISTS (
+                    SELECT 1 FROM api_schema.private_access pa
+                    JOIN api_schema.user u ON pa.buyer_id = u.id
+                    WHERE u.username = @currentUser
+                    AND pa.seller_id = p.user_id
+                    AND pa.access_date > CURRENT_DATE
+                )
+            )
+        )
+    END
     ORDER BY p.post_date DESC
     LIMIT @pageSize OFFSET @offset";
 
         var offset = (pageNumber - 1) * pageSize;
         if (offset < 0) offset = 0;
-        if (accessType != "public" && accessType != "protected" && accessType != "private") accessType = "public";
 
         NpgsqlConnection connection = null;
         NpgsqlCommand command = null;
@@ -121,22 +160,20 @@ public class PostService : IPostService
             var parameters = new Dictionary<string, object>
             {
                 { "@pageSize", pageSize },
-                { "@offset", offset }
+                { "@offset", offset },
+                { "@accessType", accessType ?? "all" }
             };
 
-            if (accessType == "private")
+            if (!string.IsNullOrEmpty(currentUser))
             {
-                query = queryForPrivatePosts;
-                parameters.Add("@username", "");  // Will be set in Controller if user is authenticated
+                parameters.Add("@currentUser", currentUser);
             }
-            else
+
+            // Select query based on tags
+            query = string.IsNullOrEmpty(tags) ? queryWithoutTags : queryWithTags;
+            if (!string.IsNullOrEmpty(tags))
             {
-                query = string.IsNullOrEmpty(tags) ? queryWithoutTags : queryWithTags;
-                parameters.Add("@accessType", accessType);
-                if (!string.IsNullOrEmpty(tags))
-                {
-                    parameters.Add("@tags", tags.Split(',').Select(tag => tag.Trim()).ToArray());
-                }
+                parameters.Add("@tags", tags.Split(',').Select(tag => tag.Trim()).ToArray());
             }
 
             using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);

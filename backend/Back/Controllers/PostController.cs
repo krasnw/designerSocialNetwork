@@ -26,26 +26,16 @@ public class PostController : ControllerBase
         var actualPageSize = pageSize ?? 10;
         if (actualPageSize < 1) return BadRequest("Page size must be greater than 0.");
         
-        var user = User.Identity?.Name;
+        var currentUser = User.Identity?.Name;
 
         // Handle private posts access
-        if (accessType?.Equals("private", StringComparison.OrdinalIgnoreCase) == true)
+        if (accessType?.Equals("private", StringComparison.OrdinalIgnoreCase) == true && string.IsNullOrEmpty(currentUser))
         {
-            if (string.IsNullOrEmpty(user))
-            {
-                return Unauthorized("You must be logged in to view private posts.");
-            }
-            var privatePosts = _postService.GetNewestPosts(pageNumber, actualPageSize, tags, "private");
-            if (!privatePosts.Any())
-            {
-                return NotFound("No private posts found.");
-            }
-            return new JsonResult(PostDto.MapToPostDtoList(privatePosts));
+            return Unauthorized("You must be logged in to view private posts.");
         }
 
-        // For public/protected posts
-        accessType = string.IsNullOrEmpty(accessType) ? "public" : accessType;
-        var posts = _postService.GetNewestPosts(pageNumber, actualPageSize, tags, accessType);
+        // Get posts with subscription access
+        var posts = _postService.GetNewestPosts(pageNumber, actualPageSize, tags, accessType, currentUser);
         
         if (!posts.Any())
         {
