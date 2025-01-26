@@ -103,6 +103,19 @@ public class PostService : IPostService
             // If specific access type is requested, use it with proper enum casting
             query += " AND p.access_level::text = @accessType::text";
             parameters.Add("@accessType", accessType.ToLower());
+
+            // For private posts, add subscription check
+            if (accessType.ToLower() == "private" && !string.IsNullOrEmpty(currentUser))
+            {
+                query += @" AND EXISTS (
+                    SELECT 1 FROM api_schema.private_access pa
+                    JOIN api_schema.user buyer ON pa.buyer_id = buyer.id
+                    WHERE buyer.username = @currentUser
+                    AND pa.seller_id = p.user_id
+                    AND pa.access_date > CURRENT_DATE
+                )";
+                parameters.Add("@currentUser", currentUser);
+            }
         }
         else if (string.IsNullOrEmpty(currentUser))
         {
@@ -111,23 +124,24 @@ public class PostService : IPostService
         }
         else
         {
-            // If user is logged in and no specific access type, show public and accessible private
+            // If user is logged in and no specific access type, show public and subscribed private posts
             query += @" AND (p.access_level::text = 'public' 
                 OR (p.access_level::text = 'private' 
                     AND EXISTS (
-                        SELECT 1 FROM api_schema.private_access pa 
-                        WHERE pa.buyer_id = u.id 
+                        SELECT 1 FROM api_schema.private_access pa
+                        JOIN api_schema.user buyer ON pa.buyer_id = buyer.id
+                        WHERE buyer.username = @currentUser
                         AND pa.seller_id = p.user_id
                         AND pa.access_date > CURRENT_DATE
                     )
                 ))";
+            parameters.Add("@currentUser", currentUser);
         }
 
         // Add ownership filter only if user is logged in
         if (!string.IsNullOrEmpty(currentUser))
         {
             query += " AND u.username != @currentUser";
-            parameters.Add("@currentUser", currentUser);
         }
 
         // Tag filter
@@ -293,11 +307,14 @@ public class PostService : IPostService
     public bool HasUserAccessToPost(string username, long postId)
     {
         string query = @"
-            SELECT COUNT(*)
-            FROM api_schema.private_access pa
-            JOIN api_schema.user u ON pa.buyer_id = u.id
-            WHERE u.username = @username 
-            AND pa.seller_id = (SELECT user_id FROM api_schema.post WHERE id = @postId)";
+            SELECT EXISTS (
+                SELECT 1
+                FROM api_schema.private_access pa
+                JOIN api_schema.user buyer ON pa.buyer_id = buyer.id
+                WHERE buyer.username = @username 
+                AND pa.seller_id = (SELECT user_id FROM api_schema.post WHERE id = @postId)
+                AND pa.access_date > CURRENT_DATE
+            )";
     
         var parameters = new Dictionary<string, object>
         {
@@ -310,11 +327,7 @@ public class PostService : IPostService
         try
         {
             using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
-            if (reader.Read())
-            {
-                return reader.GetInt32(0) > 0;
-            }
-            return false;
+            return reader.Read() && reader.GetBoolean(0);
         }
         finally
         {
