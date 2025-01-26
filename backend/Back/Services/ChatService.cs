@@ -63,4 +63,39 @@ public class ChatService : IChatService
 
         return true;
     }
+
+    public async Task<List<Chat.RequestResponse>> GetUserRequests(string username)
+    {
+        var query = @"
+            SELECT r.id, 
+                   buyer.username as sender_username,
+                   seller.username as receiver_username,
+                   r.request_description,
+                   r.request_status
+            FROM api_schema.request r
+            JOIN api_schema.""user"" buyer ON r.buyer_id = buyer.id
+            JOIN api_schema.""user"" seller ON r.seller_id = seller.id
+            WHERE seller.username = @Username OR buyer.username = @Username
+            ORDER BY r.id DESC";
+
+        var requests = new List<Chat.RequestResponse>();
+        using var connection = _databaseService.GetConnection();
+        using var command = new NpgsqlCommand(query, connection);
+        command.Parameters.AddWithValue("@Username", username);
+
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            requests.Add(new Chat.RequestResponse
+            {
+                Id = reader.GetInt32(0),
+                Sender = reader.GetString(1),
+                Receiver = reader.GetString(2),
+                Description = reader.GetString(3),
+                Status = reader.GetString(4)
+            });
+        }
+
+        return requests;
+    }
 }

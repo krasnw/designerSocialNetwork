@@ -27,4 +27,22 @@ public class ChatController : ControllerBase
         var success = _chatService.SendRequest(uniqueName, request);
         return success ? Ok() : BadRequest();
     }
+
+    [Authorize]
+    [HttpGet("requests")]
+    public async Task<ActionResult<List<Chat.RequestResponse>>> GetRequests()
+    {
+        var username = User.Identity?.Name;
+        if (string.IsNullOrEmpty(username)) return Unauthorized("Blame the token, relog please");
+
+        try
+        {
+            var requests = await _chatService.GetUserRequests(username);
+            return Ok(requests);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Error retrieving requests: {ex.Message}");
+        }
+    }
 }
