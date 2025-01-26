@@ -15,8 +15,21 @@ public class ChatService : IChatService
 
     public bool SendRequest(string username, Chat.Request request)
     {
+        if (username == request.Receiver)
+        {
+            throw new InvalidOperationException("Cannot send request to yourself");
+        }
+
         var getUserIdQuery = @"
     SELECT id FROM api_schema.user WHERE username = @Username";
+
+        var checkExistingRequestQuery = @"
+    SELECT COUNT(*) FROM api_schema.request r
+    JOIN api_schema.user buyer ON r.buyer_id = buyer.id
+    JOIN api_schema.user seller ON r.seller_id = seller.id
+    WHERE buyer.username = @SenderUsername 
+    AND seller.username = @ReceiverUsername 
+    AND r.request_status = 'pending'";
 
         NpgsqlConnection connection = null;
         NpgsqlCommand command = null;
@@ -24,6 +37,17 @@ public class ChatService : IChatService
         try
         {
             connection = _databaseService.GetConnection();
+
+            // Check for existing pending request
+            command = new NpgsqlCommand(checkExistingRequestQuery, connection);
+            command.Parameters.AddWithValue("@SenderUsername", username);
+            command.Parameters.AddWithValue("@ReceiverUsername", request.Receiver);
+            var existingRequests = (long)command.ExecuteScalar();
+            
+            if (existingRequests > 0)
+            {
+                throw new InvalidOperationException("A pending request already exists");
+            }
 
             //sender ID
             command = new NpgsqlCommand(getUserIdQuery, connection);
@@ -75,7 +99,8 @@ public class ChatService : IChatService
             FROM api_schema.request r
             JOIN api_schema.""user"" buyer ON r.buyer_id = buyer.id
             JOIN api_schema.""user"" seller ON r.seller_id = seller.id
-            WHERE seller.username = @Username OR buyer.username = @Username
+            WHERE seller.username = @Username
+            AND r.request_status = 'pending'
             ORDER BY r.id DESC";
 
         var requests = new List<Chat.RequestResponse>();

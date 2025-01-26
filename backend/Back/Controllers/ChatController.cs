@@ -24,8 +24,19 @@ public class ChatController : ControllerBase
         var uniqueName = User.Identity?.Name;
         if (string.IsNullOrEmpty(uniqueName)) return Unauthorized("Blame the token, relog please");
         
-        var success = _chatService.SendRequest(uniqueName, request);
-        return success ? Ok() : BadRequest();
+        try
+        {
+            var success = _chatService.SendRequest(uniqueName, request);
+            return success ? Ok() : BadRequest();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception)
+        {
+            return BadRequest("An error occurred while sending the request");
+        }
     }
 
     [Authorize]
