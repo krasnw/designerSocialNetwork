@@ -1080,8 +1080,18 @@ public class PostService : IPostService
     string accessFilter = "";
     if (!string.IsNullOrEmpty(accessType))
     {
-        accessFilter = " AND p.access_level::text = @accessType::text";  // Fix: proper type casting
-        parameters.Add("@accessType", accessType.ToLower());
+        var normalizedAccessType = accessType.ToLower();
+        if (normalizedAccessType == "private")
+        {
+            // When private is selected, include both private and protected posts
+            accessFilter = " AND (p.access_level::text = 'private' OR p.access_level::text = 'protected')";
+        }
+        else
+        {
+            // For other access types (public, protected), use exact matching
+            accessFilter = " AND p.access_level::text = @accessType::text";
+            parameters.Add("@accessType", accessType.ToLower());
+        }
     }
 
     // Build tag filter
