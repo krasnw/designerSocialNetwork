@@ -793,24 +793,20 @@ public class PostService : IPostService
 
     private void AddPostTags(long postId, List<string> tags)
     {
-        // Add null check for tags
         if (tags == null) return;
 
         foreach (var tag in tags)
         {
             if (string.IsNullOrEmpty(tag)) continue;
 
-            // First ensure tag exists
+            // Get tag id from existing tag
             var tagQuery = @"
-                INSERT INTO api_schema.tags (tag_name, tag_type)
-                VALUES (@name, 'style')
-                ON CONFLICT (tag_name) DO UPDATE 
-                SET tag_name = EXCLUDED.tag_name
-                RETURNING id";
+                SELECT id FROM api_schema.tags 
+                WHERE tag_name = @name";
 
             var tagParams = new Dictionary<string, object>
             {
-                { "@name", tag.ToLower() }
+                { "@name", tag }  // No more ToLower()
             };
 
             int tagId;
@@ -826,7 +822,7 @@ public class PostService : IPostService
                 }
                 else
                 {
-                    continue;
+                    throw new ArgumentException($"Tag '{tag}' does not exist in the system.");
                 }
             }
             finally
@@ -835,7 +831,7 @@ public class PostService : IPostService
                 connection?.Dispose();
             }
 
-            // Then add post-tag relationship
+            // Add post-tag relationship
             var relationQuery = @"
                 INSERT INTO api_schema.post_tags (post_id, tag_id)
                 VALUES (@postId, @tagId)
@@ -848,6 +844,42 @@ public class PostService : IPostService
             };
 
             _databaseService.ExecuteNonQuery(relationQuery, relationParams);
+        }
+    }
+
+    public List<string> ValidateTagsExist(List<string> tags)
+    {
+        if (tags == null || !tags.Any()) return new List<string>();
+
+        var query = @"
+            SELECT tag_name 
+            FROM api_schema.tags 
+            WHERE tag_name = ANY(@tags)";
+
+        var parameters = new Dictionary<string, object>
+        {
+            { "@tags", tags.ToArray() }
+        };
+
+        NpgsqlConnection connection = null;
+        NpgsqlCommand command = null;
+
+        try
+        {
+            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
+            var existingTags = new HashSet<string>();
+            while (reader.Read())
+            {
+                existingTags.Add(reader.GetString(0));
+            }
+
+            // Return list of non-existent tags
+            return tags.Where(t => !existingTags.Contains(t)).ToList();
+        }
+        finally
+        {
+            command?.Dispose();
+            connection?.Dispose();
         }
     }
 
@@ -1098,9 +1130,14 @@ public class PostService : IPostService
     string tagFilter = "";
     if (!string.IsNullOrEmpty(tags))
     {
-        var tagList = tags.Split(',').Select(t => t.Trim().ToLower()).ToArray();
-        tagFilter = " AND pt.tags && @tagList";
-        parameters.Add("@tagList", tagList);
+        // Changed the tag filtering logic
+        tagFilter = @" AND EXISTS (
+            SELECT 1 FROM api_schema.post_tags pt_inner
+            JOIN api_schema.tags t_inner ON pt_inner.tag_id = t_inner.id
+            WHERE pt_inner.post_id = p.id
+            AND t_inner.tag_name = ANY(@tags::text[])
+        )";
+        parameters.Add("@tags", tags.Split(',').Select(t => t.Trim()).ToArray());
     }
 
     // Format the final query

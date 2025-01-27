@@ -220,6 +220,19 @@ public class PostController : ControllerBase
             if (validationError != null)
                 return BadRequest(new { message = validationError });
 
+            // Validate tags if present
+            if (request.Tags != null && request.Tags.Any())
+            {
+                var nonExistentTags = _postService.ValidateTagsExist(request.Tags);
+                if (nonExistentTags.Any())
+                {
+                    return BadRequest(new { 
+                        message = "Some tags do not exist in the system",
+                        invalidTags = nonExistentTags
+                    });
+                }
+            }
+
             // Upload all images first
             var uploadedPaths = new List<string>();
             var uploadedImages = new HashSet<string>(); // Track unique image hashes

@@ -19,4 +19,5 @@ public interface IPostService
     bool IsPostLikedByUser(string username, long postId);
     List<PostMini>? GetOwnPosts(string username, int pageNumber = 1, int pageSize = 10, string? tags = null, string? accessType = null);
     string? GetProtectedAccessHash(long postId);
+    List<string> ValidateTagsExist(List<string> tags);
 }
