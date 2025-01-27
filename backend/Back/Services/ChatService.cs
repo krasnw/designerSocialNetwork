@@ -256,14 +256,14 @@ public class ChatService : IChatService
         // Save message to database
         var insertQuery = @"
             INSERT INTO api_schema.message (sender_id, receiver_id, content, type, created_at)
-            VALUES (@SenderId, @ReceiverId, @Content, @Type, @CreatedAt)
+            VALUES (@SenderId, @ReceiverId, @Content, @Type::api_schema.message_type, @CreatedAt)
             RETURNING id";
 
         using var command = new NpgsqlCommand(insertQuery, connection);
         command.Parameters.AddWithValue("@SenderId", newMessage.SenderId);
         command.Parameters.AddWithValue("@ReceiverId", newMessage.ReceiverId);
         command.Parameters.AddWithValue("@Content", newMessage.Content);
-        command.Parameters.AddWithValue("@Type", newMessage.Type.ToString());
+        command.Parameters.AddWithValue("@Type", message.Type.ToString()); // Remove ToLower()
         command.Parameters.AddWithValue("@CreatedAt", newMessage.CreatedAt);
 
         newMessage.Id = (int)await command.ExecuteScalarAsync();
