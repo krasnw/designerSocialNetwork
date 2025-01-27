@@ -177,6 +177,25 @@ CREATE TABLE api_schema.chat (
     chat_status chat_status NOT NULL
 );
 
+-- Add message type enum
+CREATE TYPE api_schema.message_type AS ENUM ('Text', 'Image', 'PaymentRequest');
+
+-- Add message table
+CREATE TABLE api_schema.message (
+    id SERIAL PRIMARY KEY,
+    sender_id INTEGER REFERENCES "user"(id),
+    receiver_id INTEGER REFERENCES "user"(id),
+    content TEXT NOT NULL,
+    type api_schema.message_type NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+-- Add indexes for better query performance
+CREATE INDEX idx_message_sender ON api_schema.message(sender_id);
+CREATE INDEX idx_message_receiver ON api_schema.message(receiver_id);
+CREATE INDEX idx_message_created_at ON api_schema.message(created_at);
+
 CREATE TABLE api_schema.chat_image (
     id SERIAL PRIMARY KEY,
     chat_id INTEGER REFERENCES chat(id),
