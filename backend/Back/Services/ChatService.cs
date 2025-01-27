@@ -1,16 +1,20 @@
 ﻿using Back.Models;
 using Back.Services.Interfaces;
 using Npgsql;
+using Microsoft.AspNetCore.SignalR;
 
 namespace Back.Services;
 
 public class ChatService : IChatService
 {
     private readonly IDatabaseService _databaseService;
+    
+    private readonly IHubContext<ChatHub> _hubContext;
 
-    public ChatService(IDatabaseService databaseService)
+    public ChatService(IDatabaseService databaseService, IHubContext<ChatHub> hubContext)
     {
         _databaseService = databaseService;
+        _hubContext = hubContext;
     }
 
     public bool SendRequest(string username, Chat.Request request)
@@ -219,5 +223,104 @@ public class ChatService : IChatService
             Console.WriteLine($"Error deleting request: {ex.Message}");
             return false;
         }
+    }
+
+    public async Task<Message> SendMessage(MessageDto message)
+    {
+        var newMessage = new Message
+        {
+            SenderId = message.SenderId,
+            ReceiverId = message.ReceiverId,
+            Content = message.Content,
+            Type = message.Type,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        // Save message to database
+        var insertQuery = @"
+            INSERT INTO api_schema.message (sender_id, receiver_id, content, type, created_at)
+            VALUES (@SenderId, @ReceiverId, @Content, @Type, @CreatedAt)
+            RETURNING id";
+
+        using var connection = _databaseService.GetConnection();
+        using var command = new NpgsqlCommand(insertQuery, connection);
+        command.Parameters.AddWithValue("@SenderId", newMessage.SenderId);
+        command.Parameters.AddWithValue("@ReceiverId", newMessage.ReceiverId);
+        command.Parameters.AddWithValue("@Content", newMessage.Content);
+        command.Parameters.AddWithValue("@Type", newMessage.Type.ToString());
+        command.Parameters.AddWithValue("@CreatedAt", newMessage.CreatedAt);
+
+        newMessage.Id = (int)await command.ExecuteScalarAsync();
+
+        // Notify receiver via SignalR
+        await _hubContext.Clients.User(message.ReceiverId.ToString())
+            .SendAsync("ReceiveMessage", message);
+
+        return newMessage;
+    }
+
+    public async Task<List<Message>> GetConversation(int user1Id, int user2Id)
+    {
+        var query = @"
+            SELECT id, sender_id, receiver_id, content, type, created_at, is_read
+            FROM api_schema.message
+            WHERE (sender_id = @User1Id AND receiver_id = @User2Id)
+               OR (sender_id = @User2Id AND receiver_id = @User1Id)
+            ORDER BY created_at";
+
+        var messages = new List<Message>();
+        using var connection = _databaseService.GetConnection();
+        using var command = new NpgsqlCommand(query, connection);
+        command.Parameters.AddWithValue("@User1Id", user1Id);
+        command.Parameters.AddWithValue("@User2Id", user2Id);
+
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            messages.Add(new Message
+            {
+                Id = reader.GetInt32(0),
+                SenderId = reader.GetInt32(1),
+                ReceiverId = reader.GetInt32(2),
+                Content = reader.GetString(3),
+                Type = Enum.Parse<MessageType>(reader.GetString(4)),
+                CreatedAt = reader.GetDateTime(5),
+                IsRead = reader.GetBoolean(6)
+            });
+        }
+
+        return messages;
+    }
+
+    public async Task<PaymentRequest> CreatePaymentRequest(PaymentRequestDto request)
+    {
+        var newRequest = new PaymentRequest
+        {
+            RequesterId = request.RequesterId,
+            ReceiverId = request.ReceiverId,
+            Amount = request.Amount,
+            IsPaid = false
+        };
+
+        // Save payment request to database
+        var insertQuery = @"
+            INSERT INTO api_schema.payment_request (requester_id, receiver_id, amount, is_paid)
+            VALUES (@RequesterId, @ReceiverId, @Amount, @IsPaid)
+            RETURNING id";
+
+        using var connection = _databaseService.GetConnection();
+        using var command = new NpgsqlCommand(insertQuery, connection);
+        command.Parameters.AddWithValue("@RequesterId", newRequest.RequesterId);
+        command.Parameters.AddWithValue("@ReceiverId", newRequest.ReceiverId);
+        command.Parameters.AddWithValue("@Amount", newRequest.Amount);
+        command.Parameters.AddWithValue("@IsPaid", newRequest.IsPaid);
+
+        newRequest.Id = (int)await command.ExecuteScalarAsync();
+
+        // Notify receiver via SignalR
+        await _hubContext.Clients.User(request.ReceiverId.ToString())
+            .SendAsync("ReceivePaymentRequest", request);
+
+        return newRequest;
     }
 }

@@ -106,4 +106,27 @@ public class ChatController : ControllerBase
             return BadRequest($"Error deleting request: {ex.Message}");
         }
     }
+
+    [Authorize]
+    [HttpPost("messages")]
+    public async Task<ActionResult<Message>> SendMessage(MessageDto message)
+    {
+        var result = await _chatService.SendMessage(message);
+        return Ok(result);
+    }
+
+    [Authorize]
+    [HttpGet("conversations/{otherUserId}")]
+    public async Task<ActionResult<List<Message>>> GetConversation(int otherUserId)
+    {
+        var currentUserId = GetCurrentUserId(); // From JWT token
+        var messages = await _chatService.GetConversation(currentUserId, otherUserId);
+        return Ok(messages);
+    }
+
+    private int GetCurrentUserId()
+    {
+        // Implement logic to get current user ID from JWT token
+        return int.Parse(User.Claims.First(c => c.Type == "id").Value);
+    }
 }

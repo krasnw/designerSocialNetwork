@@ -9,4 +9,9 @@ public interface IChatService
     Task<List<string>> GetChatUsers(string username);
     Task<bool> AcceptRequest(int requestId);
     Task<bool> DeleteRequest(int requestId);
+
+    Task<Message> SendMessage(MessageDto message);
+    Task<List<Message>> GetConversation(int user1Id, int user2Id);
+    Task<PaymentRequest> CreatePaymentRequest(PaymentRequestDto request);
+
 }
