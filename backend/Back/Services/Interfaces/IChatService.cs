@@ -9,9 +9,12 @@ namespace Back.Services.Interfaces
         Task<List<string>> GetChatUsers(string username);
         Task<bool> AcceptRequest(int requestId);
         Task<bool> DeleteRequest(int requestId);
-
         Task<Chat.Message> SendMessage(string senderUsername, Chat.MessageDto message);
         Task<List<Chat.Message>> GetConversation(string user1Username, string user2Username);
         Task<Chat.PaymentRequest> CreatePaymentRequest(Chat.PaymentRequestDto request);
+
+        // Add these two new methods
+        Task<Chat.TransactionMessageResponse> SendTransactionMessage(string senderUsername, Chat.TransactionMessage message);
+        Task<bool> ApproveTransaction(int messageId, string approverUsername);
     }
 }

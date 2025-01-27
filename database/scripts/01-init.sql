@@ -177,9 +177,9 @@ CREATE TABLE api_schema.chat (
     chat_status chat_status NOT NULL
 );
 
--- Add message type enum
+-- Update message type enum to match the C# enum case exactly
 DROP TYPE IF EXISTS api_schema.message_type CASCADE;
-CREATE TYPE api_schema.message_type AS ENUM ('Text', 'Complex', 'PaymentRequest');
+CREATE TYPE api_schema.message_type AS ENUM ('Text', 'Complex', 'PaymentRequest', 'Transaction');
 
 -- Add message table
 CREATE TABLE api_schema.message (
@@ -206,8 +206,17 @@ CREATE TABLE api_schema.message_image (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Add index for faster image queries
-CREATE INDEX idx_message_image_message_id ON api_schema.message_image(message_id);
+-- Add transaction_message table
+CREATE TABLE api_schema.transaction_message (
+    id SERIAL PRIMARY KEY,
+    message_id INTEGER REFERENCES message(id) ON DELETE CASCADE,
+    amount DECIMAL NOT NULL,
+    is_approved BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add index for better query performance
+CREATE INDEX idx_transaction_message_id ON api_schema.transaction_message(message_id);
 
 CREATE TABLE api_schema.chat_image (
     id SERIAL PRIMARY KEY,

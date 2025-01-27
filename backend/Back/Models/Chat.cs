@@ -21,7 +21,8 @@ public class Chat
     {
         Text,
         Complex,
-        PaymentRequest
+        PaymentRequest,
+        Transaction  // Add new type
     }
 
     // Message model
@@ -73,4 +74,23 @@ public class Chat
         string ReceiverUsername,     // Added
         decimal Amount
     );
+
+    // Add new Transaction-specific models
+    public class TransactionMessage
+    {
+        public string ReceiverUsername { get; set; }
+        public decimal Amount { get; set; }
+        public string Description { get; set; }
+    }
+
+    public class TransactionMessageResponse
+    {
+        public int MessageId { get; set; }
+        public string SenderUsername { get; set; }
+        public string ReceiverUsername { get; set; }
+        public decimal Amount { get; set; }
+        public string Description { get; set; }
+        public bool IsApproved { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
 }

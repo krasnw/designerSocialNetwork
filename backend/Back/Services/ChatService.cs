@@ -313,6 +313,142 @@ public class ChatService : IChatService
         }
     }
 
+    public async Task<Chat.TransactionMessageResponse> SendTransactionMessage(string senderUsername, Chat.TransactionMessage message)
+    {
+        using var connection = _databaseService.GetConnection();
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            var (senderId, receiverId) = await GetUserIds(senderUsername, message.ReceiverUsername);
+
+            // Insert message - ensure exact enum case match
+            var insertMessageQuery = @"
+                INSERT INTO api_schema.message (sender_id, receiver_id, text_content, type, created_at)
+                VALUES (@SenderId, @ReceiverId, @Description, 'Transaction'::api_schema.message_type, @CreatedAt)
+                RETURNING id";
+
+            using var cmd = new NpgsqlCommand(insertMessageQuery, connection, transaction);
+            cmd.Parameters.AddWithValue("@SenderId", senderId);
+            cmd.Parameters.AddWithValue("@ReceiverId", receiverId);
+            cmd.Parameters.AddWithValue("@Description", message.Description);
+            cmd.Parameters.AddWithValue("@Type", Chat.MessageType.Transaction.ToString("G"));
+            cmd.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow);
+
+            var messageId = (int)await cmd.ExecuteScalarAsync();
+
+            // Insert transaction details
+            var insertTransactionQuery = @"
+                INSERT INTO api_schema.transaction_message (message_id, amount, is_approved)
+                VALUES (@MessageId, @Amount, false)";
+
+            using var transCmd = new NpgsqlCommand(insertTransactionQuery, connection, transaction);
+            transCmd.Parameters.AddWithValue("@MessageId", messageId);
+            transCmd.Parameters.AddWithValue("@Amount", message.Amount);
+            await transCmd.ExecuteNonQueryAsync();
+
+            await transaction.CommitAsync();
+
+            var response = new Chat.TransactionMessageResponse
+            {
+                MessageId = messageId,
+                SenderUsername = senderUsername,
+                ReceiverUsername = message.ReceiverUsername,
+                Amount = message.Amount,
+                Description = message.Description,
+                IsApproved = false,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // Notify through SignalR
+            await _hubContext.Clients.User(message.ReceiverUsername)
+                .SendAsync("ReceiveTransactionMessage", response);
+
+            return response;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task<bool> ApproveTransaction(int messageId, string approverUsername)
+    {
+        using var connection = _databaseService.GetConnection();
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            // Verify transaction exists and belongs to approver
+            var verifyQuery = @"
+                SELECT m.sender_id, sender.username, tm.amount 
+                FROM api_schema.message m
+                JOIN api_schema.transaction_message tm ON m.id = tm.message_id
+                JOIN api_schema.user sender ON m.sender_id = sender.id
+                JOIN api_schema.user receiver ON m.receiver_id = receiver.id
+                WHERE m.id = @MessageId 
+                AND receiver.username = @ApproverUsername 
+                AND tm.is_approved = false";
+
+            using var cmd = new NpgsqlCommand(verifyQuery, connection, transaction);
+            cmd.Parameters.AddWithValue("@MessageId", messageId);
+            cmd.Parameters.AddWithValue("@ApproverUsername", approverUsername);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (!await reader.ReadAsync())
+            {
+                return false;
+            }
+
+            var senderId = reader.GetInt32(0);
+            var senderUsername = reader.GetString(1);
+            var amount = reader.GetDecimal(2);
+            reader.Close();
+
+            // Update transaction status
+            var updateQuery = @"
+                UPDATE api_schema.transaction_message 
+                SET is_approved = true 
+                WHERE message_id = @MessageId";
+
+            using var updateCmd = new NpgsqlCommand(updateQuery, connection, transaction);
+            updateCmd.Parameters.AddWithValue("@MessageId", messageId);
+            await updateCmd.ExecuteNonQueryAsync();
+
+            // Process the actual money transfer here
+            // This is a placeholder - implement actual wallet/balance update logic
+            var transferQuery = @"
+                -- Add your wallet update logic here
+                -- Example:
+                -- UPDATE api_schema.wallet 
+                -- SET balance = balance - @Amount 
+                -- WHERE user_id = (SELECT id FROM api_schema.user WHERE username = @ApproverUsername);
+                -- UPDATE api_schema.wallet 
+                -- SET balance = balance + @Amount 
+                -- WHERE user_id = @SenderId;";
+
+            using var transferCmd = new NpgsqlCommand(transferQuery, connection, transaction);
+            transferCmd.Parameters.AddWithValue("@Amount", amount);
+            transferCmd.Parameters.AddWithValue("@ApproverUsername", approverUsername);
+            transferCmd.Parameters.AddWithValue("@SenderId", senderId);
+            await transferCmd.ExecuteNonQueryAsync();
+
+            await transaction.CommitAsync();
+
+            // Notify sender through SignalR
+            await _hubContext.Clients.User(senderUsername)
+                .SendAsync("TransactionApproved", messageId);
+
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
     private async Task<(int senderId, int receiverId)> GetUserIds(string senderUsername, string receiverUsername)
     {
         var query = @"
