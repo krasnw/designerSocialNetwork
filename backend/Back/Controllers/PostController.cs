@@ -106,7 +106,11 @@ public class PostController : ControllerBase
         }
         else if (post.Access.Equals("protected", StringComparison.OrdinalIgnoreCase))
         {
-            return NotFound("This post requires a special access link.");
+            // Allow access if user is the owner
+            if (post.Author.Username != user)
+            {
+                return NotFound("This post requires a special access link.");
+            }
         }
 
         // Get protected hash if needed
