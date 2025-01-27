@@ -91,16 +91,11 @@ public class PostService : IPostService
         LEFT JOIN api_schema.tags t ON pt.tag_id = t.id
         WHERE 1=1 ";
 
-        var parameters = new Dictionary<string, object>
-        {
-            { "@pageSize", pageSize },
-            { "@offset", (pageNumber - 1) * pageSize }
-        };
+        var parameters = new Dictionary<string, object>();
 
         // Access control
         if (!string.IsNullOrEmpty(accessType))
         {
-            // If specific access type is requested, use it with proper enum casting
             query += " AND p.access_level::text = @accessType::text";
             parameters.Add("@accessType", accessType.ToLower());
 
@@ -142,6 +137,10 @@ public class PostService : IPostService
         if (!string.IsNullOrEmpty(currentUser))
         {
             query += " AND u.username != @currentUser";
+            if (!parameters.ContainsKey("@currentUser"))
+            {
+                parameters.Add("@currentUser", currentUser);
+            }
         }
 
         // Tag filter
@@ -151,14 +150,15 @@ public class PostService : IPostService
                 SELECT 1 FROM api_schema.post_tags pt2
                 JOIN api_schema.tags t2 ON pt2.tag_id = t2.id
                 WHERE pt2.post_id = p.id
-                AND LOWER(t2.tag_name) = ANY(LOWER(@tags::text)::text[])
+                AND LOWER(t2.tag_name) = ANY(@tags::text[])
             )";
-            parameters.Add("@tags", tags.Split(',').Select(t => t.Trim()).ToArray());
+            parameters.Add("@tags", tags.Split(',').Select(t => t.Trim().ToLower()).ToArray());
         }
 
-        // Add ordering and pagination
-        query += @" ORDER BY p.post_date DESC
-                   LIMIT @pageSize OFFSET @offset";
+        // Add pagination
+        query += " ORDER BY p.post_date DESC LIMIT @pageSize OFFSET @offset";
+        parameters.Add("@pageSize", pageSize);
+        parameters.Add("@offset", (pageNumber - 1) * pageSize);
 
         try
         {
