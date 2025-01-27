@@ -22,9 +22,11 @@
         public int? Rubies { get; set; }
         public int TotalLikes { get; set; }
         public int CompletedTasks { get; set; }
+        public int Rating { get; set; }  // Added field
 
         public UserProfile(string username, string firstName, string lastName,
-            string description, string profileImage, int? rubies = null, int totalLikes = 0, int completedTasks = 0)
+            string description, string profileImage, int? rubies = null, 
+            int totalLikes = 0, int completedTasks = 0, int rating = 0)  // Added parameter
         {
             Username = username;
             FirstName = firstName;
@@ -34,6 +36,7 @@
             Rubies = rubies;
             TotalLikes = totalLikes;
             CompletedTasks = completedTasks;
+            Rating = rating;  // Initialize rating
         }
     }
 }

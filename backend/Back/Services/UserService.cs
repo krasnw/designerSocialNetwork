@@ -21,15 +21,21 @@ public class UserService : IUserService
     private static class SqlQueries
     {
         public const string GetUserProfile = @"
+            WITH UserRanking AS (
+                SELECT user_id, ROW_NUMBER() OVER (ORDER BY total_likes DESC) as rating
+                FROM api_schema.user_rating
+            )
             SELECT 
                 u.username, u.first_name, u.last_name, u.profile_description, 
                 u.profile_picture, w.amount,
                 (SELECT COALESCE(SUM(likes), 0) FROM api_schema.post WHERE user_id = u.id) as total_likes,
                 (SELECT COUNT(*) FROM api_schema.chat 
                  WHERE (buyer_id = u.id OR seller_id = u.id) 
-                 AND chat_status = 'closed') as completed_tasks
+                 AND chat_status = 'closed') as completed_tasks,
+                COALESCE(r.rating, 0) as rating
             FROM api_schema.user u
             LEFT JOIN api_schema.wallet w ON u.id = w.user_id
+            LEFT JOIN UserRanking r ON r.user_id = u.id
             WHERE u.username = @username";
 
         public const string GetUserRatings = @"
@@ -353,7 +359,8 @@ public class UserService : IUserService
                 reader.GetStringOrDefault(reader.GetOrdinal("profile_picture")),
                 includeWallet ? (reader.IsDBNull(reader.GetOrdinal("amount")) ? 0 : reader.GetInt32(reader.GetOrdinal("amount"))) : 0,
                 reader.GetInt32(reader.GetOrdinal("total_likes")),
-                reader.GetInt32(reader.GetOrdinal("completed_tasks"))
+                reader.GetInt32(reader.GetOrdinal("completed_tasks")),
+                reader.GetInt32(reader.GetOrdinal("rating"))  // Added rating
             );
 
             return profile;
@@ -370,6 +377,10 @@ public class UserService : IUserService
     public UserProfile GetProfile(string username)
     {
         var sql = @"
+            WITH UserRanking AS (
+                SELECT user_id, ROW_NUMBER() OVER (ORDER BY total_likes DESC) as rating
+                FROM api_schema.user_rating
+            )
             SELECT 
                 u.username,
                 u.first_name,
@@ -377,9 +388,11 @@ public class UserService : IUserService
                 u.profile_description,
                 u.profile_picture,
                 COALESCE(ur.total_likes, 0) as total_likes,
-                (SELECT COUNT(*) FROM api_schema.post p WHERE p.user_id = u.id) as completed_tasks
+                (SELECT COUNT(*) FROM api_schema.post p WHERE p.user_id = u.id) as completed_tasks,
+                COALESCE(r.rating, 0) as rating
             FROM api_schema.""user"" u
             LEFT JOIN api_schema.user_rating ur ON ur.user_id = u.id
+            LEFT JOIN UserRanking r ON r.user_id = u.id
             WHERE u.username = @Username";
 
         using var reader = _databaseService.ExecuteQuery(sql, out var connection, out var command,
@@ -397,7 +410,8 @@ public class UserService : IUserService
                 reader.GetStringOrDefault(reader.GetOrdinal("profile_picture")),
                 null, // rubies
                 reader.GetInt32(reader.GetOrdinal("total_likes")),
-                reader.GetInt32(reader.GetOrdinal("completed_tasks"))
+                reader.GetInt32(reader.GetOrdinal("completed_tasks")),
+                reader.GetInt32(reader.GetOrdinal("rating"))  // Added rating
             );
         }
         finally
