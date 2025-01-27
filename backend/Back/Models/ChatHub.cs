@@ -1,15 +1,20 @@
-// ChatHub.cs
-public class ChatHub : Hub
+using Microsoft.AspNetCore.SignalR;
+using Back.Models;
+
+namespace Back.Models
 {
-    public async Task SendMessage(MessageDto message)
+    public class ChatHub : Hub
     {
-        await Clients.User(message.ReceiverId.ToString())
-            .SendAsync("ReceiveMessage", message);
-    }
-    
-    public async Task SendPaymentRequest(PaymentRequestDto request)
-    {
-        await Clients.User(request.ReceiverId.ToString())
-            .SendAsync("ReceivePaymentRequest", request);
+        public async Task SendMessage(Chat.MessageDto message)
+        {
+            await Clients.User(message.ReceiverId.ToString())
+                .SendAsync("ReceiveMessage", message);
+        }
+        
+        public async Task SendPaymentRequest(Chat.PaymentRequestDto request)
+        {
+            await Clients.User(request.ReceiverId.ToString())
+                .SendAsync("ReceivePaymentRequest", request);
+        }
     }
 }

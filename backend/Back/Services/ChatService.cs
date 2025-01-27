@@ -8,7 +8,6 @@ namespace Back.Services;
 public class ChatService : IChatService
 {
     private readonly IDatabaseService _databaseService;
-    
     private readonly IHubContext<ChatHub> _hubContext;
 
     public ChatService(IDatabaseService databaseService, IHubContext<ChatHub> hubContext)
@@ -225,9 +224,9 @@ public class ChatService : IChatService
         }
     }
 
-    public async Task<Message> SendMessage(MessageDto message)
+    public async Task<Chat.Message> SendMessage(Chat.MessageDto message)
     {
-        var newMessage = new Message
+        var newMessage = new Chat.Message
         {
             SenderId = message.SenderId,
             ReceiverId = message.ReceiverId,
@@ -239,13 +238,15 @@ public class ChatService : IChatService
         // Save message to database
         var insertQuery = @"
             INSERT INTO api_schema.message (sender_id, receiver_id, content, type, created_at)
-            VALUES (@SenderId, @ReceiverId, @Content, @Type, @CreatedAt)
+            VALUES ((SELECT id FROM api_schema.user WHERE username = @SenderUsername), 
+                    (SELECT id FROM api_schema.user WHERE username = @ReceiverUsername), 
+                    @Content, @Type, @CreatedAt)
             RETURNING id";
 
         using var connection = _databaseService.GetConnection();
         using var command = new NpgsqlCommand(insertQuery, connection);
-        command.Parameters.AddWithValue("@SenderId", newMessage.SenderId);
-        command.Parameters.AddWithValue("@ReceiverId", newMessage.ReceiverId);
+        command.Parameters.AddWithValue("@SenderUsername", message.SenderUsername);
+        command.Parameters.AddWithValue("@ReceiverUsername", message.ReceiverUsername);
         command.Parameters.AddWithValue("@Content", newMessage.Content);
         command.Parameters.AddWithValue("@Type", newMessage.Type.ToString());
         command.Parameters.AddWithValue("@CreatedAt", newMessage.CreatedAt);
@@ -253,37 +254,39 @@ public class ChatService : IChatService
         newMessage.Id = (int)await command.ExecuteScalarAsync();
 
         // Notify receiver via SignalR
-        await _hubContext.Clients.User(message.ReceiverId.ToString())
+        await _hubContext.Clients.User(message.ReceiverUsername)
             .SendAsync("ReceiveMessage", message);
 
         return newMessage;
     }
 
-    public async Task<List<Message>> GetConversation(int user1Id, int user2Id)
+    public async Task<List<Chat.Message>> GetConversation(string user1Username, string user2Username)
     {
         var query = @"
-            SELECT id, sender_id, receiver_id, content, type, created_at, is_read
-            FROM api_schema.message
-            WHERE (sender_id = @User1Id AND receiver_id = @User2Id)
-               OR (sender_id = @User2Id AND receiver_id = @User1Id)
-            ORDER BY created_at";
+            SELECT m.id, m.sender_id, m.receiver_id, m.content, m.type, m.created_at, m.is_read
+            FROM api_schema.message m
+            JOIN api_schema.user u1 ON m.sender_id = u1.id
+            JOIN api_schema.user u2 ON m.receiver_id = u2.id
+            WHERE (u1.username = @User1Username AND u2.username = @User2Username)
+               OR (u1.username = @User2Username AND u2.username = @User1Username)
+            ORDER BY m.created_at";
 
-        var messages = new List<Message>();
+        var messages = new List<Chat.Message>();
         using var connection = _databaseService.GetConnection();
         using var command = new NpgsqlCommand(query, connection);
-        command.Parameters.AddWithValue("@User1Id", user1Id);
-        command.Parameters.AddWithValue("@User2Id", user2Id);
+        command.Parameters.AddWithValue("@User1Username", user1Username);
+        command.Parameters.AddWithValue("@User2Username", user2Username);
 
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            messages.Add(new Message
+            messages.Add(new Chat.Message
             {
                 Id = reader.GetInt32(0),
                 SenderId = reader.GetInt32(1),
                 ReceiverId = reader.GetInt32(2),
                 Content = reader.GetString(3),
-                Type = Enum.Parse<MessageType>(reader.GetString(4)),
+                Type = Enum.Parse<Chat.MessageType>(reader.GetString(4)),  // Updated
                 CreatedAt = reader.GetDateTime(5),
                 IsRead = reader.GetBoolean(6)
             });
@@ -292,9 +295,9 @@ public class ChatService : IChatService
         return messages;
     }
 
-    public async Task<PaymentRequest> CreatePaymentRequest(PaymentRequestDto request)
+    public async Task<Chat.PaymentRequest> CreatePaymentRequest(Chat.PaymentRequestDto request)
     {
-        var newRequest = new PaymentRequest
+        var newRequest = new Chat.PaymentRequest
         {
             RequesterId = request.RequesterId,
             ReceiverId = request.ReceiverId,
@@ -305,20 +308,22 @@ public class ChatService : IChatService
         // Save payment request to database
         var insertQuery = @"
             INSERT INTO api_schema.payment_request (requester_id, receiver_id, amount, is_paid)
-            VALUES (@RequesterId, @ReceiverId, @Amount, @IsPaid)
+            VALUES ((SELECT id FROM api_schema.user WHERE username = @RequesterUsername), 
+                    (SELECT id FROM api_schema.user WHERE username = @ReceiverUsername), 
+                    @Amount, @IsPaid)
             RETURNING id";
 
         using var connection = _databaseService.GetConnection();
         using var command = new NpgsqlCommand(insertQuery, connection);
-        command.Parameters.AddWithValue("@RequesterId", newRequest.RequesterId);
-        command.Parameters.AddWithValue("@ReceiverId", newRequest.ReceiverId);
+        command.Parameters.AddWithValue("@RequesterUsername", request.RequesterUsername);
+        command.Parameters.AddWithValue("@ReceiverUsername", request.ReceiverUsername);
         command.Parameters.AddWithValue("@Amount", newRequest.Amount);
         command.Parameters.AddWithValue("@IsPaid", newRequest.IsPaid);
 
         newRequest.Id = (int)await command.ExecuteScalarAsync();
 
         // Notify receiver via SignalR
-        await _hubContext.Clients.User(request.ReceiverId.ToString())
+        await _hubContext.Clients.User(request.ReceiverUsername)
             .SendAsync("ReceivePaymentRequest", request);
 
         return newRequest;

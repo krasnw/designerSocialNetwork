@@ -39,6 +39,8 @@ public class Chat
     public record MessageDto(
         int SenderId,
         int ReceiverId,
+        string SenderUsername,    // Added
+        string ReceiverUsername,  // Added
         string Content,
         MessageType Type
     );
@@ -57,6 +59,8 @@ public class Chat
     public record PaymentRequestDto(
         int RequesterId,
         int ReceiverId,
+        string RequesterUsername,    // Added
+        string ReceiverUsername,     // Added
         decimal Amount
     );
 }

@@ -109,24 +109,18 @@ public class ChatController : ControllerBase
 
     [Authorize]
     [HttpPost("messages")]
-    public async Task<ActionResult<Message>> SendMessage(MessageDto message)
+    public async Task<ActionResult<Chat.Message>> SendMessage(Chat.MessageDto message)
     {
         var result = await _chatService.SendMessage(message);
         return Ok(result);
     }
 
     [Authorize]
-    [HttpGet("conversations/{otherUserId}")]
-    public async Task<ActionResult<List<Message>>> GetConversation(int otherUserId)
+    [HttpGet("conversations/{otherUsername}")]
+    public async Task<ActionResult<List<Chat.Message>>> GetConversation(string otherUsername)
     {
-        var currentUserId = GetCurrentUserId(); // From JWT token
-        var messages = await _chatService.GetConversation(currentUserId, otherUserId);
+        var currentUsername = User.Identity?.Name; // From JWT token
+        var messages = await _chatService.GetConversation(currentUsername, otherUsername);
         return Ok(messages);
-    }
-
-    private int GetCurrentUserId()
-    {
-        // Implement logic to get current user ID from JWT token
-        return int.Parse(User.Claims.First(c => c.Type == "id").Value);
     }
 }

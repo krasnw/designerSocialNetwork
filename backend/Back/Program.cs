@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.SignalR;
+using Back.Models;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
