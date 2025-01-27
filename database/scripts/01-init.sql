@@ -178,14 +178,15 @@ CREATE TABLE api_schema.chat (
 );
 
 -- Add message type enum
-CREATE TYPE api_schema.message_type AS ENUM ('Text', 'Image', 'PaymentRequest');
+DROP TYPE IF EXISTS api_schema.message_type CASCADE;
+CREATE TYPE api_schema.message_type AS ENUM ('Text', 'Complex', 'PaymentRequest');
 
 -- Add message table
 CREATE TABLE api_schema.message (
     id SERIAL PRIMARY KEY,
     sender_id INTEGER REFERENCES "user"(id),
     receiver_id INTEGER REFERENCES "user"(id),
-    content TEXT NOT NULL,
+    text_content TEXT,
     type api_schema.message_type NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_read BOOLEAN NOT NULL DEFAULT FALSE
@@ -195,6 +196,18 @@ CREATE TABLE api_schema.message (
 CREATE INDEX idx_message_sender ON api_schema.message(sender_id);
 CREATE INDEX idx_message_receiver ON api_schema.message(receiver_id);
 CREATE INDEX idx_message_created_at ON api_schema.message(created_at);
+
+-- After the message table definition, add:
+
+CREATE TABLE api_schema.message_image (
+    id SERIAL PRIMARY KEY,
+    message_id INTEGER REFERENCES message(id) ON DELETE CASCADE,
+    image_path VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add index for faster image queries
+CREATE INDEX idx_message_image_message_id ON api_schema.message_image(message_id);
 
 CREATE TABLE api_schema.chat_image (
     id SERIAL PRIMARY KEY,

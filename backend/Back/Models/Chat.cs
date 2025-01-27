@@ -20,7 +20,7 @@ public class Chat
     public enum MessageType
     {
         Text,
-        Image,
+        Complex,
         PaymentRequest
     }
 
@@ -29,18 +29,31 @@ public class Chat
     {
         public int Id { get; set; }
         public int SenderId { get; set; }
+        public string SenderUsername { get; set; }
         public int ReceiverId { get; set; }
-        public string Content { get; set; }
+        public string ReceiverUsername { get; set; }
+        public string? TextContent { get; set; }
+        public List<string> ImagePaths { get; set; } = new();
         public MessageType Type { get; set; }
         public DateTime CreatedAt { get; set; }
         public bool IsRead { get; set; }
     }
 
-    public record MessageDto(
-        string ReceiverUsername,  // Only need receiver's username
-        string Content,
-        MessageType Type
-    );
+    // New class for form data
+    public class MessageRequest
+    {
+        public string ReceiverUsername { get; set; }
+        public string? TextContent { get; set; }
+        public IFormFile[]? Images { get; set; }
+    }
+
+    public record MessageDto
+    {
+        public string ReceiverUsername { get; init; }
+        public string? TextContent { get; init; }
+        public List<IFormFile>? Images { get; init; }
+        public MessageType Type { get; init; }
+    }
 
     // PaymentRequest model
     public class PaymentRequest

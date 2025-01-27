@@ -109,18 +109,27 @@ public class ChatController : ControllerBase
 
     [Authorize]
     [HttpPost("messages")]
-    public async Task<ActionResult<Chat.Message>> SendMessage([FromBody] Chat.MessageDto message)
+    public async Task<ActionResult<Chat.Message>> SendMessage([FromForm] Chat.MessageRequest request)
     {
         var senderUsername = User.Identity?.Name;
         if (string.IsNullOrEmpty(senderUsername))
             return Unauthorized("Blame the token, relog please");
 
-        if (senderUsername == message.ReceiverUsername)
+        if (senderUsername == request.ReceiverUsername)
             return BadRequest("Cannot send message to yourself");
 
         try
         {
-            var result = await _chatService.SendMessage(senderUsername, message);
+            // Convert request to MessageDto
+            var messageDto = new Chat.MessageDto
+            {
+                ReceiverUsername = request.ReceiverUsername,
+                TextContent = request.TextContent,
+                Images = request.Images?.ToList(),
+                Type = Chat.MessageType.Complex // Will be determined by the service
+            };
+
+            var result = await _chatService.SendMessage(senderUsername, messageDto);
             return Ok(result);
         }
         catch (Exception ex)

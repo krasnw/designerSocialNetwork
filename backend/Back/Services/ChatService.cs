@@ -9,11 +9,13 @@ public class ChatService : IChatService
 {
     private readonly IDatabaseService _databaseService;
     private readonly IHubContext<ChatHub> _hubContext;
+    private readonly IImageService _imageService;
 
-    public ChatService(IDatabaseService databaseService, IHubContext<ChatHub> hubContext)
+    public ChatService(IDatabaseService databaseService, IHubContext<ChatHub> hubContext, IImageService imageService)
     {
         _databaseService = databaseService;
         _hubContext = hubContext;
+        _imageService = imageService;
     }
 
     public bool SendRequest(string username, Chat.Request request)
@@ -226,64 +228,139 @@ public class ChatService : IChatService
 
     public async Task<Chat.Message> SendMessage(string senderUsername, Chat.MessageDto message)
     {
-        // Get user IDs from usernames
-        var getUserIdsQuery = @"
-            SELECT id FROM api_schema.user WHERE username = @Username";
-
         using var connection = _databaseService.GetConnection();
-        
-        // Get sender ID from JWT token username
-        using var senderCommand = new NpgsqlCommand(getUserIdsQuery, connection);
-        senderCommand.Parameters.AddWithValue("@Username", senderUsername);
-        var senderId = (int?)await senderCommand.ExecuteScalarAsync();
-        if (senderId == null) throw new Exception("Sender not found");
+        using var transaction = connection.BeginTransaction();
 
-        // Get receiver ID
-        using var receiverCommand = new NpgsqlCommand(getUserIdsQuery, connection);
-        receiverCommand.Parameters.AddWithValue("@Username", message.ReceiverUsername);
-        var receiverId = (int?)await receiverCommand.ExecuteScalarAsync();
-        if (receiverId == null) throw new Exception("Receiver not found");
-
-        var newMessage = new Chat.Message
+        try
         {
-            SenderId = senderId.Value,
-            ReceiverId = receiverId.Value,
-            Content = message.Content,
-            Type = message.Type,
-            CreatedAt = DateTime.UtcNow
-        };
+            // Get user IDs
+            var (senderId, receiverId) = await GetUserIds(senderUsername, message.ReceiverUsername);
 
-        // Save message to database
-        var insertQuery = @"
-            INSERT INTO api_schema.message (sender_id, receiver_id, content, type, created_at)
-            VALUES (@SenderId, @ReceiverId, @Content, @Type::api_schema.message_type, @CreatedAt)
-            RETURNING id";
+            // Handle image uploads first if any
+            var uploadedImagePaths = new List<string>();
+            if (message.Images != null && message.Images.Any())
+            {
+                foreach (var image in message.Images)
+                {
+                    if (!_imageService.IsImageValid(image))
+                    {
+                        throw new ArgumentException($"Invalid image: {image.FileName}");
+                    }
+                    var path = await _imageService.UploadImageAsync(image, senderUsername);
+                    uploadedImagePaths.Add(path);
+                }
+            }
 
-        using var command = new NpgsqlCommand(insertQuery, connection);
-        command.Parameters.AddWithValue("@SenderId", newMessage.SenderId);
-        command.Parameters.AddWithValue("@ReceiverId", newMessage.ReceiverId);
-        command.Parameters.AddWithValue("@Content", newMessage.Content);
-        command.Parameters.AddWithValue("@Type", message.Type.ToString()); // Remove ToLower()
-        command.Parameters.AddWithValue("@CreatedAt", newMessage.CreatedAt);
+            // Create message
+            var messageType = uploadedImagePaths.Any() ? Chat.MessageType.Complex : Chat.MessageType.Text;
+            var insertMessageQuery = @"
+                INSERT INTO api_schema.message (sender_id, receiver_id, text_content, type, created_at)
+                VALUES (@SenderId, @ReceiverId, @TextContent, @Type::api_schema.message_type, @CreatedAt)
+                RETURNING id";
 
-        newMessage.Id = (int)await command.ExecuteScalarAsync();
+            using var cmd = new NpgsqlCommand(insertMessageQuery, connection);
+            cmd.Parameters.AddWithValue("@SenderId", senderId);
+            cmd.Parameters.AddWithValue("@ReceiverId", receiverId);
+            cmd.Parameters.AddWithValue("@TextContent", (object?)message.TextContent ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@Type", messageType.ToString("G")); // "G" format ensures exact enum name
+            cmd.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow);
 
-        // Notify receiver via SignalR
-        await _hubContext.Clients.User(message.ReceiverUsername)
-            .SendAsync("ReceiveMessage", newMessage);
+            var messageId = (int)await cmd.ExecuteScalarAsync();
 
-        return newMessage;
+            // Store image paths if any
+            if (uploadedImagePaths.Any())
+            {
+                var insertImageQuery = @"
+                    INSERT INTO api_schema.message_image (message_id, image_path)
+                    VALUES (@MessageId, @ImagePath)";
+
+                foreach (var path in uploadedImagePaths)
+                {
+                    using var imgCmd = new NpgsqlCommand(insertImageQuery, connection);
+                    imgCmd.Parameters.AddWithValue("@MessageId", messageId);
+                    imgCmd.Parameters.AddWithValue("@ImagePath", path);
+                    await imgCmd.ExecuteNonQueryAsync();
+                }
+            }
+
+            await transaction.CommitAsync();
+
+            // Create response object
+            var newMessage = new Chat.Message
+            {
+                Id = messageId,
+                SenderId = senderId,
+                SenderUsername = senderUsername,
+                ReceiverId = receiverId,
+                ReceiverUsername = message.ReceiverUsername,
+                TextContent = message.TextContent,
+                ImagePaths = uploadedImagePaths,
+                Type = messageType,
+                CreatedAt = DateTime.UtcNow,
+                IsRead = false
+            };
+
+            // Notify through SignalR
+            await _hubContext.Clients.User(message.ReceiverUsername)
+                .SendAsync("ReceiveMessage", newMessage);
+
+            return newMessage;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    private async Task<(int senderId, int receiverId)> GetUserIds(string senderUsername, string receiverUsername)
+    {
+        var query = @"
+            SELECT id, username 
+            FROM api_schema.user 
+            WHERE username IN (@Sender, @Receiver)";
+
+        using var cmd = new NpgsqlCommand(query, _databaseService.GetConnection());
+        cmd.Parameters.AddWithValue("@Sender", senderUsername);
+        cmd.Parameters.AddWithValue("@Receiver", receiverUsername);
+
+        var userIds = new Dictionary<string, int>();
+        using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            userIds[reader.GetString(1)] = reader.GetInt32(0);
+        }
+
+        if (!userIds.TryGetValue(senderUsername, out var senderId) || 
+            !userIds.TryGetValue(receiverUsername, out var receiverId))
+        {
+            throw new ArgumentException("Invalid sender or receiver username");
+        }
+
+        return (senderId, receiverId);
     }
 
     public async Task<List<Chat.Message>> GetConversation(string user1Username, string user2Username)
     {
         var query = @"
-            SELECT m.id, m.sender_id, m.receiver_id, m.content, m.type, m.created_at, m.is_read
+            SELECT 
+                m.id, 
+                m.sender_id, 
+                sender.username as sender_username,
+                m.receiver_id, 
+                receiver.username as receiver_username,
+                m.text_content, 
+                m.type, 
+                m.created_at, 
+                m.is_read,
+                ARRAY_AGG(mi.image_path) as image_paths
             FROM api_schema.message m
-            JOIN api_schema.user u1 ON m.sender_id = u1.id
-            JOIN api_schema.user u2 ON m.receiver_id = u2.id
-            WHERE (u1.username = @User1Username AND u2.username = @User2Username)
-               OR (u1.username = @User2Username AND u2.username = @User1Username)
+            JOIN api_schema.user sender ON m.sender_id = sender.id
+            JOIN api_schema.user receiver ON m.receiver_id = receiver.id
+            LEFT JOIN api_schema.message_image mi ON m.id = mi.message_id
+            WHERE (sender.username = @User1Username AND receiver.username = @User2Username)
+               OR (sender.username = @User2Username AND receiver.username = @User1Username)
+            GROUP BY m.id, m.sender_id, sender.username, m.receiver_id, receiver.username, m.text_content, m.type, m.created_at, m.is_read
             ORDER BY m.created_at";
 
         var messages = new List<Chat.Message>();
@@ -295,16 +372,27 @@ public class ChatService : IChatService
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            messages.Add(new Chat.Message
+            var message = new Chat.Message
             {
                 Id = reader.GetInt32(0),
                 SenderId = reader.GetInt32(1),
-                ReceiverId = reader.GetInt32(2),
-                Content = reader.GetString(3),
-                Type = Enum.Parse<Chat.MessageType>(reader.GetString(4)),  // Updated
-                CreatedAt = reader.GetDateTime(5),
-                IsRead = reader.GetBoolean(6)
-            });
+                SenderUsername = reader.GetString(2),
+                ReceiverId = reader.GetInt32(3),
+                ReceiverUsername = reader.GetString(4),
+                TextContent = reader.IsDBNull(5) ? null : reader.GetString(5),
+                Type = Enum.Parse<Chat.MessageType>(reader.GetString(6)),
+                CreatedAt = reader.GetDateTime(7),
+                IsRead = reader.GetBoolean(8)
+            };
+
+            // Handle image paths array
+            if (!reader.IsDBNull(9))
+            {
+                var imagePaths = (string[])reader.GetValue(9);
+                message.ImagePaths = imagePaths.Where(p => p != null).ToList();
+            }
+
+            messages.Add(message);
         }
 
         return messages;
