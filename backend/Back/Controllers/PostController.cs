@@ -67,7 +67,7 @@ public class PostController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public IActionResult GetPost(long id)  // Changed from int to long
+    public IActionResult GetPost(long id)
     {
         var post = _postService.GetPost(id);
         if (post == null) return NotFound("Post not found.");
@@ -82,7 +82,8 @@ public class PostController : ControllerBase
                 return Unauthorized("You must be logged in to view private posts.");
             }
             
-            if (!_postService.HasUserAccessToPost(user, post.Id))
+            // Add check for post ownership
+            if (post.Author.Username != user && !_postService.HasUserAccessToPost(user, post.Id))
             {
                 return Unauthorized("You don't have access to this private post.");
             }
