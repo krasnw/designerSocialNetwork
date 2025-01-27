@@ -177,6 +177,47 @@ CREATE TABLE api_schema.chat (
     chat_status chat_status NOT NULL
 );
 
+-- Update message type enum to match the C# enum case exactly
+DROP TYPE IF EXISTS api_schema.message_type CASCADE;
+CREATE TYPE api_schema.message_type AS ENUM ('Text', 'Complex', 'PaymentRequest', 'Transaction');
+
+-- Add message table
+CREATE TABLE api_schema.message (
+    id SERIAL PRIMARY KEY,
+    sender_id INTEGER REFERENCES "user"(id),
+    receiver_id INTEGER REFERENCES "user"(id),
+    text_content TEXT,
+    type api_schema.message_type NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+-- Add indexes for better query performance
+CREATE INDEX idx_message_sender ON api_schema.message(sender_id);
+CREATE INDEX idx_message_receiver ON api_schema.message(receiver_id);
+CREATE INDEX idx_message_created_at ON api_schema.message(created_at);
+
+-- After the message table definition, add:
+
+CREATE TABLE api_schema.message_image (
+    id SERIAL PRIMARY KEY,
+    message_id INTEGER REFERENCES message(id) ON DELETE CASCADE,
+    image_path VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add transaction_message table
+CREATE TABLE api_schema.transaction_message (
+    id SERIAL PRIMARY KEY,
+    message_id INTEGER REFERENCES message(id) ON DELETE CASCADE,
+    amount DECIMAL NOT NULL,
+    is_approved BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add index for better query performance
+CREATE INDEX idx_transaction_message_id ON api_schema.transaction_message(message_id);
+
 CREATE TABLE api_schema.chat_image (
     id SERIAL PRIMARY KEY,
     chat_id INTEGER REFERENCES chat(id),

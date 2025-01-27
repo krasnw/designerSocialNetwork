@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.AspNetCore.SignalR;
+using Back.Models;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
@@ -94,6 +96,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -142,6 +145,7 @@ app.Use(async (context, next) =>
 });
 
 app.MapControllers();
+app.MapHub<ChatHub>("/chathub");
 
 try
 {

@@ -288,4 +288,26 @@ VALUES
 (9, 95, CURRENT_TIMESTAMP),
 (10, 160, CURRENT_TIMESTAMP);
 
+-- Add sample transaction messages
+INSERT INTO api_schema.message (sender_id, receiver_id, text_content, type, created_at)
+SELECT 
+    sender.id as sender_id,
+    receiver.id as receiver_id,
+    text_content,
+    'Transaction'::api_schema.message_type as type,
+    created_at
+FROM (VALUES
+    (1, 2, 'Payment for design work', CURRENT_TIMESTAMP - INTERVAL '1 day'),
+    (3, 4, 'Logo design payment', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+    (5, 6, 'UI consultation fee', CURRENT_TIMESTAMP - INTERVAL '3 days')
+) as data(sender_id, receiver_id, text_content, created_at)
+JOIN api_schema."user" sender ON sender.id = data.sender_id
+JOIN api_schema."user" receiver ON receiver.id = data.receiver_id;
+
+INSERT INTO api_schema.transaction_message (message_id, amount, is_approved)
+VALUES
+((SELECT id FROM api_schema.message WHERE text_content = 'Payment for design work'), 100.00, false),
+((SELECT id FROM api_schema.message WHERE text_content = 'Logo design payment'), 250.00, true),
+((SELECT id FROM api_schema.message WHERE text_content = 'UI consultation fee'), 150.00, false);
+
 

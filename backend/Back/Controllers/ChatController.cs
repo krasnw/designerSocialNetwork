@@ -106,4 +106,86 @@ public class ChatController : ControllerBase
             return BadRequest($"Error deleting request: {ex.Message}");
         }
     }
+
+    [Authorize]
+    [HttpPost("messages")]
+    public async Task<ActionResult<Chat.Message>> SendMessage([FromForm] Chat.MessageRequest request)
+    {
+        var senderUsername = User.Identity?.Name;
+        if (string.IsNullOrEmpty(senderUsername))
+            return Unauthorized("Blame the token, relog please");
+
+        if (senderUsername == request.ReceiverUsername)
+            return BadRequest("Cannot send message to yourself");
+
+        try
+        {
+            // Convert request to MessageDto
+            var messageDto = new Chat.MessageDto
+            {
+                ReceiverUsername = request.ReceiverUsername,
+                TextContent = request.TextContent,
+                Images = request.Images?.ToList(),
+                Type = Chat.MessageType.Complex // Will be determined by the service
+            };
+
+            var result = await _chatService.SendMessage(senderUsername, messageDto);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Error sending message: {ex.Message}");
+        }
+    }
+
+    [Authorize]
+    [HttpPost("transaction")]
+    public async Task<ActionResult<Chat.TransactionMessageResponse>> SendTransactionMessage(
+        [FromBody] Chat.TransactionMessage request)
+    {
+        var senderUsername = User.Identity?.Name;
+        if (string.IsNullOrEmpty(senderUsername))
+            return Unauthorized("Blame the token, relog please");
+
+        if (senderUsername == request.ReceiverUsername)
+            return BadRequest("Cannot send transaction to yourself");
+
+        try
+        {
+            var result = await _chatService.SendTransactionMessage(senderUsername, request);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Error sending transaction message: {ex.Message}");
+        }
+    }
+
+    [Authorize]
+    [HttpPost("transaction/{messageId}/approve")]
+    public async Task<IActionResult> ApproveTransaction(int messageId)
+    {
+        var username = User.Identity?.Name;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized("Blame the token, relog please");
+
+        try
+        {
+            var result = await _chatService.ApproveTransaction(messageId, username);
+            return result ? Ok("Transaction approved and processed") : BadRequest("Could not process transaction");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Error approving transaction: {ex.Message}");
+        }
+    }
+
+    [Authorize]
+    [HttpGet("conversations/{otherUsername}")]
+    public async Task<ActionResult<List<Chat.Message>>> GetConversation(string otherUsername)
+    {
+        var currentUsername = User.Identity?.Name; // From JWT token
+        var messages = await _chatService.GetConversation(currentUsername, otherUsername);
+        return Ok(messages);
+    }
 }
