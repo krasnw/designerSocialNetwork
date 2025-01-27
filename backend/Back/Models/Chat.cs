@@ -37,10 +37,7 @@ public class Chat
     }
 
     public record MessageDto(
-        int SenderId,
-        int ReceiverId,
-        string SenderUsername,    // Added
-        string ReceiverUsername,  // Added
+        string ReceiverUsername,  // Only need receiver's username
         string Content,
         MessageType Type
     );

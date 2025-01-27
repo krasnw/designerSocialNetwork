@@ -7,13 +7,13 @@ namespace Back.Models
     {
         public async Task SendMessage(Chat.MessageDto message)
         {
-            await Clients.User(message.ReceiverId.ToString())
+            await Clients.User(message.ReceiverUsername)
                 .SendAsync("ReceiveMessage", message);
         }
         
         public async Task SendPaymentRequest(Chat.PaymentRequestDto request)
         {
-            await Clients.User(request.ReceiverId.ToString())
+            await Clients.User(request.ReceiverUsername)
                 .SendAsync("ReceivePaymentRequest", request);
         }
     }

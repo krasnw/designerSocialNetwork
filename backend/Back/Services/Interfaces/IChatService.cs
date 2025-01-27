@@ -10,7 +10,7 @@ namespace Back.Services.Interfaces
         Task<bool> AcceptRequest(int requestId);
         Task<bool> DeleteRequest(int requestId);
 
-        Task<Chat.Message> SendMessage(Chat.MessageDto message);
+        Task<Chat.Message> SendMessage(string senderUsername, Chat.MessageDto message);
         Task<List<Chat.Message>> GetConversation(string user1Username, string user2Username);
         Task<Chat.PaymentRequest> CreatePaymentRequest(Chat.PaymentRequestDto request);
     }

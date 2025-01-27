@@ -224,12 +224,30 @@ public class ChatService : IChatService
         }
     }
 
-    public async Task<Chat.Message> SendMessage(Chat.MessageDto message)
+    public async Task<Chat.Message> SendMessage(string senderUsername, Chat.MessageDto message)
     {
+        // Get user IDs from usernames
+        var getUserIdsQuery = @"
+            SELECT id FROM api_schema.user WHERE username = @Username";
+
+        using var connection = _databaseService.GetConnection();
+        
+        // Get sender ID from JWT token username
+        using var senderCommand = new NpgsqlCommand(getUserIdsQuery, connection);
+        senderCommand.Parameters.AddWithValue("@Username", senderUsername);
+        var senderId = (int?)await senderCommand.ExecuteScalarAsync();
+        if (senderId == null) throw new Exception("Sender not found");
+
+        // Get receiver ID
+        using var receiverCommand = new NpgsqlCommand(getUserIdsQuery, connection);
+        receiverCommand.Parameters.AddWithValue("@Username", message.ReceiverUsername);
+        var receiverId = (int?)await receiverCommand.ExecuteScalarAsync();
+        if (receiverId == null) throw new Exception("Receiver not found");
+
         var newMessage = new Chat.Message
         {
-            SenderId = message.SenderId,
-            ReceiverId = message.ReceiverId,
+            SenderId = senderId.Value,
+            ReceiverId = receiverId.Value,
             Content = message.Content,
             Type = message.Type,
             CreatedAt = DateTime.UtcNow
@@ -238,15 +256,12 @@ public class ChatService : IChatService
         // Save message to database
         var insertQuery = @"
             INSERT INTO api_schema.message (sender_id, receiver_id, content, type, created_at)
-            VALUES ((SELECT id FROM api_schema.user WHERE username = @SenderUsername), 
-                    (SELECT id FROM api_schema.user WHERE username = @ReceiverUsername), 
-                    @Content, @Type, @CreatedAt)
+            VALUES (@SenderId, @ReceiverId, @Content, @Type, @CreatedAt)
             RETURNING id";
 
-        using var connection = _databaseService.GetConnection();
         using var command = new NpgsqlCommand(insertQuery, connection);
-        command.Parameters.AddWithValue("@SenderUsername", message.SenderUsername);
-        command.Parameters.AddWithValue("@ReceiverUsername", message.ReceiverUsername);
+        command.Parameters.AddWithValue("@SenderId", newMessage.SenderId);
+        command.Parameters.AddWithValue("@ReceiverId", newMessage.ReceiverId);
         command.Parameters.AddWithValue("@Content", newMessage.Content);
         command.Parameters.AddWithValue("@Type", newMessage.Type.ToString());
         command.Parameters.AddWithValue("@CreatedAt", newMessage.CreatedAt);
@@ -255,7 +270,7 @@ public class ChatService : IChatService
 
         // Notify receiver via SignalR
         await _hubContext.Clients.User(message.ReceiverUsername)
-            .SendAsync("ReceiveMessage", message);
+            .SendAsync("ReceiveMessage", newMessage);
 
         return newMessage;
     }
