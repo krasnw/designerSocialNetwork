@@ -99,23 +99,70 @@ public class PostController : ControllerBase
     [HttpGet("profile/{username}/mini")]
     public IActionResult GetUserPosts(string username, int pageNumber = 1, int pageSize = 10, string? tags = null, string? accessType = null)
     {
-        if (pageNumber < 1) return BadRequest("Page number must be greater than 0.");
-        if (pageSize < 1) return BadRequest("Page size must be greater than 0.");
-        
-        var currentUser = User.Identity?.Name;
-        var posts = _postService.GetUserPosts(username, currentUser, pageNumber, pageSize, tags, accessType);
-        
-        if (posts == null)
+        if (string.IsNullOrEmpty(username))
+            return BadRequest(new { message = "Username is required" });
+
+        if (pageNumber < 1)
+            return BadRequest(new { message = "Page number must be greater than 0" });
+
+        if (pageSize < 1)
+            return BadRequest(new { message = "Page size must be greater than 0" });
+
+        // Validate access type if provided
+        if (!string.IsNullOrEmpty(accessType))
         {
-            return NotFound($"No posts found for user '{username}' with the specified criteria.");
+            var normalizedAccessType = accessType.ToLower();
+            if (normalizedAccessType != "public" && normalizedAccessType != "private")
+            {
+                return BadRequest(new { message = "Access type must be: public or private" });
+            }
         }
 
-        if (!posts.Any())
+        try
         {
-            return Ok(new List<PostMini>()); // Return empty list instead of 404
-        }
+            var currentUser = User.Identity?.Name;
+            var posts = _postService.GetUserPosts(username, currentUser, pageNumber, pageSize, tags, accessType);
 
-        return Ok(posts);
+            if (posts == null)
+            {
+                return NotFound(new
+                {
+                    message = $"No posts found for user '{username}' with the specified criteria.",
+                    details = new
+                    {
+                        username,
+                        currentUser,
+                        pageNumber,
+                        pageSize,
+                        tags = tags ?? "none",
+                        accessType = accessType ?? "all"
+                    }
+                });
+            }
+
+            if (!posts.Any())
+            {
+                return Ok(new List<PostMini>()); // Return empty list instead of 404
+            }
+
+            return Ok(posts);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                message = "An error occurred while retrieving posts",
+                error = ex.Message,
+                details = new
+                {
+                    username,
+                    pageNumber,
+                    pageSize,
+                    tags,
+                    accessType
+                }
+            });
+        }
     }
 
     //delete post

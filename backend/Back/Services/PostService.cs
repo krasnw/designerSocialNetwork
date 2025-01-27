@@ -198,108 +198,132 @@ public class PostService : IPostService
     //get al user's posts by page
     public List<PostMini>? GetUserPosts(string username, string? currentUser, int pageNumber, int pageSize, string? tags = null, string? accessType = null)
 {
-    string query = @"
-    WITH post_tags AS (
-        SELECT pt.post_id, array_agg(t.tag_name) as tags
-        FROM api_schema.post_tags pt
-        JOIN api_schema.tags t ON pt.tag_id = t.id
-        GROUP BY pt.post_id
-    )
-    SELECT p.id, p.post_name, p.access_level, 
-           COALESCE(i.image_file_path, 'default.jpg') as image_file_path, 
-           p.likes,
-           COALESCE(pt.tags, ARRAY[]::text[]) as tags
-    FROM api_schema.post p
-    JOIN api_schema.user u ON p.user_id = u.id
-    LEFT JOIN api_schema.image_container c ON p.container_id = c.id
-    LEFT JOIN api_schema.image i ON c.main_image_id = i.id
-    LEFT JOIN post_tags pt ON p.id = pt.post_id
-    LEFT JOIN api_schema.post_tags pt2 ON p.id = pt2.post_id
-    LEFT JOIN api_schema.tags t2 ON pt2.tag_id = t2.id
-    WHERE u.username = @username";
-
-    var offset = (pageNumber - 1) * pageSize;
-    if (offset < 0) offset = 0;
-
-    var parameters = new Dictionary<string, object>
-    {
-        { "@username", username },
-        { "@pageSize", pageSize },
-        { "@offset", offset }
-    };
-
-    // Build access filter
-    string accessFilter = "";
-    if (string.IsNullOrEmpty(currentUser))
-    {
-        accessFilter = " AND p.access_level::text = 'public'";
-    }
-    else if (currentUser != username)
-    {
-        accessFilter = @" AND (p.access_level::text = 'public' 
-            OR (p.access_level::text = 'private' 
-                AND EXISTS (
-                    SELECT 1 FROM api_schema.private_access pa 
-                    JOIN api_schema.user u2 ON pa.buyer_id = u2.id 
-                    WHERE u2.username = @currentUser 
-                    AND pa.seller_id = p.user_id
-                )
-            ))";
-        parameters.Add("@currentUser", currentUser);
-    }
-
-    // Add access type filter if specified
-    if (!string.IsNullOrEmpty(accessType))
-    {
-        accessFilter += " AND p.access_level::text = @accessType::text";
-        parameters.Add("@accessType", accessType.ToLower());
-    }
-
-    // Build tag filter
-    string tagFilter = "";
-    if (!string.IsNullOrEmpty(tags))
-    {
-        tagFilter = @" AND EXISTS (
-            SELECT 1 FROM api_schema.post_tags pt_inner
-            JOIN api_schema.tags t_inner ON pt_inner.tag_id = t_inner.id
-            WHERE pt_inner.post_id = p.id
-            AND LOWER(t_inner.tag_name) = ANY(LOWER(@tags::text)::text[])
-        )";
-        parameters.Add("@tags", tags.Split(',').Select(t => t.Trim()).ToArray());
-    }
-
-    // Add group by clause to handle tags properly
-    query += accessFilter + tagFilter;
-    query += @" GROUP BY p.id, p.post_name, p.access_level, i.image_file_path, p.likes, pt.tags
-                ORDER BY p.post_date DESC
-                LIMIT @pageSize OFFSET @offset";
-
+    // First check if user exists
+    string userCheckQuery = "SELECT EXISTS(SELECT 1 FROM api_schema.user WHERE username = @username)";
+    var userCheckParams = new Dictionary<string, object> { { "@username", username } };
+    
     NpgsqlConnection connection = null;
     NpgsqlCommand command = null;
 
     try
     {
-        Console.WriteLine($"Executing query: {query}"); // Debug line
-        Console.WriteLine($"Parameters: {string.Join(", ", parameters.Select(p => $"{p.Key}={p.Value}"))}"); // Debug line
+        // Check if user exists
+        using var userCheckReader = _databaseService.ExecuteQuery(userCheckQuery, out connection, out command, userCheckParams);
+        if (!userCheckReader.Read() || !userCheckReader.GetBoolean(0))
+        {
+            Console.WriteLine($"User '{username}' not found");
+            return null;
+        }
 
+        // Rest of your existing query building code...
+        string query = @"
+        WITH post_tags AS (
+            SELECT pt.post_id, array_agg(t.tag_name) as tags
+            FROM api_schema.post_tags pt
+            JOIN api_schema.tags t ON pt.tag_id = t.id
+            GROUP BY pt.post_id
+        )
+        SELECT p.id, p.post_name, p.access_level, 
+               COALESCE(i.image_file_path, 'default.jpg') as image_file_path, 
+               p.likes,
+               COALESCE(pt.tags, ARRAY[]::text[]) as tags
+        FROM api_schema.post p
+        JOIN api_schema.user u ON p.user_id = u.id
+        LEFT JOIN api_schema.image_container c ON p.container_id = c.id
+        LEFT JOIN api_schema.image i ON c.main_image_id = i.id
+        LEFT JOIN post_tags pt ON p.id = pt.post_id
+        LEFT JOIN api_schema.post_tags pt2 ON p.id = pt2.post_id
+        LEFT JOIN api_schema.tags t2 ON pt2.tag_id = t2.id
+        WHERE u.username = @username";
+
+        var offset = (pageNumber - 1) * pageSize;
+        if (offset < 0) offset = 0;
+
+        var parameters = new Dictionary<string, object>
+        {
+            { "@username", username },
+            { "@pageSize", pageSize },
+            { "@offset", offset }
+        };
+
+        // Build access filter
+        string accessFilter = "";
+        if (string.IsNullOrEmpty(currentUser))
+        {
+            accessFilter = " AND p.access_level::text = 'public'";
+        }
+        else if (currentUser != username)
+        {
+            accessFilter = @" AND (p.access_level::text = 'public' 
+                OR (p.access_level::text = 'private' 
+                    AND EXISTS (
+                        SELECT 1 FROM api_schema.private_access pa 
+                        JOIN api_schema.user u2 ON pa.buyer_id = u2.id 
+                        WHERE u2.username = @currentUser 
+                        AND pa.seller_id = p.user_id
+                    )
+                ))";
+            parameters.Add("@currentUser", currentUser);
+        }
+
+        // Add access type filter if specified
+        if (!string.IsNullOrEmpty(accessType))
+        {
+            accessFilter += " AND p.access_level::text = @accessType::text";
+            parameters.Add("@accessType", accessType.ToLower());
+        }
+
+        // Build tag filter
+        string tagFilter = "";
+        if (!string.IsNullOrEmpty(tags))
+        {
+            tagFilter = @" AND EXISTS (
+                SELECT 1 FROM api_schema.post_tags pt_inner
+                JOIN api_schema.tags t_inner ON pt_inner.tag_id = t_inner.id
+                WHERE pt_inner.post_id = p.id
+                AND LOWER(t_inner.tag_name) = ANY(LOWER(@tags::text)::text[])
+            )";
+            parameters.Add("@tags", tags.Split(',').Select(t => t.Trim()).ToArray());
+        }
+
+        // Add group by clause to handle tags properly
+        query += accessFilter + tagFilter;
+        query += @" GROUP BY p.id, p.post_name, p.access_level, i.image_file_path, p.likes, pt.tags
+                    ORDER BY p.post_date DESC
+                    LIMIT @pageSize OFFSET @offset";
+
+        Console.WriteLine($"Executing query for user '{username}' with parameters: {string.Join(", ", parameters.Select(p => $"{p.Key}={p.Value}"))}");
+        
         using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
         
-        if (!reader.HasRows) return null;
+        if (!reader.HasRows)
+        {
+            Console.WriteLine($"No posts found for user '{username}' with the given criteria");
+            return new List<PostMini>(); // Return empty list instead of null
+        }
 
         var posts = new List<PostMini>();
         while (reader.Read())
         {
-            posts.Add(new PostMini
+            try
             {
-                Id = reader.GetInt32(0),
-                Title = reader.GetString(1),
-                Access = reader.GetString(2),
-                MainImageFilePath = reader.GetString(3),
-                Likes = reader.GetInt32(4),
-                Tags = reader.GetValue(5) != DBNull.Value 
-                    ? ((string[])reader.GetValue(5)).Where(t => t != null).ToList() 
-                    : new List<string>()
-            });
+                posts.Add(new PostMini
+                {
+                    Id = reader.GetInt32(0),
+                    Title = reader.GetString(1),
+                    Access = reader.GetString(2),
+                    MainImageFilePath = reader.GetString(3),
+                    Likes = reader.GetInt32(4),
+                    Tags = reader.GetValue(5) != DBNull.Value 
+                        ? ((string[])reader.GetValue(5)).Where(t => t != null).ToList() 
+                        : new List<string>()
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error processing post: {ex.Message}");
+                throw;
+            }
         }
 
         return posts;
