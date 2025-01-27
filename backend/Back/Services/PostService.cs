@@ -1080,7 +1080,7 @@ public class PostService : IPostService
     string accessFilter = "";
     if (!string.IsNullOrEmpty(accessType))
     {
-        accessFilter = " AND p.access_level = @accessType";
+        accessFilter = " AND p.access_level::text = @accessType::text";  // Fix: proper type casting
         parameters.Add("@accessType", accessType.ToLower());
     }
 

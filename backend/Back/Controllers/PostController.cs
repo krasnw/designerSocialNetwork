@@ -383,6 +383,18 @@ public class PostController : ControllerBase
         if (pageNumber < 1) return BadRequest("Page number must be greater than 0.");
         if (pageSize < 1) return BadRequest("Page size must be greater than 0.");
 
+        // Validate access type if provided
+        if (!string.IsNullOrEmpty(accessType))
+        {
+            var normalizedAccessType = accessType.ToLower();
+            if (normalizedAccessType != "public" && 
+                normalizedAccessType != "private" && 
+                normalizedAccessType != "protected")
+            {
+                return BadRequest(new { message = "Access type must be: public, private, or protected" });
+            }
+        }
+
         var posts = _postService.GetOwnPosts(username, pageNumber, pageSize, tags, accessType);
 
         if (posts == null || !posts.Any())
