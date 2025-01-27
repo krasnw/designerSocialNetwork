@@ -382,11 +382,17 @@ public class ChatService : IChatService
         {
             // Verify transaction exists and belongs to approver
             var verifyQuery = @"
-                SELECT m.sender_id, sender.username, tm.amount 
+                SELECT 
+                    m.sender_id,
+                    sender.username as sender_username,
+                    tm.amount,
+                    w.id as wallet_id,
+                    w.amount as wallet_balance
                 FROM api_schema.message m
                 JOIN api_schema.transaction_message tm ON m.id = tm.message_id
                 JOIN api_schema.user sender ON m.sender_id = sender.id
                 JOIN api_schema.user receiver ON m.receiver_id = receiver.id
+                JOIN api_schema.wallet w ON receiver.id = w.user_id
                 WHERE m.id = @MessageId 
                 AND receiver.username = @ApproverUsername 
                 AND tm.is_approved = false";
@@ -404,7 +410,15 @@ public class ChatService : IChatService
             var senderId = reader.GetInt32(0);
             var senderUsername = reader.GetString(1);
             var amount = reader.GetDecimal(2);
+            var approverWalletId = reader.GetInt32(3);
+            var approverBalance = reader.GetDecimal(4);
             reader.Close();
+
+            // Check if approver has enough balance
+            if (approverBalance < amount)
+            {
+                throw new InvalidOperationException("Insufficient funds to complete the transaction");
+            }
 
             // Update transaction status
             var updateQuery = @"
@@ -416,21 +430,26 @@ public class ChatService : IChatService
             updateCmd.Parameters.AddWithValue("@MessageId", messageId);
             await updateCmd.ExecuteNonQueryAsync();
 
-            // Process the actual money transfer here
-            // This is a placeholder - implement actual wallet/balance update logic
+            // Process the money transfer
             var transferQuery = @"
-                -- Add your wallet update logic here
-                -- Example:
-                -- UPDATE api_schema.wallet 
-                -- SET balance = balance - @Amount 
-                -- WHERE user_id = (SELECT id FROM api_schema.user WHERE username = @ApproverUsername);
-                -- UPDATE api_schema.wallet 
-                -- SET balance = balance + @Amount 
-                -- WHERE user_id = @SenderId;";
+                -- Deduct from approver's wallet
+                UPDATE api_schema.wallet 
+                SET amount = amount - @Amount 
+                WHERE id = @ApproverWalletId;
+
+                -- Add to sender's wallet
+                UPDATE api_schema.wallet 
+                SET amount = amount + @Amount 
+                WHERE user_id = @SenderId;
+
+                -- Create inner transaction record
+                INSERT INTO api_schema.inner_transaction 
+                (amount, transaction_date, user_id, wallet_id)
+                VALUES (@Amount, CURRENT_DATE, @SenderId, @ApproverWalletId)";
 
             using var transferCmd = new NpgsqlCommand(transferQuery, connection, transaction);
             transferCmd.Parameters.AddWithValue("@Amount", amount);
-            transferCmd.Parameters.AddWithValue("@ApproverUsername", approverUsername);
+            transferCmd.Parameters.AddWithValue("@ApproverWalletId", approverWalletId);
             transferCmd.Parameters.AddWithValue("@SenderId", senderId);
             await transferCmd.ExecuteNonQueryAsync();
 
@@ -438,14 +457,24 @@ public class ChatService : IChatService
 
             // Notify sender through SignalR
             await _hubContext.Clients.User(senderUsername)
-                .SendAsync("TransactionApproved", messageId);
+                .SendAsync("TransactionApproved", new { 
+                    MessageId = messageId,
+                    Amount = amount,
+                    NewBalance = approverBalance - amount
+                });
 
             return true;
         }
-        catch
+        catch (InvalidOperationException)
         {
             await transaction.RollbackAsync();
             throw;
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            Console.WriteLine($"Error processing transaction: {ex.Message}");
+            throw new Exception("Failed to process transaction");
         }
     }
 
