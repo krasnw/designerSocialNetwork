@@ -53,7 +53,16 @@ public class PostController : ControllerBase
             return NotFound("No posts found.");
         }
 
-        return Ok(PostDto.MapToPostDtoList(posts));
+        var formattedPosts = posts.Select(post => {
+            string? protectedHash = null;
+            if (post.Access.Equals("protected", StringComparison.OrdinalIgnoreCase))
+            {
+                protectedHash = _postService.GetProtectedAccessHash(post.Id);
+            }
+            return PostDto.MapToPostDto(post, protectedHash);
+        }).ToList();
+
+        return Ok(formattedPosts);
     }
 
     [HttpGet("protected/{hash}")]
@@ -62,7 +71,14 @@ public class PostController : ControllerBase
         var post = _postService.GetProtectedPost(hash);
         if (post == null) return NotFound("Post not found.");
         
-        var postFormatted = PostDto.MapToPostDto(post);
+        // For protected posts, include the access hash
+        string? protectedAccessHash = null;
+        if (post.Access.Equals("protected", StringComparison.OrdinalIgnoreCase))
+        {
+            protectedAccessHash = hash; // Use the same hash that was used to access the post
+        }
+        
+        var postFormatted = PostDto.MapToPostDto(post, protectedAccessHash);
         return Ok(postFormatted);
     }
 
@@ -93,7 +109,14 @@ public class PostController : ControllerBase
             return NotFound("This post requires a special access link.");
         }
 
-        var postFormatted = PostDto.MapToPostDto(post);
+        // Get protected hash if needed
+        string? protectedHash = null;
+        if (post.Access.Equals("protected", StringComparison.OrdinalIgnoreCase))
+        {
+            protectedHash = _postService.GetProtectedAccessHash(post.Id);
+        }
+
+        var postFormatted = PostDto.MapToPostDto(post, protectedHash);
         return Ok(postFormatted);
     }
 
@@ -252,13 +275,12 @@ public class PostController : ControllerBase
             var post = await _postService.CreatePost(username, createRequest);
             if (post != null)
             {
-                string? protectedAccessLink = null;
+                string? protectedAccessHash = null;
                 if (post.Access.Equals("protected", StringComparison.OrdinalIgnoreCase))
                 {
-                    var hash = _postService.GenerateProtectedAccessHash(post.Id);
-                    protectedAccessLink = $"{Request.Scheme}://{Request.Host}/post/protected/{hash}";
+                    protectedAccessHash = _postService.GenerateProtectedAccessHash(post.Id);
                 }
-                return Ok(PostDto.MapToPostDto(post, protectedAccessLink));
+                return Ok(PostDto.MapToPostDto(post, protectedAccessHash));
             }
 
             // If post creation failed, cleanup uploaded images

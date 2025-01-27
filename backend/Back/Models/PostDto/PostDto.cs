@@ -15,8 +15,9 @@ public class PostDto
     public List<string>? Tags { get; set; }
     public string? ProtectedAccessLink { get; set; }
 
-    public static PostDto MapToPostDto(Post post, string? protectedAccessLink = null) =>
-        new()
+    public static PostDto MapToPostDto(Post post, string? protectedAccessLink = null)
+    {
+        return new PostDto
         {
             Id = post.Id,
             Title = post.Title,
@@ -27,9 +28,15 @@ public class PostDto
             CreatedAt = post.CreatedAt,
             Access = post.Access,
             Tags = post.Tags?.Select(t => t.Name).ToList() ?? new List<string>(),
-            ProtectedAccessLink = protectedAccessLink
+            // Always include protected access link for protected posts
+            ProtectedAccessLink = post.Access.Equals("protected", StringComparison.OrdinalIgnoreCase) 
+                ? protectedAccessLink 
+                : null
         };
+    }
 
-    public static List<PostDto> MapToPostDtoList(List<Post> posts) =>
-        posts.Select(p => MapToPostDto(p)).ToList();
+    public static List<PostDto> MapToPostDtoList(List<Post> posts)
+    {
+        return posts.Select(p => MapToPostDto(p)).ToList();
+    }
 }

@@ -889,6 +889,33 @@ public class PostService : IPostService
         return hash;
     }
 
+    public string? GetProtectedAccessHash(long postId)
+    {
+        string query = @"
+            SELECT access_hash
+            FROM api_schema.protected_post_access
+            WHERE post_id = @postId";
+
+        var parameters = new Dictionary<string, object>
+        {
+            { "@postId", postId }
+        };
+
+        NpgsqlConnection connection = null;
+        NpgsqlCommand command = null;
+
+        try
+        {
+            using var reader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
+            return reader.Read() ? reader.GetString(0) : null;
+        }
+        finally
+        {
+            command?.Dispose();
+            connection?.Dispose();
+        }
+    }
+
     public bool LikePost(string username, long postId)
     {
         try
