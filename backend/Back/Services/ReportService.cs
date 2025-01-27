@@ -35,9 +35,9 @@ namespace Back.Services
                     throw new InvalidOperationException($"Reported user '{request.Username}' not found");
                 }
 
-                // Check if reason exists
-                const string reasonIdSql = "SELECT id FROM api_schema.reason WHERE id = @ReasonId AND reason_type = 'user'";
-                var reasonId = await connection.QueryFirstOrDefaultAsync<int?>(reasonIdSql, new { ReasonId = int.Parse(request.Reason) });
+                // Look up reason ID by name
+                const string reasonIdSql = "SELECT id FROM api_schema.reason WHERE reason_name = @ReasonName AND reason_type = 'user'";
+                var reasonId = await connection.QueryFirstOrDefaultAsync<int?>(reasonIdSql, new { ReasonName = request.Reason });
                 if (!reasonId.HasValue)
                 {
                     throw new InvalidOperationException("Invalid reason specified");
@@ -156,7 +156,7 @@ namespace Back.Services
         {
             using var connection = new NpgsqlConnection(_connectionString);
             const string sql = @"
-                SELECT id, reason_name 
+                SELECT id as Id, reason_name as ReasonName 
                 FROM api_schema.reason 
                 WHERE reason_type = 'user'";
             
@@ -167,7 +167,7 @@ namespace Back.Services
         {
             using var connection = new NpgsqlConnection(_connectionString);
             const string sql = @"
-                SELECT id, reason_name 
+                SELECT id as Id, reason_name as ReasonName 
                 FROM api_schema.reason 
                 WHERE reason_type = 'post'";
             

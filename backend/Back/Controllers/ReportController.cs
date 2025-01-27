@@ -93,7 +93,7 @@ namespace Back.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                return NotFound(new { message = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
