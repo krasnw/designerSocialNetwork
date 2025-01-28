@@ -11,10 +11,16 @@ public class Chat
     public class RequestResponse
     {
         public int Id { get; set; }
-        public string Sender { get; set; }
-        public string Receiver { get; set; }
         public string Description { get; set; }
-        public string Status { get; set; }
+        public UserMiniProfile SenderProfile { get; set; }
+    }
+
+    public class UserMiniProfile
+    {
+        public string Username { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string ProfileImage { get; set; }
     }
 
     public enum MessageType

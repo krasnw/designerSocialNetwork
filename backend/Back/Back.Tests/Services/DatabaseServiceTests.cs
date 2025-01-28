@@ -1,5 +1,6 @@
 using Back.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Npgsql;
 using Xunit;
@@ -9,16 +10,19 @@ namespace Back.Tests.Services
     public class DatabaseServiceTests
     {
         private readonly Mock<IConfiguration> _mockConfiguration;
+        private readonly Mock<ILogger<DatabaseService>> _mockLogger;
         private readonly DatabaseService _databaseService;
         private readonly string _testConnectionString = "Host=localhost;Database=testdb;Username=testuser;Password=testpass";
 
         public DatabaseServiceTests()
         {
             _mockConfiguration = new Mock<IConfiguration>();
+            _mockLogger = new Mock<ILogger<DatabaseService>>();
+            
             _mockConfiguration.Setup(x => x.GetSection("ConnectionStrings")["DefaultConnection"])
                             .Returns(_testConnectionString);
 
-            _databaseService = new DatabaseService(_mockConfiguration.Object);
+            _databaseService = new DatabaseService(_mockConfiguration.Object, _mockLogger.Object);
         }
 
         [Fact]
@@ -84,11 +88,12 @@ namespace Back.Tests.Services
         {
             // Arrange
             var mockConfig = new Mock<IConfiguration>();
+            var mockLogger = new Mock<ILogger<DatabaseService>>();
             mockConfig.Setup(x => x.GetSection("ConnectionStrings")["DefaultConnection"])
                 .Returns(_testConnectionString);
 
             // Act
-            var service = new DatabaseService(mockConfig.Object);
+            var service = new DatabaseService(mockConfig.Object, mockLogger.Object);
 
             // Assert
             Assert.NotNull(service);
@@ -99,11 +104,12 @@ namespace Back.Tests.Services
         {
             // Arrange
             var mockConfig = new Mock<IConfiguration>();
+            var mockLogger = new Mock<ILogger<DatabaseService>>();
             mockConfig.Setup(x => x.GetSection("ConnectionStrings")["DefaultConnection"])
                      .Returns((string)null);
 
             // Act & Assert
-            Assert.Throws<InvalidOperationException>(() => new DatabaseService(mockConfig.Object));
+            Assert.Throws<InvalidOperationException>(() => new DatabaseService(mockConfig.Object, mockLogger.Object));
         }
 
     }

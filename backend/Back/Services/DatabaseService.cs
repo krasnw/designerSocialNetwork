@@ -1,45 +1,55 @@
-﻿using System.Data.Common;
+﻿using System.Data;
+using System.Data.Common;
 using Npgsql;
 using Back.Services.Interfaces;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Back.Services;
 
 public class DatabaseService : IDatabaseService
 {
     private readonly string _connectionString;
+    private readonly ILogger<DatabaseService> _logger;
 
-    public DatabaseService(IConfiguration configuration)
+    public DatabaseService(IConfiguration configuration, ILogger<DatabaseService> logger)
     {
+        _logger = logger;
         var baseConnectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-        // Build connection string with custom pooling settings
+        // Adjust pooling settings for high-load scenarios
         var builder = new NpgsqlConnectionStringBuilder(baseConnectionString)
         {
             Pooling = true,
-            MinPoolSize = 1,
-            MaxPoolSize = 200,
-            // Remove Timeout or set it to 0 for no timeout
-            CommandTimeout = 0
+            MinPoolSize = 10,
+            MaxPoolSize = 100,
+            ConnectionIdleLifetime = 300,
+            ConnectionPruningInterval = 10,
+            Timeout = 30,
+            CommandTimeout = 30,
+            KeepAlive = 30,
+            ConnectionLifetime = 1800 // 30 minutes
         };
 
         _connectionString = builder.ToString();
+        _logger.LogInformation("Database connection configured with MaxPoolSize: {MaxPoolSize}, Timeout: {Timeout}s",
+            builder.MaxPoolSize, builder.Timeout);
     }
 
     public NpgsqlConnection GetConnection()
     {
-        var connection = new NpgsqlConnection(_connectionString);
         try
         {
+            var connection = new NpgsqlConnection(_connectionString);
             connection.Open();
-            using var command = new NpgsqlCommand("SET client_encoding TO 'UTF8';", connection);
+            using var command = new NpgsqlCommand("SET client_encoding = 'UTF8';", connection);
             command.ExecuteNonQuery();
             return connection;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Database connection error: {ex.Message}");
+            _logger.LogError("Database connection error: {Message}", ex.Message);
             throw;
         }
     }
@@ -87,18 +97,28 @@ public class DatabaseService : IDatabaseService
         return command.ExecuteReader();
     }
 
+    // Modify ExecuteQueryAsync to properly dispose connections
     public async Task<NpgsqlDataReader> ExecuteQueryAsync(string query, Dictionary<string, object>? parameters = null)
     {
         var connection = GetConnection();
-        var command = new NpgsqlCommand(query, connection);
-        if (parameters != null)
+        try
         {
-            foreach (var param in parameters)
+            var command = new NpgsqlCommand(query, connection);
+            if (parameters != null)
             {
-                command.Parameters.AddWithValue(param.Key, param.Value);
+                foreach (var param in parameters)
+                {
+                    command.Parameters.AddWithValue(param.Key, param.Value);
+                }
             }
+            // Important: Use CommandBehavior.CloseConnection to ensure the connection is closed when the reader is disposed
+            return await command.ExecuteReaderAsync(CommandBehavior.CloseConnection);
         }
-        return await command.ExecuteReaderAsync();
+        catch
+        {
+            await connection.DisposeAsync();
+            throw;
+        }
     }
 
     public async Task<NpgsqlDataReader> ExecuteQueryAsync(string query, Dictionary<string, object> parameters,

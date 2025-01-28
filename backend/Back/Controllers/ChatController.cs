@@ -22,12 +22,22 @@ public class ChatController : ControllerBase
     public IActionResult SendRequest([FromBody] Chat.Request request)
     {
         var uniqueName = User.Identity?.Name;
-        if (string.IsNullOrEmpty(uniqueName)) return Unauthorized("Blame the token, relog please");
+        if (string.IsNullOrEmpty(uniqueName)) 
+            return Unauthorized("Blame the token, relog please");
         
+        if (uniqueName.Equals(request.Receiver, StringComparison.OrdinalIgnoreCase))
+            return BadRequest("Cannot send chat request to yourself");
+    
         try
         {
-            var success = _chatService.SendRequest(uniqueName, request);
-            return success ? Ok() : BadRequest();
+            var result = _chatService.SendRequest(uniqueName, request);
+            return result switch
+            {
+                ChatRequestResult.Success => Ok(),
+                ChatRequestResult.ReceiverNotFound => NotFound("Receiver not found"),
+                ChatRequestResult.SenderNotFound => Unauthorized("Sender not found"),
+                _ => BadRequest("Request failed")
+            };
         }
         catch (InvalidOperationException ex)
         {

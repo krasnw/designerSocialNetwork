@@ -5,6 +5,14 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace Back.Services;
 
+public enum ChatRequestResult
+{
+    Success,
+    ReceiverNotFound,
+    SenderNotFound,
+    Failed
+}
+
 public class ChatService : IChatService
 {
     private readonly IDatabaseService _databaseService;
@@ -18,23 +26,10 @@ public class ChatService : IChatService
         _imageService = imageService;
     }
 
-    public bool SendRequest(string username, Chat.Request request)
+    public ChatRequestResult SendRequest(string username, Chat.Request request)
     {
-        if (username == request.Receiver)
-        {
-            throw new InvalidOperationException("Cannot send request to yourself");
-        }
-
         var getUserIdQuery = @"
     SELECT id FROM api_schema.user WHERE username = @Username";
-
-        var checkExistingRequestQuery = @"
-    SELECT COUNT(*) FROM api_schema.request r
-    JOIN api_schema.user buyer ON r.buyer_id = buyer.id
-    JOIN api_schema.user seller ON r.seller_id = seller.id
-    WHERE buyer.username = @SenderUsername 
-    AND seller.username = @ReceiverUsername 
-    AND r.request_status = 'pending'";
 
         NpgsqlConnection connection = null;
         NpgsqlCommand command = null;
@@ -43,28 +38,17 @@ public class ChatService : IChatService
         {
             connection = _databaseService.GetConnection();
 
-            // Check for existing pending request
-            command = new NpgsqlCommand(checkExistingRequestQuery, connection);
-            command.Parameters.AddWithValue("@SenderUsername", username);
-            command.Parameters.AddWithValue("@ReceiverUsername", request.Receiver);
-            var existingRequests = (long)command.ExecuteScalar();
-            
-            if (existingRequests > 0)
-            {
-                throw new InvalidOperationException("A pending request already exists");
-            }
-
             //sender ID
             command = new NpgsqlCommand(getUserIdQuery, connection);
             command.Parameters.AddWithValue("@Username", username);
             var senderId = (int?)command.ExecuteScalar();
-            if (senderId == null) throw new Exception("Sender not found");
+            if (senderId == null) return ChatRequestResult.SenderNotFound;
 
             //receiver ID
             command.Parameters.Clear();
             command.Parameters.AddWithValue("@Username", request.Receiver);
             var receiverId = (int?)command.ExecuteScalar();
-            if (receiverId == null) throw new Exception("Receiver not found");
+            if (receiverId == null) return ChatRequestResult.ReceiverNotFound;
 
             //main request
             var insertQuery = @"
@@ -78,35 +62,35 @@ public class ChatService : IChatService
             command.Parameters.AddWithValue("@Status", "pending");
 
             command.ExecuteNonQuery();
+            return ChatRequestResult.Success;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"An error occurred while sending request: {ex.Message}");
-            return false;
+            return ChatRequestResult.Failed;
         }
         finally
         {
             command?.Dispose();
             connection?.Close();
         }
-
-        return true;
     }
 
     public async Task<List<Chat.RequestResponse>> GetUserRequests(string username)
     {
         var query = @"
-            SELECT r.id, 
-                   buyer.username as sender_username,
-                   seller.username as receiver_username,
-                   r.request_description,
-                   r.request_status
-            FROM api_schema.request r
-            JOIN api_schema.""user"" buyer ON r.buyer_id = buyer.id
-            JOIN api_schema.""user"" seller ON r.seller_id = seller.id
-            WHERE seller.username = @Username
-            AND r.request_status = 'pending'
-            ORDER BY r.id DESC";
+        SELECT r.id, 
+               r.request_description,
+               buyer.username as sender_username,
+               buyer.first_name as sender_first_name,
+               buyer.last_name as sender_last_name,
+               buyer.profile_picture as sender_profile_image
+        FROM api_schema.request r
+        JOIN api_schema.""user"" buyer ON r.buyer_id = buyer.id
+        JOIN api_schema.""user"" seller ON r.seller_id = seller.id
+        WHERE seller.username = @Username
+        AND r.request_status = 'pending'
+        ORDER BY r.id DESC";
 
         var requests = new List<Chat.RequestResponse>();
         using var connection = _databaseService.GetConnection();
@@ -119,10 +103,14 @@ public class ChatService : IChatService
             requests.Add(new Chat.RequestResponse
             {
                 Id = reader.GetInt32(0),
-                Sender = reader.GetString(1),
-                Receiver = reader.GetString(2),
-                Description = reader.GetString(3),
-                Status = reader.GetString(4)
+                Description = reader.GetString(1),
+                SenderProfile = new Chat.UserMiniProfile
+                {
+                    Username = reader.GetString(2),
+                    FirstName = reader.GetString(3),
+                    LastName = reader.GetString(4),
+                    ProfileImage = reader.IsDBNull(5) ? "" : reader.GetString(5)  // Changed from null to empty string
+                }
             });
         }
 
@@ -132,14 +120,16 @@ public class ChatService : IChatService
     public async Task<List<string>> GetChatUsers(string username)
     {
         var query = @"
-            SELECT DISTINCT u.username
-            FROM api_schema.chat c
-            JOIN api_schema.""user"" u ON 
-                (u.id = c.buyer_id OR u.id = c.seller_id)
-            JOIN api_schema.""user"" currentUser ON 
-                (currentUser.id = c.buyer_id OR currentUser.id = c.seller_id)
-            WHERE currentUser.username = @Username AND u.username != @Username
-            ORDER BY u.username";
+        SELECT DISTINCT other_user.username
+        FROM api_schema.request r
+        JOIN api_schema.""user"" current_u 
+            ON (current_u.id = r.buyer_id OR current_u.id = r.seller_id)
+        JOIN api_schema.""user"" other_user 
+            ON (other_user.id = r.buyer_id OR other_user.id = r.seller_id)
+            AND other_user.id != current_u.id
+        WHERE current_u.username = @Username
+        AND r.request_status = 'accepted'
+        ORDER BY other_user.username";
 
         var users = new List<string>();
         using var connection = _databaseService.GetConnection();
