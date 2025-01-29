@@ -59,7 +59,9 @@ public class PostController : ControllerBase
             {
                 protectedHash = _postService.GetProtectedAccessHash(post.Id);
             }
-            return PostDto.MapToPostDto(post, protectedHash);
+            bool isLiked = !string.IsNullOrEmpty(User.Identity?.Name) && 
+                          _postService.IsPostLikedByUser(User.Identity.Name, post.Id);
+            return PostDto.MapToPostDto(post, protectedHash, isLiked);
         }).ToList();
 
         return Ok(formattedPosts);
@@ -71,14 +73,10 @@ public class PostController : ControllerBase
         var post = _postService.GetProtectedPost(hash);
         if (post == null) return NotFound("Post not found.");
         
-        // For protected posts, include the access hash
-        string? protectedAccessHash = null;
-        if (post.Access.Equals("protected", StringComparison.OrdinalIgnoreCase))
-        {
-            protectedAccessHash = hash; // Use the same hash that was used to access the post
-        }
+        bool isLiked = !string.IsNullOrEmpty(User.Identity?.Name) && 
+                       _postService.IsPostLikedByUser(User.Identity.Name, post.Id);
         
-        var postFormatted = PostDto.MapToPostDto(post, protectedAccessHash);
+        var postFormatted = PostDto.MapToPostDto(post, hash, isLiked);
         return Ok(postFormatted);
     }
 
@@ -120,7 +118,10 @@ public class PostController : ControllerBase
             protectedHash = _postService.GetProtectedAccessHash(post.Id);
         }
 
-        var postFormatted = PostDto.MapToPostDto(post, protectedHash);
+        bool isLiked = !string.IsNullOrEmpty(User.Identity?.Name) && 
+                       _postService.IsPostLikedByUser(User.Identity.Name, post.Id);
+
+        var postFormatted = PostDto.MapToPostDto(post, protectedHash, isLiked);
         return Ok(postFormatted);
     }
 
@@ -171,6 +172,15 @@ public class PostController : ControllerBase
             if (!posts.Any())
             {
                 return Ok(new List<PostMini>()); // Return empty list instead of 404
+            }
+
+            // Add like status to each post
+            if (!string.IsNullOrEmpty(currentUser))
+            {
+                foreach (var post in posts)
+                {
+                    post.IsLiked = _postService.IsPostLikedByUser(currentUser, post.Id);
+                }
             }
 
             return Ok(posts);
@@ -368,11 +378,7 @@ public class PostController : ControllerBase
                     isLiked = isLiked
                 });
             }
-            return BadRequest(new { message = "Cannot like own post" });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new { message = "Failed to like/unlike post" });
         }
         catch (Exception ex)
         {
@@ -413,6 +419,12 @@ public class PostController : ControllerBase
         if (posts == null || !posts.Any())
         {
             return NotFound(new { message = "No posts found." });
+        }
+
+        // Add like status to own posts
+        foreach (var post in posts)
+        {
+            post.IsLiked = _postService.IsPostLikedByUser(username, post.Id);
         }
 
         return Ok(posts);
