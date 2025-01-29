@@ -13,6 +13,16 @@ public enum ChatRequestResult
     Failed
 }
 
+// Add new enum for detailed error status
+public enum RequestActionResult
+{
+    Success,
+    NotFound,
+    AlreadyAccepted,
+    NotSeller,
+    Error
+}
+
 public class ChatService : IChatService
 {
     private readonly IDatabaseService _databaseService;
@@ -28,8 +38,16 @@ public class ChatService : IChatService
 
     public ChatRequestResult SendRequest(string username, Chat.Request request)
     {
-        var getUserIdQuery = @"
-    SELECT id FROM api_schema.user WHERE username = @Username";
+        var checkExistingQuery = @"
+        SELECT COUNT(*) 
+        FROM api_schema.request r
+        JOIN api_schema.user u1 ON r.buyer_id = u1.id
+        JOIN api_schema.user u2 ON r.seller_id = u2.id
+        WHERE r.request_status = 'accepted'
+        AND ((u1.username = @Username1 AND u2.username = @Username2)
+         OR (u1.username = @Username2 AND u2.username = @Username1))";
+
+        var getUserIdQuery = @"SELECT id FROM api_schema.user WHERE username = @Username";
 
         NpgsqlConnection connection = null;
         NpgsqlCommand command = null;
@@ -37,6 +55,17 @@ public class ChatService : IChatService
         try
         {
             connection = _databaseService.GetConnection();
+
+            // Check for existing accepted request
+            command = new NpgsqlCommand(checkExistingQuery, connection);
+            command.Parameters.AddWithValue("@Username1", username);
+            command.Parameters.AddWithValue("@Username2", request.Receiver);
+            var existingAcceptedRequests = (long)command.ExecuteScalar();
+
+            if (existingAcceptedRequests > 0)
+            {
+                return ChatRequestResult.Failed;
+            }
 
             //sender ID
             command = new NpgsqlCommand(getUserIdQuery, connection);
@@ -52,8 +81,8 @@ public class ChatService : IChatService
 
             //main request
             var insertQuery = @"
-        INSERT INTO api_schema.request (buyer_id, seller_id, request_description, request_status)
-        VALUES (@SenderId, @ReceiverId, @Description, @Status::api_schema.request_status)";
+            INSERT INTO api_schema.request (buyer_id, seller_id, request_description, request_status)
+            VALUES (@SenderId, @ReceiverId, @Description, @Status::api_schema.request_status)";
 
             command = new NpgsqlCommand(insertQuery, connection);
             command.Parameters.AddWithValue("@SenderId", senderId);
@@ -145,69 +174,127 @@ public class ChatService : IChatService
         return users;
     }
 
-    public async Task<bool> AcceptRequest(int requestId)
+    public async Task<(RequestActionResult Result, string Message)> AcceptRequest(int requestId, string acceptingUsername)
     {
-        // First check if request exists and is in pending state
-        var checkQuery = @"
-            SELECT COUNT(*) 
-            FROM api_schema.request 
-            WHERE id = @RequestId 
-            AND request_status = 'pending'";
-
-        var updateQuery = @"
-            UPDATE api_schema.request 
-            SET request_status = 'accepted'::api_schema.request_status
-            WHERE id = @RequestId
-            AND request_status = 'pending';
-
-            INSERT INTO api_schema.chat (buyer_id, seller_id, history_file_path, start_date, chat_status)
-            SELECT r.buyer_id, r.seller_id, 
-                   '/chats/chat_' || r.buyer_id || r.seller_id || '_' || EXTRACT(EPOCH FROM now())::integer || '.txt',
-                   CURRENT_DATE,
-                   'active'::api_schema.chat_status
-            FROM api_schema.request r
-            WHERE r.id = @RequestId;";
+        if (string.IsNullOrEmpty(acceptingUsername))
+            return (RequestActionResult.Error, "Invalid username");
 
         using var connection = _databaseService.GetConnection();
         
-        // Check if request exists
-        using var checkCommand = new NpgsqlCommand(checkQuery, connection);
-        checkCommand.Parameters.AddWithValue("@RequestId", requestId);
-        var requestExists = (long)await checkCommand.ExecuteScalarAsync() > 0;
-
-        if (!requestExists)
+        try 
         {
-            return false;
-        }
+            // First check if request exists
+            var exists = await RequestExists(requestId, connection);
+            if (!exists)
+                return (RequestActionResult.NotFound, "Request not found");
 
-        // If request exists, proceed with update
-        using var updateCommand = new NpgsqlCommand(updateQuery, connection);
-        updateCommand.Parameters.AddWithValue("@RequestId", requestId);
+            var checkQuery = @"
+                WITH request_details AS (
+                    SELECT 
+                        r.id,
+                        r.request_status,
+                        seller.username as seller_username,
+                        EXISTS (
+                            SELECT 1
+                            FROM api_schema.request r2
+                            WHERE r2.request_status = 'accepted'
+                            AND (
+                                (r2.buyer_id = r.buyer_id AND r2.seller_id = r.seller_id)
+                                OR (r2.buyer_id = r.seller_id AND r2.seller_id = r.buyer_id)
+                            )
+                        ) as has_accepted_request
+                    FROM api_schema.request r
+                    JOIN api_schema.user seller ON r.seller_id = seller.id
+                    WHERE r.id = @RequestId
+                )
+                SELECT 
+                    CASE 
+                        WHEN (SELECT seller_username FROM request_details) != @AcceptingUsername THEN 'NotSeller'
+                        WHEN (SELECT has_accepted_request FROM request_details) THEN 'AlreadyAccepted'
+                        WHEN (SELECT request_status FROM request_details) != 'pending' THEN 'AlreadyAccepted'
+                        ELSE 'Success'
+                    END as status";
 
-        try
-        {
-            await updateCommand.ExecuteNonQueryAsync();
-            return true;
+            // Check request status
+            using (var checkCommand = new NpgsqlCommand(checkQuery, connection))
+            {
+                checkCommand.Parameters.AddWithValue("@RequestId", requestId);
+                checkCommand.Parameters.AddWithValue("@AcceptingUsername", acceptingUsername);
+                var status = await checkCommand.ExecuteScalarAsync() as string;
+
+                switch (status)
+                {
+                    case "NotSeller":
+                        return (RequestActionResult.NotSeller, "Only the seller can accept requests");
+                    case "AlreadyAccepted":
+                        return (RequestActionResult.AlreadyAccepted, "Request cannot be accepted - there is already an active chat between these users");
+                    case "Success":
+                        var updateQuery = @"
+                            UPDATE api_schema.request 
+                            SET request_status = 'accepted'::api_schema.request_status
+                            WHERE id = @RequestId;
+
+                            INSERT INTO api_schema.chat (buyer_id, seller_id, history_file_path, start_date, chat_status)
+                            SELECT r.buyer_id, r.seller_id, 
+                                   '/chats/chat_' || r.buyer_id || r.seller_id || '_' || EXTRACT(EPOCH FROM now())::integer || '.txt',
+                                   CURRENT_DATE,
+                                   'active'::api_schema.chat_status
+                            FROM api_schema.request r
+                            WHERE r.id = @RequestId;";
+
+                        using (var updateCommand = new NpgsqlCommand(updateQuery, connection))
+                        {
+                            updateCommand.Parameters.AddWithValue("@RequestId", requestId);
+                            await updateCommand.ExecuteNonQueryAsync();
+                            return (RequestActionResult.Success, "Request accepted successfully");
+                        }
+                    default:
+                        return (RequestActionResult.Error, "Unknown error occurred");
+                }
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error accepting request: {ex.Message}");
-            return false;
+            Console.WriteLine($"Error in AcceptRequest: {ex.Message}");
+            return (RequestActionResult.Error, "Database error occurred");
         }
     }
 
-    public async Task<bool> DeleteRequest(int requestId)
+    private async Task<bool> RequestExists(int requestId, NpgsqlConnection connection)
     {
-        var query = @"DELETE FROM api_schema.request WHERE id = @RequestId";
+        var query = "SELECT EXISTS(SELECT 1 FROM api_schema.request WHERE id = @RequestId)";
+        using var cmd = new NpgsqlCommand(query, connection);
+        cmd.Parameters.AddWithValue("@RequestId", requestId);
+        return (bool)await cmd.ExecuteScalarAsync();
+    }
+
+    public async Task<bool> DeleteRequest(int requestId, string username)
+    {
+        var query = @"
+            WITH request_details AS (
+                SELECT seller.username as seller_username
+                FROM api_schema.request r
+                JOIN api_schema.user seller ON r.seller_id = seller.id
+                WHERE r.id = @RequestId
+            )
+            DELETE FROM api_schema.request 
+            WHERE id = @RequestId
+            AND EXISTS (
+                SELECT 1 
+                FROM request_details 
+                WHERE seller_username = @Username
+            )
+            RETURNING id";
 
         using var connection = _databaseService.GetConnection();
         using var command = new NpgsqlCommand(query, connection);
         command.Parameters.AddWithValue("@RequestId", requestId);
+        command.Parameters.AddWithValue("@Username", username);
 
         try
         {
-            var rowsAffected = await command.ExecuteNonQueryAsync();
-            return rowsAffected > 0;
+            var result = await command.ExecuteScalarAsync();
+            return result != null;
         }
         catch (Exception ex)
         {
@@ -497,60 +584,57 @@ public class ChatService : IChatService
 
     public async Task<List<Chat.Message>> GetConversation(string user1Username, string user2Username)
     {
-        var query = @"
-            SELECT 
-                m.id, 
-                m.sender_id, 
-                sender.username as sender_username,
-                m.receiver_id, 
-                receiver.username as receiver_username,
-                m.text_content, 
-                m.type, 
-                m.created_at, 
-                m.is_read,
-                ARRAY_AGG(mi.image_path) as image_paths
-            FROM api_schema.message m
-            JOIN api_schema.user sender ON m.sender_id = sender.id
-            JOIN api_schema.user receiver ON m.receiver_id = receiver.id
-            LEFT JOIN api_schema.message_image mi ON m.id = mi.message_id
-            WHERE (sender.username = @User1Username AND receiver.username = @User2Username)
-               OR (sender.username = @User2Username AND receiver.username = @User1Username)
-            GROUP BY m.id, m.sender_id, sender.username, m.receiver_id, receiver.username, m.text_content, m.type, m.created_at, m.is_read
-            ORDER BY m.created_at";
-
-        var messages = new List<Chat.Message>();
-        using var connection = _databaseService.GetConnection();
-        using var command = new NpgsqlCommand(query, connection);
-        command.Parameters.AddWithValue("@User1Username", user1Username);
-        command.Parameters.AddWithValue("@User2Username", user2Username);
-
-        using var reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        return await _databaseService.ExecuteWithConnectionAsync(async connection =>
         {
-            var message = new Chat.Message
-            {
-                Id = reader.GetInt32(0),
-                SenderId = reader.GetInt32(1),
-                SenderUsername = reader.GetString(2),
-                ReceiverId = reader.GetInt32(3),
-                ReceiverUsername = reader.GetString(4),
-                TextContent = reader.IsDBNull(5) ? null : reader.GetString(5),
-                Type = Enum.Parse<Chat.MessageType>(reader.GetString(6)),
-                CreatedAt = reader.GetDateTime(7),
-                IsRead = reader.GetBoolean(8)
-            };
+            var query = @"
+                SELECT 
+                    m.id, 
+                    m.sender_id,
+                    sender.username as sender_username,
+                    m.receiver_id,
+                    receiver.username as receiver_username,
+                    m.text_content,
+                    m.type,
+                    m.created_at,
+                    m.is_read,
+                    ARRAY_AGG(mi.image_path) as image_paths
+                FROM api_schema.message m
+                JOIN api_schema.user sender ON m.sender_id = sender.id
+                JOIN api_schema.user receiver ON m.receiver_id = receiver.id
+                LEFT JOIN api_schema.message_image mi ON m.id = mi.message_id
+                WHERE (sender.username = @User1Username AND receiver.username = @User2Username)
+                   OR (sender.username = @User2Username AND receiver.username = @User1Username)
+                GROUP BY m.id, m.sender_id, sender.username, m.receiver_id, receiver.username, 
+                         m.text_content, m.type, m.created_at, m.is_read
+                ORDER BY m.created_at";
 
-            // Handle image paths array
-            if (!reader.IsDBNull(9))
+            await using var cmd = new NpgsqlCommand(query, connection);
+            cmd.Parameters.AddWithValue("@User1Username", user1Username);
+            cmd.Parameters.AddWithValue("@User2Username", user2Username);
+
+            var messages = new List<Chat.Message>();
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
             {
-                var imagePaths = (string[])reader.GetValue(9);
-                message.ImagePaths = imagePaths.Where(p => p != null).ToList();
+                messages.Add(new Chat.Message
+                {
+                    Id = reader.GetInt32(0),
+                    SenderId = reader.GetInt32(1),
+                    SenderUsername = reader.GetString(2),
+                    ReceiverId = reader.GetInt32(3),
+                    ReceiverUsername = reader.GetString(4),
+                    TextContent = reader.IsDBNull(5) ? null : reader.GetString(5),
+                    Type = Enum.Parse<Chat.MessageType>(reader.GetString(6)),
+                    CreatedAt = reader.GetDateTime(7),
+                    IsRead = reader.GetBoolean(8),
+                    ImagePaths = !reader.IsDBNull(9) 
+                        ? ((string[])reader.GetValue(9)).Where(p => p != null).ToList() 
+                        : new List<string>()
+                });
             }
 
-            messages.Add(message);
-        }
-
-        return messages;
+            return messages;
+        });
     }
 
     public async Task<Chat.PaymentRequest> CreatePaymentRequest(Chat.PaymentRequestDto request)
@@ -585,5 +669,37 @@ public class ChatService : IChatService
             .SendAsync("ReceivePaymentRequest", request);
 
         return newRequest;
+    }
+
+    public async Task<bool> HasOpenRequest(string username1, string username2)
+    {
+        if (string.IsNullOrEmpty(username1) || string.IsNullOrEmpty(username2))
+            return false;
+
+        var query = @"
+        SELECT EXISTS (
+            SELECT 1
+            FROM api_schema.request r
+            JOIN api_schema.user u1 ON r.buyer_id = u1.id
+            JOIN api_schema.user u2 ON r.seller_id = u2.id
+            WHERE ((u1.username = @Username1 AND u2.username = @Username2)
+                OR (u1.username = @Username2 AND u2.username = @Username1))
+            AND r.request_status = 'accepted'
+        )";
+
+        using var connection = _databaseService.GetConnection();
+        using var command = new NpgsqlCommand(query, connection);
+        command.Parameters.AddWithValue("@Username1", username1);
+        command.Parameters.AddWithValue("@Username2", username2);
+
+        try
+        {
+            return (bool)await command.ExecuteScalarAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error checking open request: {ex.Message}");
+            return false;
+        }
     }
 }

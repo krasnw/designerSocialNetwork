@@ -89,16 +89,27 @@ public class ChatController : ControllerBase
     [HttpPost("requests/{requestId}/accept")]
     public async Task<IActionResult> AcceptRequest(int requestId)
     {
+        var username = User.Identity?.Name;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized(new { message = "Blame the token, relog please" });
+
         try
         {
-            var success = await _chatService.AcceptRequest(requestId);
-            return success 
-                ? Ok() 
-                : NotFound("Request not found or is not in pending state");
+            var (result, message) = await _chatService.AcceptRequest(requestId, username);
+            
+            return result switch
+            {
+                RequestActionResult.Success => Ok(new { message }),
+                RequestActionResult.NotFound => NotFound(new { message }), // Will now properly return 404
+                RequestActionResult.AlreadyAccepted => BadRequest(new { message }),
+                RequestActionResult.NotSeller => BadRequest(new { message }),
+                RequestActionResult.Error => BadRequest(new { message }),
+                _ => StatusCode(500, new { message = "An unexpected error occurred" })
+            };
         }
         catch (Exception ex)
         {
-            return BadRequest($"Error accepting request: {ex.Message}");
+            return StatusCode(500, new { message = $"Server error: {ex.Message}" });
         }
     }
 
@@ -106,10 +117,18 @@ public class ChatController : ControllerBase
     [HttpDelete("requests/{requestId}")]
     public async Task<IActionResult> DeleteRequest(int requestId)
     {
+        var username = User.Identity?.Name;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized("Blame the token, relog please");
+
         try
         {
-            var success = await _chatService.DeleteRequest(requestId);
-            return success ? Ok() : BadRequest("Could not delete request");
+            var success = await _chatService.DeleteRequest(requestId, username);
+            if (!success)
+            {
+                return BadRequest("Request cannot be deleted. Either it doesn't exist or you're not the seller.");
+            }
+            return Ok();
         }
         catch (Exception ex)
         {
@@ -197,5 +216,24 @@ public class ChatController : ControllerBase
         var currentUsername = User.Identity?.Name; // From JWT token
         var messages = await _chatService.GetConversation(currentUsername, otherUsername);
         return Ok(messages);
+    }
+
+    [Authorize]
+    [HttpGet("hasOpenRequest/{otherUsername}")]
+    public async Task<ActionResult<bool>> HasOpenRequest(string otherUsername)
+    {
+        var currentUsername = User.Identity?.Name;
+        if (string.IsNullOrEmpty(currentUsername))
+            return Unauthorized("Blame the token, relog please");
+
+        try
+        {
+            var hasOpen = await _chatService.HasOpenRequest(currentUsername, otherUsername);
+            return Ok(hasOpen);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Error checking request status: {ex.Message}");
+        }
     }
 }
