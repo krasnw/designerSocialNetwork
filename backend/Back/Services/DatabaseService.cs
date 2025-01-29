@@ -7,10 +7,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Back.Services;
 
-public class DatabaseService : IDatabaseService
+public class DatabaseService : IDatabaseService, IDisposable
 {
     private readonly string _connectionString;
     private readonly ILogger<DatabaseService> _logger;
+    private readonly SemaphoreSlim _semaphore;
 
     public DatabaseService(IConfiguration configuration, ILogger<DatabaseService> logger)
     {
@@ -18,23 +19,40 @@ public class DatabaseService : IDatabaseService
         var baseConnectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-        // Adjust pooling settings for high-load scenarios
+        // Adjust pooling settings
         var builder = new NpgsqlConnectionStringBuilder(baseConnectionString)
         {
             Pooling = true,
-            MinPoolSize = 10,
-            MaxPoolSize = 100,
-            ConnectionIdleLifetime = 300,
-            ConnectionPruningInterval = 10,
-            Timeout = 30,
-            CommandTimeout = 30,
-            KeepAlive = 30,
-            ConnectionLifetime = 1800 // 30 minutes
+            MinPoolSize = 1,
+            MaxPoolSize = 20,  // Reduced from 100
+            ConnectionIdleLifetime = 15,  // Reduced from 300
+            ConnectionPruningInterval = 5,  // Reduced from 10
+            Timeout = 15,  // Reduced from 30
+            CommandTimeout = 15,  // Reduced from 30
+            KeepAlive = 15,  // Reduced from 30
+            ConnectionLifetime = 300  // Reduced from 1800
         };
 
         _connectionString = builder.ToString();
+        _semaphore = new SemaphoreSlim(20, 20); // Match with MaxPoolSize
         _logger.LogInformation("Database connection configured with MaxPoolSize: {MaxPoolSize}, Timeout: {Timeout}s",
             builder.MaxPoolSize, builder.Timeout);
+    }
+
+    // New helper method for safer query execution
+    public async Task<T> ExecuteWithConnectionAsync<T>(Func<NpgsqlConnection, Task<T>> operation)
+    {
+        await _semaphore.WaitAsync();
+        try
+        {
+            await using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+            return await operation(connection);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
 
     public NpgsqlConnection GetConnection()
@@ -94,7 +112,7 @@ public class DatabaseService : IDatabaseService
                 command.Parameters.AddWithValue(param.Key, param.Value);
             }
         }
-        return command.ExecuteReader();
+        return command.ExecuteReader(CommandBehavior.CloseConnection);
     }
 
     // Modify ExecuteQueryAsync to properly dispose connections
@@ -141,5 +159,11 @@ public class DatabaseService : IDatabaseService
             command.Parameters.AddWithValue(param.Key, param.Value);
         }
         return await command.ExecuteNonQueryAsync();
+    }
+
+    // Implement IDisposable
+    public void Dispose()
+    {
+        _semaphore.Dispose();
     }
 }
