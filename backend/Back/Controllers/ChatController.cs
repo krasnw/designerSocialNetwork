@@ -23,29 +23,29 @@ public class ChatController : ControllerBase
     {
         var uniqueName = User.Identity?.Name;
         if (string.IsNullOrEmpty(uniqueName)) 
-            return Unauthorized("Blame the token, relog please");
+            return Unauthorized(new { message = "Blame the token, relog please" });
         
         if (uniqueName.Equals(request.Receiver, StringComparison.OrdinalIgnoreCase))
-            return BadRequest("Cannot send chat request to yourself");
+            return BadRequest(new { message = "Cannot send chat request to yourself" });
     
         try
         {
             var result = _chatService.SendRequest(uniqueName, request);
             return result switch
             {
-                ChatRequestResult.Success => Ok(),
-                ChatRequestResult.ReceiverNotFound => NotFound("Receiver not found"),
-                ChatRequestResult.SenderNotFound => Unauthorized("Sender not found"),
-                _ => BadRequest("Request failed")
+                ChatRequestResult.Success => Ok(new { message = "Request sent successfully" }),
+                ChatRequestResult.ReceiverNotFound => NotFound(new { message = "Receiver not found" }),
+                ChatRequestResult.SenderNotFound => Unauthorized(new { message = "Sender not found" }),
+                _ => BadRequest(new { message = "Request failed" })
             };
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(ex.Message);
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception)
         {
-            return BadRequest("An error occurred while sending the request");
+            return BadRequest(new { message = "An error occurred while sending the request" });
         }
     }
 
@@ -54,7 +54,8 @@ public class ChatController : ControllerBase
     public async Task<ActionResult<List<Chat.RequestResponse>>> GetRequests()
     {
         var username = User.Identity?.Name;
-        if (string.IsNullOrEmpty(username)) return Unauthorized("Blame the token, relog please");
+        if (string.IsNullOrEmpty(username)) 
+            return Unauthorized(new { message = "Blame the token, relog please" });
 
         try
         {
@@ -63,7 +64,7 @@ public class ChatController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest($"Error retrieving requests: {ex.Message}");
+            return BadRequest(new { message = $"Error retrieving requests: {ex.Message}" });
         }
     }
 
@@ -72,7 +73,8 @@ public class ChatController : ControllerBase
     public async Task<ActionResult<List<string>>> GetChatUsers()
     {
         var username = User.Identity?.Name;
-        if (string.IsNullOrEmpty(username)) return Unauthorized("Blame the token, relog please");
+        if (string.IsNullOrEmpty(username)) 
+            return Unauthorized(new { message = "Blame the token, relog please" });
 
         try
         {
@@ -81,7 +83,7 @@ public class ChatController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest($"Error retrieving chat users: {ex.Message}");
+            return BadRequest(new { message = $"Error retrieving chat users: {ex.Message}" });
         }
     }
 
@@ -119,20 +121,20 @@ public class ChatController : ControllerBase
     {
         var username = User.Identity?.Name;
         if (string.IsNullOrEmpty(username))
-            return Unauthorized("Blame the token, relog please");
+            return Unauthorized(new { message = "Blame the token, relog please" });
 
         try
         {
             var success = await _chatService.DeleteRequest(requestId, username);
             if (!success)
             {
-                return BadRequest("Request cannot be deleted. Either it doesn't exist or you're not the seller.");
+                return BadRequest(new { message = "Request cannot be deleted. Either it doesn't exist or you're not the seller." });
             }
-            return Ok();
+            return Ok(new { message = "Request deleted successfully" });
         }
         catch (Exception ex)
         {
-            return BadRequest($"Error deleting request: {ex.Message}");
+            return BadRequest(new { message = $"Error deleting request: {ex.Message}" });
         }
     }
 
@@ -142,20 +144,19 @@ public class ChatController : ControllerBase
     {
         var senderUsername = User.Identity?.Name;
         if (string.IsNullOrEmpty(senderUsername))
-            return Unauthorized("Blame the token, relog please");
+            return Unauthorized(new { message = "Blame the token, relog please" });
 
         if (senderUsername == request.ReceiverUsername)
-            return BadRequest("Cannot send message to yourself");
+            return BadRequest(new { message = "Cannot send message to yourself" });
 
         try
         {
-            // Convert request to MessageDto
             var messageDto = new Chat.MessageDto
             {
                 ReceiverUsername = request.ReceiverUsername,
                 TextContent = request.TextContent,
                 Images = request.Images?.ToList(),
-                Type = Chat.MessageType.Complex // Will be determined by the service
+                Type = Chat.MessageType.Complex
             };
 
             var result = await _chatService.SendMessage(senderUsername, messageDto);
@@ -163,7 +164,7 @@ public class ChatController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest($"Error sending message: {ex.Message}");
+            return BadRequest(new { message = $"Error sending message: {ex.Message}" });
         }
     }
 
@@ -174,10 +175,10 @@ public class ChatController : ControllerBase
     {
         var senderUsername = User.Identity?.Name;
         if (string.IsNullOrEmpty(senderUsername))
-            return Unauthorized("Blame the token, relog please");
+            return Unauthorized(new { message = "Blame the token, relog please" });
 
         if (senderUsername == request.ReceiverUsername)
-            return BadRequest("Cannot send transaction to yourself");
+            return BadRequest(new { message = "Cannot send transaction to yourself" });
 
         try
         {
@@ -186,7 +187,7 @@ public class ChatController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest($"Error sending transaction message: {ex.Message}");
+            return BadRequest(new { message = $"Error sending transaction message: {ex.Message}" });
         }
     }
 
@@ -196,16 +197,18 @@ public class ChatController : ControllerBase
     {
         var username = User.Identity?.Name;
         if (string.IsNullOrEmpty(username))
-            return Unauthorized("Blame the token, relog please");
+            return Unauthorized(new { message = "Blame the token, relog please" });
 
         try
         {
             var result = await _chatService.ApproveTransaction(messageId, username);
-            return result ? Ok("Transaction approved and processed") : BadRequest("Could not process transaction");
+            return result 
+                ? Ok(new { message = "Transaction approved and processed" }) 
+                : BadRequest(new { message = "Could not process transaction" });
         }
         catch (Exception ex)
         {
-            return BadRequest($"Error approving transaction: {ex.Message}");
+            return BadRequest(new { message = $"Error approving transaction: {ex.Message}" });
         }
     }
 
@@ -213,9 +216,19 @@ public class ChatController : ControllerBase
     [HttpGet("conversations/{otherUsername}")]
     public async Task<ActionResult<List<Chat.Message>>> GetConversation(string otherUsername)
     {
-        var currentUsername = User.Identity?.Name; // From JWT token
-        var messages = await _chatService.GetConversation(currentUsername, otherUsername);
-        return Ok(messages);
+        var currentUsername = User.Identity?.Name;
+        if (string.IsNullOrEmpty(currentUsername))
+            return Unauthorized(new { message = "Blame the token, relog please" });
+
+        try 
+        {
+            var messages = await _chatService.GetConversation(currentUsername, otherUsername);
+            return Ok(messages);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Error retrieving conversation: {ex.Message}" });
+        }
     }
 
     [Authorize]
@@ -224,16 +237,16 @@ public class ChatController : ControllerBase
     {
         var currentUsername = User.Identity?.Name;
         if (string.IsNullOrEmpty(currentUsername))
-            return Unauthorized("Blame the token, relog please");
+            return Unauthorized(new { message = "Blame the token, relog please" });
 
         try
         {
             var hasOpen = await _chatService.HasOpenRequest(currentUsername, otherUsername);
-            return Ok(hasOpen);
+            return Ok(new { hasOpenRequest = hasOpen });
         }
         catch (Exception ex)
         {
-            return BadRequest($"Error checking request status: {ex.Message}");
+            return BadRequest(new { message = $"Error checking request status: {ex.Message}" });
         }
     }
 }
