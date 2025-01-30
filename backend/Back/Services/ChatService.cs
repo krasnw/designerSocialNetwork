@@ -501,35 +501,48 @@ public class ChatService : IChatService
         return await _databaseService.ExecuteWithConnectionAsync(async connection =>
         {
             var query = @"
-                WITH MessageData AS (
+                WITH TransactionData AS (
                     SELECT 
-                        m.id, 
-                        m.sender_id,
-                        sender.username as sender_username,
-                        m.receiver_id,
-                        receiver.username as receiver_username,
-                        m.text_content,
-                        m.type,
-                        m.created_at,
-                        m.is_read,
-                        ARRAY_AGG(DISTINCT mi.image_path) FILTER (WHERE mi.image_path IS NOT NULL) as image_paths,
-                        COALESCE(tm.transaction_number, '') as transaction_number,
-                        COALESCE(tm.transaction_hash, '') as transaction_hash,
+                        tm.message_id,
+                        tm.transaction_number,
+                        tm.transaction_hash,
                         tm.amount,
-                        tm.is_approved
-                    FROM api_schema.message m
-                    JOIN api_schema.user sender ON m.sender_id = sender.id
-                    JOIN api_schema.user receiver ON m.receiver_id = receiver.id
-                    LEFT JOIN api_schema.message_image mi ON m.id = mi.message_id
-                    LEFT JOIN api_schema.transaction_message tm ON m.id = tm.message_id
-                    WHERE (sender.username = @User1Username AND receiver.username = @User2Username)
-                       OR (sender.username = @User2Username AND receiver.username = @User1Username)
-                    GROUP BY m.id, m.sender_id, sender.username, m.receiver_id, receiver.username, 
-                             m.text_content, m.type, m.created_at, m.is_read, 
-                             tm.transaction_number, tm.transaction_hash, tm.amount, tm.is_approved
+                        tm.is_approved,
+                        tm.approved_at,
+                        m2.id as approval_message_id
+                    FROM api_schema.transaction_message tm
+                    LEFT JOIN api_schema.message m2 ON m2.text_content = tm.transaction_number 
+                        AND m2.type = 'TransactionApproval'
                 )
-                SELECT * FROM MessageData
-                ORDER BY created_at ASC";
+                SELECT 
+                    m.id, 
+                    m.sender_id,
+                    sender.username as sender_username,
+                    m.receiver_id,
+                    receiver.username as receiver_username,
+                    m.text_content,
+                    m.type,
+                    m.created_at,
+                    m.is_read,
+                    ARRAY_AGG(DISTINCT mi.image_path) FILTER (WHERE mi.image_path IS NOT NULL) as image_paths,
+                    td.transaction_number,
+                    td.transaction_hash,
+                    td.amount,
+                    td.is_approved,
+                    td.approval_message_id
+                FROM api_schema.message m
+                JOIN api_schema.user sender ON m.sender_id = sender.id
+                JOIN api_schema.user receiver ON m.receiver_id = receiver.id
+                LEFT JOIN api_schema.message_image mi ON m.id = mi.message_id
+                LEFT JOIN TransactionData td ON m.id = td.message_id
+                WHERE (sender.username = @User1Username AND receiver.username = @User2Username)
+                   OR (sender.username = @User2Username AND receiver.username = @User1Username)
+                GROUP BY 
+                    m.id, m.sender_id, sender.username, m.receiver_id, receiver.username, 
+                    m.text_content, m.type, m.created_at, m.is_read,
+                    td.transaction_number, td.transaction_hash, td.amount, td.is_approved, 
+                    td.approval_message_id
+                ORDER BY m.created_at ASC";
 
             var messages = new List<object>();
             await using var cmd = new NpgsqlCommand(query, connection);
@@ -575,10 +588,10 @@ public class ChatService : IChatService
                         ReceiverId = reader.GetInt32(3),
                         ReceiverUsername = reader.GetString(4),
                         Description = reader.GetString(5),
-                        Amount = reader.GetDecimal(12),
-                        TransactionNumber = reader.GetString(10),
-                        TransactionHash = reader.GetString(11),
-                        IsApproved = reader.GetBoolean(13),
+                        Amount = !reader.IsDBNull(12) ? reader.GetDecimal(12) : 0m,
+                        TransactionNumber = !reader.IsDBNull(10) ? reader.GetString(10) : "",
+                        TransactionHash = !reader.IsDBNull(11) ? reader.GetString(11) : "",
+                        IsApproved = !reader.IsDBNull(13) && reader.GetBoolean(13),
                         Type = type,
                         CreatedAt = reader.GetDateTime(7)
                     },
@@ -586,12 +599,12 @@ public class ChatService : IChatService
                     Chat.MessageType.TransactionApproval => new Chat.MessageTransactionApproval
                     {
                         Id = reader.GetInt32(0),
-                        OriginalTransactionMessageId = reader.GetInt32(0), // This needs to be linked properly
-                        Amount = reader.GetDecimal(12),
+                        OriginalTransactionMessageId = !reader.IsDBNull(14) ? reader.GetInt32(14) : 0,
+                        Amount = !reader.IsDBNull(12) ? reader.GetDecimal(12) : 0m,
                         ApprovedBy = reader.GetString(2),
                         ApprovedAt = reader.GetDateTime(7),
-                        TransactionNumber = reader.GetString(10),
-                        TransactionHash = reader.GetString(11),
+                        TransactionNumber = reader.GetString(5), // approval messages store transaction number in text_content
+                        TransactionHash = !reader.IsDBNull(11) ? reader.GetString(11) : "",
                         Type = type
                     },
 
@@ -810,7 +823,6 @@ public class ChatService : IChatService
                 ApprovedBy = approverUsername,
                 ApprovedAt = DateTime.UtcNow,
                 TransactionNumber = transactionNumber,
-                TransactionHash = transactionHash,
                 Type = Chat.MessageType.TransactionApproval
             };
 
