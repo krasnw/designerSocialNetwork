@@ -140,26 +140,15 @@ public class ChatController : ControllerBase
 
     [Authorize]
     [HttpPost("messages")]
-    public async Task<ActionResult<Chat.Message>> SendMessage([FromForm] Chat.MessageRequest request)
+    public async Task<ActionResult<Chat.MessageComplex>> SendMessage([FromForm] Chat.MessageRequest request)
     {
         var senderUsername = User.Identity?.Name;
         if (string.IsNullOrEmpty(senderUsername))
             return Unauthorized(new { message = "Blame the token, relog please" });
 
-        if (senderUsername == request.ReceiverUsername)
-            return BadRequest(new { message = "Cannot send message to yourself" });
-
         try
         {
-            var messageDto = new Chat.MessageDto
-            {
-                ReceiverUsername = request.ReceiverUsername,
-                TextContent = request.TextContent,
-                Images = request.Images?.ToList(),
-                Type = Chat.MessageType.Complex
-            };
-
-            var result = await _chatService.SendMessage(senderUsername, messageDto);
+            var result = await _chatService.SendComplexMessage(senderUsername, request);
             return Ok(result);
         }
         catch (Exception ex)
@@ -170,41 +159,27 @@ public class ChatController : ControllerBase
 
     [Authorize]
     [HttpPost("transaction")]
-    public async Task<ActionResult<Chat.TransactionMessageResponse>> SendTransactionMessage(
-        [FromBody] Chat.TransactionMessage request)
+    public async Task<ActionResult<Chat.MessageTransaction>> SendTransactionMessage(
+        [FromBody] Chat.TransactionRequest request)
     {
         var senderUsername = User.Identity?.Name;
         if (string.IsNullOrEmpty(senderUsername))
             return Unauthorized(new { message = "Blame the token, relog please" });
 
-        if (senderUsername == request.ReceiverUsername)
-            return BadRequest(new { message = "Cannot send transaction to yourself" });
-
         try
         {
-            // First check if there's an active chat
-            var hasChat = await _chatService.HasOpenRequest(senderUsername, request.ReceiverUsername);
-            if (!hasChat)
-            {
-                return BadRequest(new { message = "Cannot send transaction: no active chat found between users" });
-            }
-
             var result = await _chatService.SendTransactionMessage(senderUsername, request);
             return Ok(result);
         }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
         catch (Exception ex)
         {
-            return BadRequest(new { message = $"Error sending transaction message: {ex.Message}" });
+            return BadRequest(new { message = $"Error sending transaction: {ex.Message}" });
         }
     }
 
     [Authorize]
     [HttpPost("transaction/{transactionHash}/approve")]
-    public async Task<IActionResult> ApproveTransaction(string transactionHash)
+    public async Task<ActionResult<Chat.MessageTransactionApproval>> ApproveTransaction(string transactionHash)
     {
         var username = User.Identity?.Name;
         if (string.IsNullOrEmpty(username))
@@ -212,28 +187,18 @@ public class ChatController : ControllerBase
 
         try
         {
-            if (string.IsNullOrEmpty(transactionHash))
-            {
-                return BadRequest(new { message = "Transaction hash cannot be empty" });
-            }
-
             var result = await _chatService.ApproveTransaction(transactionHash, username);
-            return Ok(new { message = "Transaction approved and processed successfully" });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
+            return Ok(result);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error in ApproveTransaction: {ex}");
-            return StatusCode(500, new { message = "Internal server error occurred while processing the transaction" });
+            return BadRequest(new { message = $"Error approving transaction: {ex.Message}" });
         }
     }
 
     [Authorize]
     [HttpGet("conversations/{otherUsername}")]
-    public async Task<ActionResult<List<Chat.Message>>> GetConversation(string otherUsername)
+    public async Task<ActionResult<List<object>>> GetConversation(string otherUsername)
     {
         var currentUsername = User.Identity?.Name;
         if (string.IsNullOrEmpty(currentUsername))

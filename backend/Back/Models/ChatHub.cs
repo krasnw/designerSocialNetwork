@@ -23,36 +23,25 @@ namespace Back.Models
             await base.OnConnectedAsync();
         }
 
-        public async Task SendMessage(Chat.MessageDto message)
+        public async Task SendMessage(Chat.MessageRequest message)
         {
             var senderUsername = Context.User?.Identity?.Name;
             if (string.IsNullOrEmpty(senderUsername))
                 throw new HubException("Unauthorized");
 
-            var result = await _chatService.SendMessage(senderUsername, message);
+            var result = await _chatService.SendComplexMessage(senderUsername, message);
             await Clients.User(message.ReceiverUsername)
                 .SendAsync("ReceiveMessage", result);
         }
-        
-        public async Task SendPaymentRequest(Chat.PaymentRequestDto request)
+
+        public async Task SendTransactionMessage(Chat.TransactionRequest request)
         {
             var senderUsername = Context.User?.Identity?.Name;
             if (string.IsNullOrEmpty(senderUsername))
                 throw new HubException("Unauthorized");
 
-            var result = await _chatService.CreatePaymentRequest(request);
+            var result = await _chatService.SendTransactionMessage(senderUsername, request);
             await Clients.User(request.ReceiverUsername)
-                .SendAsync("ReceivePaymentRequest", result);
-        }
-
-        public async Task SendTransactionMessage(Chat.TransactionMessage message)
-        {
-            var senderUsername = Context.User?.Identity?.Name;
-            if (string.IsNullOrEmpty(senderUsername))
-                throw new HubException("Unauthorized");
-
-            var result = await _chatService.SendTransactionMessage(senderUsername, message);
-            await Clients.User(message.ReceiverUsername)
                 .SendAsync("ReceiveTransactionMessage", result);
         }
     }
