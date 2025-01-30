@@ -2,6 +2,8 @@
 using Back.Services.Interfaces;
 using Npgsql;
 using Microsoft.AspNetCore.SignalR;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Back.Services;
 
@@ -146,10 +148,14 @@ public class ChatService : IChatService
         return requests;
     }
 
-    public async Task<List<string>> GetChatUsers(string username)
+    public async Task<List<Chat.UserMiniProfile>> GetChatUsers(string username)
     {
         var query = @"
-        SELECT DISTINCT other_user.username
+        SELECT DISTINCT 
+            other_user.username,
+            other_user.first_name,
+            other_user.last_name,
+            other_user.profile_picture
         FROM api_schema.request r
         JOIN api_schema.""user"" current_u 
             ON (current_u.id = r.buyer_id OR current_u.id = r.seller_id)
@@ -160,7 +166,7 @@ public class ChatService : IChatService
         AND r.request_status = 'accepted'
         ORDER BY other_user.username";
 
-        var users = new List<string>();
+        var users = new List<Chat.UserMiniProfile>();
         using var connection = _databaseService.GetConnection();
         using var command = new NpgsqlCommand(query, connection);
         command.Parameters.AddWithValue("@Username", username);
@@ -168,7 +174,13 @@ public class ChatService : IChatService
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            users.Add(reader.GetString(0));
+            users.Add(new Chat.UserMiniProfile
+            {
+                Username = reader.GetString(0),
+                FirstName = reader.GetString(1),
+                LastName = reader.GetString(2),
+                ProfileImage = reader.IsDBNull(3) ? "" : reader.GetString(3)
+            });
         }
 
         return users;
@@ -390,6 +402,33 @@ public class ChatService : IChatService
         }
     }
 
+    private string GenerateTransactionHash(string senderUsername, string receiverUsername, decimal amount, DateTime timestamp)
+    {
+        var data = $"{senderUsername}:{receiverUsername}:{amount}:{timestamp.Ticks}";
+        using var sha256 = SHA256.Create();
+        var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(data));
+        return BitConverter.ToString(bytes).Replace("-", "").ToLower();
+    }
+
+    private async Task<bool> VerifyActiveChatExists(string username1, string username2, NpgsqlConnection connection)
+    {
+        var query = @"
+            SELECT EXISTS (
+                SELECT 1 
+                FROM api_schema.chat c
+                JOIN api_schema.user u1 ON c.buyer_id = u1.id OR c.seller_id = u1.id
+                JOIN api_schema.user u2 ON (c.buyer_id = u2.id OR c.seller_id = u2.id) AND u2.id != u1.id
+                WHERE ((u1.username = @Username1 AND u2.username = @Username2)
+                   OR (u1.username = @Username2 AND u2.username = @Username1))
+                AND c.chat_status = 'active'
+            )";
+
+        using var cmd = new NpgsqlCommand(query, connection);
+        cmd.Parameters.AddWithValue("@Username1", username1);
+        cmd.Parameters.AddWithValue("@Username2", username2);
+        return (bool)await cmd.ExecuteScalarAsync();
+    }
+
     public async Task<Chat.TransactionMessageResponse> SendTransactionMessage(string senderUsername, Chat.TransactionMessage message)
     {
         using var connection = _databaseService.GetConnection();
@@ -397,9 +436,37 @@ public class ChatService : IChatService
 
         try
         {
-            var (senderId, receiverId) = await GetUserIds(senderUsername, message.ReceiverUsername);
+            // Check for active chat first
+            var hasActiveChat = await VerifyActiveChatExists(senderUsername, message.ReceiverUsername, connection);
+            if (!hasActiveChat)
+            {
+                throw new InvalidOperationException("Cannot send transaction: no active chat found between users");
+            }
 
-            // Insert message - ensure exact enum case match
+            // First, get the chat ID
+            var chatQuery = @"
+                SELECT c.id 
+                FROM api_schema.chat c
+                JOIN api_schema.user u1 ON c.buyer_id = u1.id OR c.seller_id = u1.id
+                JOIN api_schema.user u2 ON (c.buyer_id = u2.id OR c.seller_id = u2.id) AND u2.id != u1.id
+                WHERE u1.username = @Username1 
+                AND u2.username = @Username2
+                AND c.chat_status = 'active'";
+
+            using var chatCmd = new NpgsqlCommand(chatQuery, connection);
+            chatCmd.Parameters.AddWithValue("@Username1", senderUsername);
+            chatCmd.Parameters.AddWithValue("@Username2", message.ReceiverUsername);
+            var chatId = await chatCmd.ExecuteScalarAsync() as int?;
+
+            if (!chatId.HasValue)
+                throw new InvalidOperationException("No active chat found between users");
+
+            var (senderId, receiverId) = await GetUserIds(senderUsername, message.ReceiverUsername);
+            var timestamp = DateTime.UtcNow;
+            var transactionNumber = $"TR-{timestamp.Ticks}-{chatId}";
+            var transactionHash = GenerateTransactionHash(senderUsername, message.ReceiverUsername, message.Amount, timestamp);
+
+            // Insert message
             var insertMessageQuery = @"
                 INSERT INTO api_schema.message (sender_id, receiver_id, text_content, type, created_at)
                 VALUES (@SenderId, @ReceiverId, @Description, 'Transaction'::api_schema.message_type, @CreatedAt)
@@ -414,13 +481,17 @@ public class ChatService : IChatService
 
             var messageId = (int)await cmd.ExecuteScalarAsync();
 
-            // Insert transaction details
+            // Insert transaction details with chat_id and transaction_number
             var insertTransactionQuery = @"
-                INSERT INTO api_schema.transaction_message (message_id, amount, is_approved)
-                VALUES (@MessageId, @Amount, false)";
+                INSERT INTO api_schema.transaction_message 
+                    (message_id, chat_id, transaction_number, transaction_hash, amount, is_approved)
+                VALUES (@MessageId, @ChatId, @TransactionNumber, @TransactionHash, @Amount, false)";
 
             using var transCmd = new NpgsqlCommand(insertTransactionQuery, connection, transaction);
             transCmd.Parameters.AddWithValue("@MessageId", messageId);
+            transCmd.Parameters.AddWithValue("@ChatId", chatId.Value);
+            transCmd.Parameters.AddWithValue("@TransactionNumber", transactionNumber);
+            transCmd.Parameters.AddWithValue("@TransactionHash", transactionHash);
             transCmd.Parameters.AddWithValue("@Amount", message.Amount);
             await transCmd.ExecuteNonQueryAsync();
 
@@ -429,6 +500,9 @@ public class ChatService : IChatService
             var response = new Chat.TransactionMessageResponse
             {
                 MessageId = messageId,
+                TransactionNumber = transactionNumber,
+                TransactionHash = transactionHash,
+                ChatId = chatId.Value,
                 SenderUsername = senderUsername,
                 ReceiverUsername = message.ReceiverUsername,
                 Amount = message.Amount,
@@ -450,7 +524,7 @@ public class ChatService : IChatService
         }
     }
 
-    public async Task<bool> ApproveTransaction(int messageId, string approverUsername)
+    public async Task<bool> ApproveTransaction(string transactionHash, string approverUsername)
     {
         using var connection = _databaseService.GetConnection();
         using var transaction = connection.BeginTransaction();
@@ -460,51 +534,98 @@ public class ChatService : IChatService
             // Verify transaction exists and belongs to approver
             var verifyQuery = @"
                 SELECT 
+                    m.id as message_id,
                     m.sender_id,
                     sender.username as sender_username,
+                    m.receiver_id,
                     tm.amount,
                     w.id as wallet_id,
-                    w.amount as wallet_balance
+                    w.amount as wallet_balance,
+                    tm.transaction_number,
+                    tm.chat_id,
+                    tm.is_approved,
+                    tm.id as transaction_message_id
                 FROM api_schema.message m
                 JOIN api_schema.transaction_message tm ON m.id = tm.message_id
                 JOIN api_schema.user sender ON m.sender_id = sender.id
                 JOIN api_schema.user receiver ON m.receiver_id = receiver.id
                 JOIN api_schema.wallet w ON receiver.id = w.user_id
-                WHERE m.id = @MessageId 
-                AND receiver.username = @ApproverUsername 
-                AND tm.is_approved = false";
+                WHERE tm.transaction_hash = @TransactionHash 
+                AND receiver.username = @ApproverUsername";
 
             using var cmd = new NpgsqlCommand(verifyQuery, connection, transaction);
-            cmd.Parameters.AddWithValue("@MessageId", messageId);
+            cmd.Parameters.AddWithValue("@TransactionHash", transactionHash);
             cmd.Parameters.AddWithValue("@ApproverUsername", approverUsername);
 
             using var reader = await cmd.ExecuteReaderAsync();
             if (!await reader.ReadAsync())
             {
-                return false;
+                throw new InvalidOperationException("Transaction not found or you are not authorized to approve it");
             }
 
-            var senderId = reader.GetInt32(0);
-            var senderUsername = reader.GetString(1);
-            var amount = reader.GetDecimal(2);
-            var approverWalletId = reader.GetInt32(3);
-            var approverBalance = reader.GetDecimal(4);
+            var messageId = reader.GetInt32(0);
+            var senderId = reader.GetInt32(1);
+            var senderUsername = reader.GetString(2);
+            var receiverId = reader.GetInt32(3);
+            var amount = reader.GetDecimal(4);
+            var approverWalletId = reader.GetInt32(5);
+            var approverBalance = reader.GetDecimal(6);
+            var transactionNumber = reader.GetString(7);
+            var chatId = reader.GetInt32(8);
+            var isApproved = reader.GetBoolean(9);
+            var transactionMessageId = reader.GetInt32(10);
             reader.Close();
+
+            // Check if already approved
+            if (isApproved)
+            {
+                throw new InvalidOperationException("Transaction has already been approved");
+            }
 
             // Check if approver has enough balance
             if (approverBalance < amount)
             {
-                throw new InvalidOperationException("Insufficient funds to complete the transaction");
+                throw new InvalidOperationException($"Insufficient funds. Required: {amount}, Available: {approverBalance}");
             }
 
-            // Update transaction status
+            // Add automatic approval message
+            var approvalMessageQuery = @"
+                INSERT INTO api_schema.message (
+                    sender_id,
+                    receiver_id,
+                    text_content,
+                    type,
+                    created_at
+                )
+                VALUES (
+                    @SenderId,
+                    @ReceiverId,
+                    @TransactionNumber,
+                    'TransactionApproval'::api_schema.message_type,
+                    @CreatedAt
+                )
+                RETURNING id;";
+
+            using var approvalCmd = new NpgsqlCommand(approvalMessageQuery, connection, transaction);
+            approvalCmd.Parameters.AddWithValue("@SenderId", receiverId);
+            approvalCmd.Parameters.AddWithValue("@ReceiverId", senderId);
+            approvalCmd.Parameters.AddWithValue("@TransactionNumber", transactionNumber);
+            approvalCmd.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow);
+            
+            var approvalMessageId = (int)await approvalCmd.ExecuteScalarAsync();
+
+            // Update transaction with approval details
             var updateQuery = @"
                 UPDATE api_schema.transaction_message 
-                SET is_approved = true 
-                WHERE message_id = @MessageId";
+                SET is_approved = true,
+                    approved_by_message_id = @ApprovalMessageId,
+                    approved_at = @ApprovedAt
+                WHERE transaction_hash = @TransactionHash";
 
             using var updateCmd = new NpgsqlCommand(updateQuery, connection, transaction);
-            updateCmd.Parameters.AddWithValue("@MessageId", messageId);
+            updateCmd.Parameters.AddWithValue("@TransactionHash", transactionHash);
+            updateCmd.Parameters.AddWithValue("@ApprovalMessageId", approvalMessageId);
+            updateCmd.Parameters.AddWithValue("@ApprovedAt", DateTime.UtcNow);
             await updateCmd.ExecuteNonQueryAsync();
 
             // Process the money transfer
@@ -530,16 +651,24 @@ public class ChatService : IChatService
             transferCmd.Parameters.AddWithValue("@SenderId", senderId);
             await transferCmd.ExecuteNonQueryAsync();
 
-            await transaction.CommitAsync();
+            // Create and send approval notification
+            var approvalMessage = new Chat.TransactionApprovalMessage
+            {
+                Id = approvalMessageId,
+                OriginalTransactionMessageId = messageId,
+                TransactionHash = transactionHash,
+                Amount = amount,
+                ApprovedBy = approverUsername,
+                ApprovedAt = DateTime.UtcNow,
+                TransactionNumber = transactionNumber,
+                ChatId = chatId,
+                Type = Chat.MessageType.TransactionApproval
+            };
 
-            // Notify sender through SignalR
             await _hubContext.Clients.User(senderUsername)
-                .SendAsync("TransactionApproved", new { 
-                    MessageId = messageId,
-                    Amount = amount,
-                    NewBalance = approverBalance - amount
-                });
+                .SendAsync("ReceiveTransactionApproval", approvalMessage);
 
+            await transaction.CommitAsync();
             return true;
         }
         catch (InvalidOperationException)
@@ -551,7 +680,7 @@ public class ChatService : IChatService
         {
             await transaction.RollbackAsync();
             Console.WriteLine($"Error processing transaction: {ex.Message}");
-            throw new Exception("Failed to process transaction");
+            throw new InvalidOperationException($"Failed to process transaction: {ex.Message}");
         }
     }
 
@@ -587,26 +716,42 @@ public class ChatService : IChatService
         return await _databaseService.ExecuteWithConnectionAsync(async connection =>
         {
             var query = @"
-                SELECT 
-                    m.id, 
-                    m.sender_id,
-                    sender.username as sender_username,
-                    m.receiver_id,
-                    receiver.username as receiver_username,
-                    m.text_content,
-                    m.type,
-                    m.created_at,
-                    m.is_read,
-                    ARRAY_AGG(mi.image_path) as image_paths
-                FROM api_schema.message m
-                JOIN api_schema.user sender ON m.sender_id = sender.id
-                JOIN api_schema.user receiver ON m.receiver_id = receiver.id
-                LEFT JOIN api_schema.message_image mi ON m.id = mi.message_id
-                WHERE (sender.username = @User1Username AND receiver.username = @User2Username)
-                   OR (sender.username = @User2Username AND receiver.username = @User1Username)
-                GROUP BY m.id, m.sender_id, sender.username, m.receiver_id, receiver.username, 
-                         m.text_content, m.type, m.created_at, m.is_read
-                ORDER BY m.created_at";
+                WITH MessageData AS (
+                    SELECT 
+                        m.id, 
+                        m.sender_id,
+                        sender.username as sender_username,
+                        m.receiver_id,
+                        receiver.username as receiver_username,
+                        COALESCE(m.text_content, '') as text_content,
+                        m.type,
+                        m.created_at,
+                        m.is_read,
+                        ARRAY_AGG(DISTINCT mi.image_path) FILTER (WHERE mi.image_path IS NOT NULL) as image_paths,
+                        m.id as approval_message_id,
+                        CASE 
+                            WHEN m.type = 'TransactionApproval' THEN m.text_content
+                            ELSE COALESCE(tm.transaction_number, '')
+                        END as transaction_number,
+                        CASE 
+                            WHEN m.type = 'TransactionApproval' THEN 
+                                (SELECT tm2.transaction_hash 
+                                 FROM api_schema.transaction_message tm2 
+                                 WHERE tm2.transaction_number = m.text_content)
+                            ELSE COALESCE(tm.transaction_hash, '')
+                        END as transaction_hash
+                    FROM api_schema.message m
+                    JOIN api_schema.user sender ON m.sender_id = sender.id
+                    JOIN api_schema.user receiver ON m.receiver_id = receiver.id
+                    LEFT JOIN api_schema.message_image mi ON m.id = mi.message_id
+                    LEFT JOIN api_schema.transaction_message tm ON m.id = tm.message_id
+                    WHERE (sender.username = @User1Username AND receiver.username = @User2Username)
+                       OR (sender.username = @User2Username AND receiver.username = @User1Username)
+                    GROUP BY m.id, m.sender_id, sender.username, m.receiver_id, receiver.username, 
+                             m.text_content, m.type, m.created_at, m.is_read, tm.transaction_number, tm.transaction_hash
+                )
+                SELECT * FROM MessageData
+                ORDER BY created_at ASC";
 
             await using var cmd = new NpgsqlCommand(query, connection);
             cmd.Parameters.AddWithValue("@User1Username", user1Username);
@@ -623,13 +768,16 @@ public class ChatService : IChatService
                     SenderUsername = reader.GetString(2),
                     ReceiverId = reader.GetInt32(3),
                     ReceiverUsername = reader.GetString(4),
-                    TextContent = reader.IsDBNull(5) ? null : reader.GetString(5),
+                    TextContent = reader.GetString(5),
                     Type = Enum.Parse<Chat.MessageType>(reader.GetString(6)),
                     CreatedAt = reader.GetDateTime(7),
                     IsRead = reader.GetBoolean(8),
                     ImagePaths = !reader.IsDBNull(9) 
                         ? ((string[])reader.GetValue(9)).Where(p => p != null).ToList() 
-                        : new List<string>()
+                        : new List<string>(),
+                    ApprovedByMessageId = reader.IsDBNull(10) ? null : reader.GetInt32(10),
+                    TransactionNumber = reader.GetString(11),
+                    TransactionHash = reader.GetString(12)
                 });
             }
 
@@ -701,5 +849,24 @@ public class ChatService : IChatService
             Console.WriteLine($"Error checking open request: {ex.Message}");
             return false;
         }
+    }
+
+    private async Task<bool> HasActiveChatBetweenUsers(string username1, string username2, NpgsqlConnection connection)
+    {
+        var query = @"
+            SELECT EXISTS (
+                SELECT 1 
+                FROM api_schema.chat c
+                JOIN api_schema.user u1 ON c.buyer_id = u1.id OR c.seller_id = u1.id
+                JOIN api_schema.user u2 ON (c.buyer_id = u2.id OR c.seller_id = u2.id) AND u2.id != u1.id
+                WHERE u1.username = @Username1 
+                AND u2.username = @Username2
+                AND c.chat_status = 'active'
+            )";
+
+        using var cmd = new NpgsqlCommand(query, connection);
+        cmd.Parameters.AddWithValue("@Username1", username1);
+        cmd.Parameters.AddWithValue("@Username2", username2);
+        return (bool)await cmd.ExecuteScalarAsync();
     }
 }

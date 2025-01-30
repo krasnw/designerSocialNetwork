@@ -70,7 +70,7 @@ public class ChatController : ControllerBase
 
     [Authorize]
     [HttpGet("users")]
-    public async Task<ActionResult<List<string>>> GetChatUsers()
+    public async Task<ActionResult<List<Chat.UserMiniProfile>>> GetChatUsers()  // Changed return type
     {
         var username = User.Identity?.Name;
         if (string.IsNullOrEmpty(username)) 
@@ -182,8 +182,19 @@ public class ChatController : ControllerBase
 
         try
         {
+            // First check if there's an active chat
+            var hasChat = await _chatService.HasOpenRequest(senderUsername, request.ReceiverUsername);
+            if (!hasChat)
+            {
+                return BadRequest(new { message = "Cannot send transaction: no active chat found between users" });
+            }
+
             var result = await _chatService.SendTransactionMessage(senderUsername, request);
             return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -192,8 +203,8 @@ public class ChatController : ControllerBase
     }
 
     [Authorize]
-    [HttpPost("transaction/{messageId}/approve")]
-    public async Task<IActionResult> ApproveTransaction(int messageId)
+    [HttpPost("transaction/{transactionHash}/approve")]
+    public async Task<IActionResult> ApproveTransaction(string transactionHash)
     {
         var username = User.Identity?.Name;
         if (string.IsNullOrEmpty(username))
@@ -201,14 +212,22 @@ public class ChatController : ControllerBase
 
         try
         {
-            var result = await _chatService.ApproveTransaction(messageId, username);
-            return result 
-                ? Ok(new { message = "Transaction approved and processed" }) 
-                : BadRequest(new { message = "Could not process transaction" });
+            if (string.IsNullOrEmpty(transactionHash))
+            {
+                return BadRequest(new { message = "Transaction hash cannot be empty" });
+            }
+
+            var result = await _chatService.ApproveTransaction(transactionHash, username);
+            return Ok(new { message = "Transaction approved and processed successfully" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            return BadRequest(new { message = $"Error approving transaction: {ex.Message}" });
+            Console.WriteLine($"Error in ApproveTransaction: {ex}");
+            return StatusCode(500, new { message = "Internal server error occurred while processing the transaction" });
         }
     }
 
