@@ -40,17 +40,8 @@ public class ChatService : IChatService
 
     public ChatRequestResult SendRequest(string username, Chat.Request request)
     {
-        var checkExistingQuery = @"
-        SELECT COUNT(*) 
-        FROM api_schema.request r
-        JOIN api_schema.user u1 ON r.buyer_id = u1.id
-        JOIN api_schema.user u2 ON r.seller_id = u2.id
-        WHERE r.request_status = 'accepted'
-        AND ((u1.username = @Username1 AND u2.username = @Username2)
-         OR (u1.username = @Username2 AND u2.username = @Username1))";
-
         var getUserIdQuery = @"SELECT id FROM api_schema.user WHERE username = @Username";
-
+        
         NpgsqlConnection connection = null;
         NpgsqlCommand command = null;
 
@@ -58,39 +49,29 @@ public class ChatService : IChatService
         {
             connection = _databaseService.GetConnection();
 
-            // Check for existing accepted request
-            command = new NpgsqlCommand(checkExistingQuery, connection);
-            command.Parameters.AddWithValue("@Username1", username);
-            command.Parameters.AddWithValue("@Username2", request.Receiver);
-            var existingAcceptedRequests = (long)command.ExecuteScalar();
-
-            if (existingAcceptedRequests > 0)
-            {
-                return ChatRequestResult.Failed;
-            }
-
-            //sender ID
+            // Get buyer (sender) ID
             command = new NpgsqlCommand(getUserIdQuery, connection);
             command.Parameters.AddWithValue("@Username", username);
-            var senderId = (int?)command.ExecuteScalar();
-            if (senderId == null) return ChatRequestResult.SenderNotFound;
+            var buyerId = (int?)command.ExecuteScalar();
+            if (buyerId == null) return ChatRequestResult.SenderNotFound;
 
-            //receiver ID
+            // Get seller (receiver) ID
             command.Parameters.Clear();
             command.Parameters.AddWithValue("@Username", request.Receiver);
-            var receiverId = (int?)command.ExecuteScalar();
-            if (receiverId == null) return ChatRequestResult.ReceiverNotFound;
+            var sellerId = (int?)command.ExecuteScalar();
+            if (sellerId == null) return ChatRequestResult.ReceiverNotFound;
 
-            //main request
+            // Insert request
             var insertQuery = @"
-            INSERT INTO api_schema.request (buyer_id, seller_id, request_description, request_status)
-            VALUES (@SenderId, @ReceiverId, @Description, @Status::api_schema.request_status)";
+                INSERT INTO api_schema.request 
+                    (buyer_id, seller_id, request_description, request_status)
+                VALUES 
+                    (@BuyerId, @SellerId, @Description, 'pending'::api_schema.request_status)";
 
             command = new NpgsqlCommand(insertQuery, connection);
-            command.Parameters.AddWithValue("@SenderId", senderId);
-            command.Parameters.AddWithValue("@ReceiverId", receiverId);
+            command.Parameters.AddWithValue("@BuyerId", buyerId);
+            command.Parameters.AddWithValue("@SellerId", sellerId);
             command.Parameters.AddWithValue("@Description", request.Description);
-            command.Parameters.AddWithValue("@Status", "pending");
 
             command.ExecuteNonQuery();
             return ChatRequestResult.Success;
@@ -219,9 +200,11 @@ public class ChatService : IChatService
                     r.buyer_id,
                     r.seller_id,
                     r.request_status,
-                    seller.username as seller_username
+                    seller.username as seller_username,
+                    buyer.username as buyer_username
                 FROM api_schema.request r
                 JOIN api_schema.user seller ON r.seller_id = seller.id
+                JOIN api_schema.user buyer ON r.buyer_id = buyer.id
                 WHERE r.id = @RequestId";
 
             using var checkCommand = new NpgsqlCommand(checkQuery, connection);
@@ -235,6 +218,7 @@ public class ChatService : IChatService
             var sellerId = reader.GetInt32(2);
             var status = reader.GetString(3);
             var sellerUsername = reader.GetString(4);
+            var buyerUsername = reader.GetString(5);
             reader.Close();
 
             // Validate request
@@ -243,6 +227,24 @@ public class ChatService : IChatService
             
             if (status != "pending")
                 return (RequestActionResult.AlreadyAccepted, "Request is not pending");
+
+            // Check if there's already an active request between these users
+            var checkActiveRequestQuery = @"
+                SELECT EXISTS (
+                    SELECT 1 
+                    FROM api_schema.request r
+                    WHERE ((r.buyer_id = @BuyerId AND r.seller_id = @SellerId)
+                        OR (r.buyer_id = @SellerId AND r.seller_id = @BuyerId))
+                    AND r.request_status = 'accepted'
+                )";
+
+            using var activeRequestCmd = new NpgsqlCommand(checkActiveRequestQuery, connection);
+            activeRequestCmd.Parameters.AddWithValue("@BuyerId", buyerId);
+            activeRequestCmd.Parameters.AddWithValue("@SellerId", sellerId);
+            
+            var hasActiveRequest = (bool)await activeRequestCmd.ExecuteScalarAsync();
+            if (hasActiveRequest)
+                return (RequestActionResult.AlreadyAccepted, "There is already an active request between these users");
 
             // Check for existing chat
             var chatExists = await ExistingChatBetweenUsers(buyerId, sellerId, connection);
