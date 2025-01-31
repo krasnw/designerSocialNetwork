@@ -233,4 +233,30 @@ public class ChatController : ControllerBase
             return BadRequest(new { message = $"Error checking request status: {ex.Message}" });
         }
     }
+
+    [Authorize]
+    [HttpGet("chatStatus/{otherUsername}")]
+    public async Task<ActionResult<string>> GetChatStatus(string otherUsername)
+    {
+        var currentUsername = User.Identity?.Name;
+        if (string.IsNullOrEmpty(currentUsername))
+            return Unauthorized(new { message = "Blame the token, relog please" });
+
+        try
+        {
+            var status = await _chatService.GetChatStatus(currentUsername, otherUsername);
+            var statusString = status switch
+            {
+                ChatStatusResult.Active => "active",
+                ChatStatusResult.Disabled => "disabled",
+                ChatStatusResult.NonExistent => "does not exist",
+                _ => "unknown"
+            };
+            return Ok(new { chatStatus = statusString });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Error retrieving chat status: {ex.Message}" });
+        }
+    }
 }

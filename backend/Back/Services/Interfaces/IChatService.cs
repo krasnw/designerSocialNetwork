@@ -20,5 +20,8 @@ namespace Back.Services.Interfaces
         // Transaction handling
         Task<Chat.MessageTransaction> SendTransactionMessage(string senderUsername, Chat.TransactionRequest request);
         Task<Chat.MessageTransactionApproval> ApproveTransaction(string transactionHash, string approverUsername);
+
+        // Chat status
+        Task<ChatStatusResult> GetChatStatus(string username1, string username2);
     }
 }

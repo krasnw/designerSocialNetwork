@@ -25,6 +25,13 @@ public enum RequestActionResult
     Error
 }
 
+public enum ChatStatusResult
+{
+    Active,
+    Disabled,
+    NonExistent
+}
+
 public class ChatService : IChatService
 {
     private readonly IDatabaseService _databaseService;
@@ -951,5 +958,34 @@ public class ChatService : IChatService
         cmd.Parameters.AddWithValue("@Username1", username1);
         cmd.Parameters.AddWithValue("@Username2", username2);
         return (bool)await cmd.ExecuteScalarAsync();
+    }
+
+    public async Task<ChatStatusResult> GetChatStatus(string username1, string username2)
+    {
+        var query = @"
+            SELECT chat_status
+            FROM api_schema.chat c
+            JOIN api_schema.user u1 ON c.buyer_id = u1.id OR c.seller_id = u1.id
+            JOIN api_schema.user u2 ON (c.buyer_id = u2.id OR c.seller_id = u2.id) AND u2.id != u1.id
+            WHERE u1.username = @Username1 
+            AND u2.username = @Username2";
+
+        using var connection = _databaseService.GetConnection();
+        using var cmd = new NpgsqlCommand(query, connection);
+        cmd.Parameters.AddWithValue("@Username1", username1);
+        cmd.Parameters.AddWithValue("@Username2", username2);
+
+        var status = await cmd.ExecuteScalarAsync();
+        if (status == null)
+        {
+            return ChatStatusResult.NonExistent;
+        }
+
+        return status.ToString() switch
+        {
+            "active" => ChatStatusResult.Active,
+            "closed" => ChatStatusResult.Disabled,
+            _ => ChatStatusResult.NonExistent
+        };
     }
 }
