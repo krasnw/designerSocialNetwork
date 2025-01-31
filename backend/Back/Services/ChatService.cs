@@ -423,6 +423,9 @@ public class ChatService : IChatService
             var uploadedImagePaths = new List<string>();
             if (request.Images != null)
             {
+                if (request.Images.Length > 10)
+                    throw new ArgumentException("Cannot upload more than 10 images");
+
                 foreach (var image in request.Images)
                 {
                     if (!_imageService.IsImageValid(image))
