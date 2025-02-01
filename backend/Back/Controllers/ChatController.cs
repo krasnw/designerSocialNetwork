@@ -259,4 +259,45 @@ public class ChatController : ControllerBase
             return BadRequest(new { message = $"Error retrieving chat status: {ex.Message}" });
         }
     }
+
+    [Authorize]
+    [HttpPost("endRequest/{otherUsername}")]
+    public async Task<ActionResult<Chat.MessageEndRequest>> SendEndRequestMessage(string otherUsername)
+    {
+        var senderUsername = User.Identity?.Name;
+        if (string.IsNullOrEmpty(senderUsername))
+            return Unauthorized(new { message = "Blame the token, relog please" });
+
+        if (string.IsNullOrEmpty(otherUsername))
+            return BadRequest(new { message = "Receiver username is required" });
+
+        try
+        {
+            var result = await _chatService.SendEndRequestMessage(senderUsername, otherUsername);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Error sending end request: {ex.Message}" });
+        }
+    }
+
+    [Authorize]
+    [HttpPost("endRequest/{endRequestHash}/approve")]
+    public async Task<ActionResult<Chat.MessageEndRequestApproval>> ApproveEndRequest(string endRequestHash)
+    {
+        var username = User.Identity?.Name;
+        if (string.IsNullOrEmpty(username))
+            return Unauthorized(new { message = "Blame the token, relog please" });
+
+        try
+        {
+            var result = await _chatService.ApproveEndRequest(endRequestHash, username);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Error approving end request: {ex.Message}" });
+        }
+    }
 }

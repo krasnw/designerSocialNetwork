@@ -174,13 +174,13 @@ VALUES
 INSERT INTO api_schema.chat (buyer_id, seller_id, history_file_path, start_date, chat_status)
 VALUES
 (1, 2, '/chats/chat1.txt', '2024-01-05', 'active'),
-(2, 3, '/chats/chat2.txt', '2024-02-05', 'closed'),
+(2, 3, '/chats/chat2.txt', '2024-02-05', 'disabled'),
 (3, 4, '/chats/chat3.txt', '2024-03-05', 'active'),
-(4, 5, '/chats/chat4.txt', '2024-04-05', 'closed'),
+(4, 5, '/chats/chat4.txt', '2024-04-05', 'disabled'),
 (5, 6, '/chats/chat5.txt', '2024-05-05', 'active'),
-(6, 7, '/chats/chat6.txt', '2024-06-05', 'closed'),
+(6, 7, '/chats/chat6.txt', '2024-06-05', 'disabled'),
 (7, 8, '/chats/chat7.txt', '2024-07-05', 'active'),
-(8, 9, '/chats/chat8.txt', '2024-08-05', 'closed'),
+(8, 9, '/chats/chat8.txt', '2024-08-05', 'disabled'),
 (9, 10, '/chats/chat9.txt', '2024-09-05', 'active'),
 (10, 1, '/chats/chat10.txt', '2024-10-05', 'active');
 
@@ -289,49 +289,48 @@ VALUES
 (10, 160, CURRENT_TIMESTAMP);
 
 -- Add sample transaction messages
-WITH inserted_messages AS (
-    INSERT INTO api_schema.message (sender_id, receiver_id, text_content, type, created_at)
-    SELECT 
-        sender.id as sender_id,
-        receiver.id as receiver_id,
-        text_content,
-        'Transaction'::api_schema.message_type as type,
-        created_at
-    FROM (VALUES
-        (1, 2, 'Payment for design work', CURRENT_TIMESTAMP - INTERVAL '1 day'),
-        (3, 4, 'Logo design payment', CURRENT_TIMESTAMP - INTERVAL '2 days'),
-        (5, 6, 'UI consultation fee', CURRENT_TIMESTAMP - INTERVAL '3 days')
-    ) as data(sender_id, receiver_id, text_content, created_at)
-    JOIN api_schema."user" sender ON sender.id = data.sender_id
-    JOIN api_schema."user" receiver ON receiver.id = data.receiver_id
-    RETURNING id, sender_id, receiver_id, text_content, created_at
-),
-message_data AS (
-    SELECT 
-        m.id as message_id, 
-        c.id as chat_id,
-        (SELECT username FROM api_schema."user" WHERE id = m.sender_id) as sender_username,
-        (SELECT username FROM api_schema."user" WHERE id = m.receiver_id) as receiver_username,
-        CASE 
-            WHEN m.text_content = 'Payment for design work' THEN 100.00
-            WHEN m.text_content = 'Logo design payment' THEN 250.00
-            WHEN m.text_content = 'UI consultation fee' THEN 150.00
-        END as amount,
-        CASE 
-            WHEN m.text_content = 'Logo design payment' THEN true
-            ELSE false
-        END as is_approved,
-        m.created_at
-    FROM inserted_messages m
+INSERT INTO api_schema.message (sender_id, receiver_id, text_content, type, created_at)
+SELECT 
+    sender.id as sender_id,
+    receiver.id as receiver_id,
+    text_content,
+    'Transaction'::api_schema.message_type as type,
+    created_at
+FROM (VALUES
+    (1, 2, 'Payment for design work', CURRENT_TIMESTAMP - INTERVAL '1 day'),
+    (3, 4, 'Logo design payment', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+    (5, 6, 'UI consultation fee', CURRENT_TIMESTAMP - INTERVAL '3 days')
+) as data(sender_id, receiver_id, text_content, created_at)
+JOIN api_schema."user" sender ON sender.id = data.sender_id
+JOIN api_schema."user" receiver ON receiver.id = data.receiver_id;
+
+-- Then, insert transaction messages with all required fields
+WITH message_data AS (
+    SELECT m.id as message_id, 
+           c.id as chat_id,
+           CASE 
+               WHEN m.text_content = 'Payment for design work' THEN 100.00
+               WHEN m.text_content = 'Logo design payment' THEN 250.00
+               WHEN m.text_content = 'UI consultation fee' THEN 150.00
+           END as amount,
+           CASE 
+               WHEN m.text_content = 'Logo design payment' THEN true
+               ELSE false
+           END as is_approved
+    FROM api_schema.message m
     JOIN api_schema.chat c ON 
         (c.buyer_id = m.sender_id AND c.seller_id = m.receiver_id) OR
         (c.seller_id = m.sender_id AND c.buyer_id = m.receiver_id)
+    WHERE m.text_content IN (
+        'Payment for design work',
+        'Logo design payment',
+        'UI consultation fee'
+    )
 )
 INSERT INTO api_schema.transaction_message (
     message_id, 
     chat_id, 
-    transaction_number,
-    transaction_hash,
+    transaction_number, 
     amount, 
     is_approved
 )
@@ -339,12 +338,6 @@ SELECT
     message_id,
     chat_id,
     'TR-' || EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::bigint || '-' || chat_id || '-' || message_id as transaction_number,
-    encode(sha256(concat_ws(':', 
-        sender_username, 
-        receiver_username, 
-        amount::text, 
-        EXTRACT(EPOCH FROM created_at)::bigint
-    )::bytea), 'hex') as transaction_hash,
     amount,
     is_approved
 FROM message_data;

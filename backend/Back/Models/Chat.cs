@@ -8,7 +8,9 @@ public class Chat
         Text = 0,
         Complex = 1,
         Transaction = 2,
-        TransactionApproval = 3
+        TransactionApproval = 3,
+        EndRequest = 4,
+        EndRequestApproval = 5
     }
 
     // Keep request-related models
@@ -83,6 +85,27 @@ public class Chat
         public string TransactionNumber { get; set; }
         public string TransactionHash { get; set; }
         public MessageType Type { get; set; } = MessageType.TransactionApproval;
+    }
+
+    public class MessageEndRequest
+    {
+        public int Id { get; set; }
+        public int SenderId { get; set; }
+        public string SenderUsername { get; set; }
+        public int ReceiverId { get; set; }
+        public string ReceiverUsername { get; set; }
+        public string EndRequestHash { get; set; }
+        public MessageType Type { get; set; } = MessageType.EndRequest;
+    }
+
+    public class MessageEndRequestApproval
+    {
+        public int Id { get; set; }
+        public int OriginalEndRequestMessageId { get; set; }
+        public string ApprovedBy { get; set; }
+        public DateTime ApprovedAt { get; set; }
+        public string EndRequestHash { get; set; }
+        public MessageType Type { get; set; } = MessageType.EndRequestApproval;
     }
 
     public class MessageRequest

@@ -15,8 +15,8 @@ CREATE TYPE api_schema.account_status AS ENUM ('active', 'frozen');
 CREATE TYPE api_schema.tag_type AS ENUM ('ui element', 'style', 'color');
 CREATE TYPE api_schema.access_level AS ENUM ('public', 'private', 'protected');
 CREATE TYPE api_schema.request_status AS ENUM ('pending', 'accepted', 'completed');
-CREATE TYPE api_schema.chat_status AS ENUM ('active', 'closed');
-CREATE TYPE api_schema.message_type AS ENUM ('Text', 'Complex', 'Transaction', 'TransactionApproval');
+CREATE TYPE api_schema.chat_status AS ENUM ('active', 'disabled');  -- changed from ('active', 'closed')
+CREATE TYPE api_schema.message_type AS ENUM ('Text', 'Complex', 'Transaction', 'TransactionApproval', 'EndRequest', 'EndRequestApproval');
 CREATE TYPE api_schema.reason_type AS ENUM ('user', 'post');
 
 CREATE TABLE api_schema."user" (

@@ -23,5 +23,9 @@ namespace Back.Services.Interfaces
 
         // Chat status
         Task<ChatStatusResult> GetChatStatus(string username1, string username2);
+
+        // End request handling
+        Task<Chat.MessageEndRequest> SendEndRequestMessage(string senderUsername, string receiverUsername);
+        Task<Chat.MessageEndRequestApproval> ApproveEndRequest(string endRequestHash, string approverUsername);
     }
 }

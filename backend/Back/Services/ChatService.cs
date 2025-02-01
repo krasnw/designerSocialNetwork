@@ -206,7 +206,7 @@ public class ChatService : IChatService
                     r.id,
                     r.buyer_id,
                     r.seller_id,
-                    r.request_status,
+                    r.request_status::text,
                     seller.username as seller_username,
                     buyer.username as buyer_username
                 FROM api_schema.request r
@@ -235,14 +235,14 @@ public class ChatService : IChatService
             if (status != "pending")
                 return (RequestActionResult.AlreadyAccepted, "Request is not pending");
 
-            // Check if there's already an active request between these users
+            // Check if there's already an active request
             var checkActiveRequestQuery = @"
                 SELECT EXISTS (
                     SELECT 1 
                     FROM api_schema.request r
                     WHERE ((r.buyer_id = @BuyerId AND r.seller_id = @SellerId)
                         OR (r.buyer_id = @SellerId AND r.seller_id = @BuyerId))
-                    AND r.request_status = 'accepted'
+                    AND r.request_status = 'accepted'::api_schema.request_status
                 )";
 
             using var activeRequestCmd = new NpgsqlCommand(checkActiveRequestQuery, connection);
@@ -253,11 +253,27 @@ public class ChatService : IChatService
             if (hasActiveRequest)
                 return (RequestActionResult.AlreadyAccepted, "There is already an active request between these users");
 
-            // Check for existing chat
-            var chatExists = await ExistingChatBetweenUsers(buyerId, sellerId, connection);
-            if (!chatExists)
+            // Check for existing chat and reactivate if disabled
+            var chatQuery = @"
+                WITH UpdatedChat AS (
+                    UPDATE api_schema.chat
+                    SET chat_status = 'active'
+                    WHERE ((buyer_id = @BuyerId AND seller_id = @SellerId)
+                        OR (buyer_id = @SellerId AND seller_id = @BuyerId))
+                    AND chat_status = 'disabled'
+                    RETURNING id
+                )
+                SELECT id FROM UpdatedChat";
+
+            using var chatCmd = new NpgsqlCommand(chatQuery, connection, transaction);
+            chatCmd.Parameters.AddWithValue("@BuyerId", buyerId);
+            chatCmd.Parameters.AddWithValue("@SellerId", sellerId);
+            
+            var existingChatId = await chatCmd.ExecuteScalarAsync();
+            
+            if (existingChatId == null)
             {
-                // Create new chat only if one doesn't exist
+                // Create new chat
                 var createChatQuery = @"
                     INSERT INTO api_schema.chat (
                         buyer_id, 
@@ -271,15 +287,16 @@ public class ChatService : IChatService
                         @SellerId,
                         @HistoryPath,
                         CURRENT_DATE,
-                        'active'::api_schema.chat_status
-                    )";
+                        'active'
+                    )
+                    RETURNING id";
 
                 using var createCmd = new NpgsqlCommand(createChatQuery, connection, transaction);
                 createCmd.Parameters.AddWithValue("@BuyerId", buyerId);
                 createCmd.Parameters.AddWithValue("@SellerId", sellerId);
                 createCmd.Parameters.AddWithValue("@HistoryPath", 
                     $"/chats/chat_{buyerId}{sellerId}_{DateTime.UtcNow.Ticks}.txt");
-                await createCmd.ExecuteNonQueryAsync();
+                existingChatId = await createCmd.ExecuteScalarAsync();
             }
 
             // Update request status
@@ -294,6 +311,12 @@ public class ChatService : IChatService
 
             await transaction.CommitAsync();
             return (RequestActionResult.Success, "Request accepted successfully");
+        }
+        catch (PostgresException pgEx)
+        {
+            await transaction.RollbackAsync();
+            Console.WriteLine($"PostgreSQL error in AcceptRequest: {pgEx.MessageText}");
+            return (RequestActionResult.Error, $"Database error: {pgEx.MessageText}");
         }
         catch (Exception ex)
         {
@@ -539,7 +562,12 @@ public class ChatService : IChatService
                     td.transaction_hash,
                     td.amount,
                     td.is_approved,
-                    td.approval_message_id
+                    td.approval_message_id,
+                    CASE 
+                        WHEN m.type = 'EndRequest' THEN m.text_content
+                        WHEN m.type = 'EndRequestApproval' THEN m.text_content
+                        ELSE NULL 
+                    END as end_request_hash
                 FROM api_schema.message m
                 JOIN api_schema.user sender ON m.sender_id = sender.id
                 JOIN api_schema.user receiver ON m.receiver_id = receiver.id
@@ -618,6 +646,27 @@ public class ChatService : IChatService
                         Type = type
                     },
 
+                    Chat.MessageType.EndRequest => new Chat.MessageEndRequest
+                    {
+                        Id = reader.GetInt32(0),
+                        SenderId = reader.GetInt32(1),
+                        SenderUsername = reader.GetString(2),
+                        ReceiverId = reader.GetInt32(3),
+                        ReceiverUsername = reader.GetString(4),
+                        EndRequestHash = reader.GetString(5), // Get hash from text_content
+                        Type = type
+                    },
+
+                    Chat.MessageType.EndRequestApproval => new Chat.MessageEndRequestApproval
+                    {
+                        Id = reader.GetInt32(0),
+                        OriginalEndRequestMessageId = !reader.IsDBNull(14) ? reader.GetInt32(14) : 0,
+                        ApprovedBy = reader.GetString(2),
+                        ApprovedAt = reader.GetDateTime(7),
+                        EndRequestHash = reader.GetString(5), // Get hash from text_content
+                        Type = type
+                    },
+
                     _ => throw new ArgumentException($"Unknown message type: {type}")
                 };
 
@@ -646,7 +695,7 @@ public class ChatService : IChatService
                 JOIN api_schema.user u2 ON (c.buyer_id = u2.id OR c.seller_id = u2.id) AND u2.id != u1.id
                 WHERE ((u1.username = @Username1 AND u2.username = @Username2)
                    OR (u1.username = @Username2 AND u2.username = @Username1))
-                AND c.chat_status = 'active'
+                AND c.chat_status = 'active'::api_schema.chat_status
             )";
 
         using var cmd = new NpgsqlCommand(query, connection);
@@ -987,5 +1036,202 @@ public class ChatService : IChatService
             "closed" => ChatStatusResult.Disabled,
             _ => ChatStatusResult.NonExistent
         };
+    }
+
+    private string GenerateEndRequestHash(string senderUsername, string receiverUsername, DateTime timestamp)
+    {
+        var data = $"{senderUsername}:{receiverUsername}:{timestamp.Ticks}";
+        using var sha256 = SHA256.Create();
+        var bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(data));
+        return BitConverter.ToString(bytes).Replace("-", "").ToLower();
+    }
+
+    public async Task<Chat.MessageEndRequest> SendEndRequestMessage(string senderUsername, string receiverUsername)
+    {
+        using var connection = _databaseService.GetConnection();
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            var (senderId, receiverId) = await GetUserIds(senderUsername, receiverUsername);
+
+            // Verify active chat exists
+            var hasActiveChat = await VerifyActiveChatExists(senderUsername, receiverUsername, connection);
+            if (!hasActiveChat)
+            {
+                throw new InvalidOperationException("No active chat found between users");
+            }
+
+            var timestamp = DateTime.UtcNow;
+            var endRequestHash = GenerateEndRequestHash(senderUsername, receiverUsername, timestamp);
+
+            var insertQuery = @"
+                INSERT INTO api_schema.message (
+                    sender_id, 
+                    receiver_id, 
+                    text_content, 
+                    type, 
+                    created_at
+                )
+                VALUES (
+                    @SenderId, 
+                    @ReceiverId, 
+                    @EndRequestHash, 
+                    'EndRequest'::api_schema.message_type, 
+                    @CreatedAt
+                )
+                RETURNING id";
+
+            using var cmd = new NpgsqlCommand(insertQuery, connection, transaction);
+            cmd.Parameters.AddWithValue("@SenderId", senderId);
+            cmd.Parameters.AddWithValue("@ReceiverId", receiverId);
+            cmd.Parameters.AddWithValue("@EndRequestHash", endRequestHash);
+            cmd.Parameters.AddWithValue("@CreatedAt", timestamp);
+
+            var messageId = (int)await cmd.ExecuteScalarAsync();
+            await transaction.CommitAsync();
+
+            var message = new Chat.MessageEndRequest
+            {
+                Id = messageId,
+                SenderId = senderId,
+                SenderUsername = senderUsername,
+                ReceiverId = receiverId,
+                ReceiverUsername = receiverUsername,
+                EndRequestHash = endRequestHash,
+                Type = Chat.MessageType.EndRequest
+            };
+
+            await _hubContext.Clients.User(receiverUsername)
+                .SendAsync("ReceiveEndRequestMessage", message);
+
+            return message;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task<Chat.MessageEndRequestApproval> ApproveEndRequest(string endRequestHash, string approverUsername)
+    {
+        using var connection = _databaseService.GetConnection();
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            // Get end request details with approval check
+            var getEndRequestQuery = @"
+                WITH EndRequestApproval AS (
+                    SELECT message_id 
+                    FROM api_schema.message 
+                    WHERE text_content = @EndRequestHash 
+                    AND type = 'EndRequestApproval'
+                )
+                SELECT 
+                    m.id as message_id,
+                    m.sender_id,
+                    sender.username as sender_username,
+                    m.receiver_id,
+                    receiver.username as receiver_username,
+                    m.created_at,
+                    c.id as chat_id,
+                    CASE WHEN era.message_id IS NOT NULL THEN true ELSE false END as is_approved
+                FROM api_schema.message m
+                JOIN api_schema.user sender ON m.sender_id = sender.id
+                JOIN api_schema.user receiver ON m.receiver_id = receiver.id
+                JOIN api_schema.chat c ON (c.buyer_id = m.sender_id AND c.seller_id = m.receiver_id)
+                    OR (c.buyer_id = m.receiver_id AND c.seller_id = m.sender_id)
+                LEFT JOIN EndRequestApproval era ON m.id = era.message_id
+                WHERE m.text_content = @EndRequestHash
+                AND m.type = 'EndRequest'
+                AND receiver.username = @ApproverUsername
+                AND c.chat_status = 'active'";
+
+            using var cmd = new NpgsqlCommand(getEndRequestQuery, connection, transaction);
+            cmd.Parameters.AddWithValue("@EndRequestHash", endRequestHash);
+            cmd.Parameters.AddWithValue("@ApproverUsername", approverUsername);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (!await reader.ReadAsync())
+                throw new InvalidOperationException("End request not found or you are not authorized to approve it");
+
+            var messageId = reader.GetInt32(0);
+            var senderId = reader.GetInt32(1);
+            var senderUsername = reader.GetString(2);
+            var receiverId = reader.GetInt32(3);
+            var receiverUsername = reader.GetString(4);
+            var createdAt = reader.GetDateTime(5);
+            var chatId = reader.GetInt32(6);
+            var isApproved = reader.GetBoolean(7);
+            reader.Close();
+
+            if (isApproved)
+                throw new InvalidOperationException("This end request has already been approved");
+
+            // Update chat status to disabled instead of closed
+            var updateChatQuery = @"
+                UPDATE api_schema.chat
+                SET chat_status = 'disabled'::api_schema.chat_status
+                WHERE id = @ChatId";
+
+            using var updateCmd = new NpgsqlCommand(updateChatQuery, connection, transaction);
+            updateCmd.Parameters.AddWithValue("@ChatId", chatId);
+            await updateCmd.ExecuteNonQueryAsync();
+
+            // Create approval message
+            var approvalMessageQuery = @"
+                INSERT INTO api_schema.message (
+                    sender_id,
+                    receiver_id,
+                    text_content,
+                    type,
+                    created_at
+                )
+                VALUES (
+                    @SenderId,
+                    @ReceiverId,
+                    @EndRequestHash,
+                    'EndRequestApproval'::api_schema.message_type,
+                    @CreatedAt
+                )
+                RETURNING id";
+
+            using var approvalCmd = new NpgsqlCommand(approvalMessageQuery, connection, transaction);
+            approvalCmd.Parameters.AddWithValue("@SenderId", receiverId);
+            approvalCmd.Parameters.AddWithValue("@ReceiverId", senderId);
+            approvalCmd.Parameters.AddWithValue("@EndRequestHash", endRequestHash);
+            approvalCmd.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow);
+
+            var approvalMessageId = (int)await approvalCmd.ExecuteScalarAsync();
+
+            await transaction.CommitAsync();
+
+            var approvalMessage = new Chat.MessageEndRequestApproval
+            {
+                Id = approvalMessageId,
+                OriginalEndRequestMessageId = messageId,
+                ApprovedBy = approverUsername,
+                ApprovedAt = DateTime.UtcNow,
+                EndRequestHash = endRequestHash,
+                Type = Chat.MessageType.EndRequestApproval
+            };
+
+            // Notify the sender about the approval
+            await _hubContext.Clients.User(senderUsername)
+                .SendAsync("ReceiveEndRequestApproval", approvalMessage);
+
+            // Also notify about chat status change
+            await _hubContext.Clients.Users(new[] { senderUsername, receiverUsername })
+                .SendAsync("ChatStatusChanged", new { ChatId = chatId, Status = "disabled" });
+
+            return approvalMessage;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 }
