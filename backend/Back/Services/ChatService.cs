@@ -380,10 +380,12 @@ public class ChatService : IChatService
             var (senderId, receiverId) = await GetUserIds(senderUsername, receiverUsername);
 
             // Verify active chat exists
-            var hasActiveChat = await VerifyActiveChatExists(senderUsername, receiverUsername, connection);
-            if (!hasActiveChat)
+            var (chatActive, chatStatus) = await VerifyActiveChatExists(senderUsername, receiverUsername, connection);
+            if (!chatActive)
             {
-                throw new InvalidOperationException("No active chat found between users");
+                throw new InvalidOperationException(chatStatus == "disabled" ? 
+                    "Cannot send messages to a disabled chat" : 
+                    "No active chat found between users");
             }
 
             var insertQuery = @"
@@ -445,10 +447,12 @@ public class ChatService : IChatService
             var (senderId, receiverId) = await GetUserIds(senderUsername, request.ReceiverUsername);
 
             // Verify active chat exists
-            var hasActiveChat = await VerifyActiveChatExists(senderUsername, request.ReceiverUsername, connection);
-            if (!hasActiveChat)
+            var (chatActive, chatStatus) = await VerifyActiveChatExists(senderUsername, request.ReceiverUsername, connection);
+            if (!chatActive)
             {
-                throw new InvalidOperationException("No active chat found between users");
+                throw new InvalidOperationException(chatStatus == "disabled" ? 
+                    "Cannot send messages to a disabled chat" : 
+                    "No active chat found between users");
             }
 
             var uploadedImagePaths = new List<string>();
@@ -686,23 +690,29 @@ public class ChatService : IChatService
         return BitConverter.ToString(bytes).Replace("-", "").ToLower();
     }
 
-    private async Task<bool> VerifyActiveChatExists(string username1, string username2, NpgsqlConnection connection)
+    private async Task<(bool exists, string status)> VerifyActiveChatExists(string username1, string username2, NpgsqlConnection connection)
     {
         var query = @"
-            SELECT EXISTS (
-                SELECT 1 
-                FROM api_schema.chat c
-                JOIN api_schema.user u1 ON c.buyer_id = u1.id OR c.seller_id = u1.id
-                JOIN api_schema.user u2 ON (c.buyer_id = u2.id OR c.seller_id = u2.id) AND u2.id != u1.id
-                WHERE ((u1.username = @Username1 AND u2.username = @Username2)
-                   OR (u1.username = @Username2 AND u2.username = @Username1))
-                AND c.chat_status = 'active'::api_schema.chat_status
-            )";
+            SELECT chat_status::text
+            FROM api_schema.chat c
+            JOIN api_schema.user u1 ON c.buyer_id = u1.id OR c.seller_id = u1.id
+            JOIN api_schema.user u2 ON (c.buyer_id = u2.id OR c.seller_id = u2.id) AND u2.id != u1.id
+            WHERE ((u1.username = @Username1 AND u2.username = @Username2)
+                OR (u1.username = @Username2 AND u2.username = @Username1))
+            ORDER BY c.id DESC
+            LIMIT 1";
 
         using var cmd = new NpgsqlCommand(query, connection);
         cmd.Parameters.AddWithValue("@Username1", username1);
         cmd.Parameters.AddWithValue("@Username2", username2);
-        return (bool)await cmd.ExecuteScalarAsync();
+
+        var status = await cmd.ExecuteScalarAsync() as string;
+        return status switch
+        {
+            "active" => (true, status),
+            "disabled" => (false, status),
+            _ => (false, "nonexistent")
+        };
     }
 
     public async Task<Chat.MessageTransaction> SendTransactionMessage(string senderUsername, Chat.TransactionRequest request)
@@ -713,6 +723,15 @@ public class ChatService : IChatService
         try
         {
             var (senderId, receiverId) = await GetUserIds(senderUsername, request.ReceiverUsername);
+
+            // Verify active chat exists
+            var (chatActive, chatStatus) = await VerifyActiveChatExists(senderUsername, request.ReceiverUsername, connection);
+            if (!chatActive)
+            {
+                throw new InvalidOperationException(chatStatus == "disabled" ? 
+                    "Cannot send messages to a disabled chat" : 
+                    "No active chat found between users");
+            }
 
             // Get chat ID
             var chatQuery = @"
@@ -1057,7 +1076,7 @@ public class ChatService : IChatService
 
             // Verify active chat exists
             var hasActiveChat = await VerifyActiveChatExists(senderUsername, receiverUsername, connection);
-            if (!hasActiveChat)
+            if (!hasActiveChat.exists || hasActiveChat.status == "disabled")
             {
                 throw new InvalidOperationException("No active chat found between users");
             }
