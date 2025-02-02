@@ -369,13 +369,13 @@ public class PostController : ControllerBase
 
         try
         {
-            var success = _postService.LikePost(username, id);
-            if (success)
+            var likeResult = _postService.LikePost(username, id);
+            if (likeResult.Success)
             {
-                var isLiked = _postService.IsPostLikedByUser(username, id);
                 return Ok(new { 
-                    message = isLiked ? "Post liked successfully" : "Post unliked successfully",
-                    isLiked = isLiked
+                    message = likeResult.IsLiked ? "Post liked successfully" : "Post unliked successfully",
+                    isLiked = likeResult.IsLiked,
+                    likes = likeResult.Likes
                 });
             }
             return BadRequest(new { message = "Failed to like/unlike post" });

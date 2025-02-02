@@ -10,6 +10,13 @@ using Npgsql;
 
 namespace Back.Services;
 
+public class LikeResult
+{
+    public bool Success { get; set; }
+    public bool IsLiked { get; set; }
+    public int Likes { get; set; }
+}
+
 public class PostService : IPostService
 {
     private readonly IDatabaseService _databaseService;
@@ -948,83 +955,93 @@ public class PostService : IPostService
         }
     }
 
-    public bool LikePost(string username, long postId)
+    public LikeResult LikePost(string username, long postId)
+{
+    try
     {
+        string checkQuery = @"
+            SELECT EXISTS (
+                SELECT 1 
+                FROM api_schema.post_likes pl
+                JOIN api_schema.user u ON pl.user_id = u.id
+                WHERE u.username = @username AND pl.post_id = @postId
+            )";
+
+        var parameters = new Dictionary<string, object>
+        {
+            { "@username", username },
+            { "@postId", postId }
+        };
+
+        NpgsqlConnection connection = null;
+        NpgsqlCommand command = null;
+
         try
         {
-            // Check if already liked
-            string checkQuery = @"
-                SELECT EXISTS (
-                    SELECT 1 
-                    FROM api_schema.post_likes pl
-                    JOIN api_schema.user u ON pl.user_id = u.id
-                    WHERE u.username = @username AND pl.post_id = @postId
-                )";
-
-            var parameters = new Dictionary<string, object>
+            bool alreadyLiked = false;
+            using (var checkReader = _databaseService.ExecuteQuery(checkQuery, out connection, out command, parameters))
             {
-                { "@username", username },
-                { "@postId", postId }
+                if (checkReader.Read())
+                {
+                    alreadyLiked = checkReader.GetBoolean(0);
+                }
+            }
+
+            string query;
+            if (alreadyLiked)
+            {
+                query = @"
+                    DELETE FROM api_schema.post_likes pl
+                    USING api_schema.user u
+                    WHERE pl.user_id = u.id 
+                    AND u.username = @username 
+                    AND pl.post_id = @postId;
+
+                    UPDATE api_schema.post
+                    SET likes = likes - 1
+                    WHERE id = @postId
+                    RETURNING likes;";
+            }
+            else
+            {
+                query = @"
+                    INSERT INTO api_schema.post_likes (user_id, post_id)
+                    SELECT u.id, @postId
+                    FROM api_schema.user u
+                    WHERE u.username = @username;
+
+                    UPDATE api_schema.post
+                    SET likes = likes + 1
+                    WHERE id = @postId
+                    RETURNING likes;";
+            }
+
+            using var updateReader = _databaseService.ExecuteQuery(query, out connection, out command, parameters);
+            int newLikeCount = 0;
+            if (updateReader.Read())
+            {
+                newLikeCount = updateReader.GetInt32(0);
+            }
+
+            return new LikeResult
+            {
+                Success = true,
+                IsLiked = !alreadyLiked,
+                Likes = newLikeCount
             };
-
-            NpgsqlConnection connection = null;
-            NpgsqlCommand command = null;
-
-            try
-            {
-                bool alreadyLiked = false;
-                using (var reader = _databaseService.ExecuteQuery(checkQuery, out connection, out command, parameters))
-                {
-                    if (reader.Read())
-                    {
-                        alreadyLiked = reader.GetBoolean(0);
-                    }
-                }
-
-                string query;
-                if (alreadyLiked)
-                {
-                    // Unlike: Remove like and decrease counter
-                    query = @"
-                        DELETE FROM api_schema.post_likes pl
-                        USING api_schema.user u
-                        WHERE pl.user_id = u.id 
-                        AND u.username = @username 
-                        AND pl.post_id = @postId;
-
-                        UPDATE api_schema.post
-                        SET likes = likes - 1
-                        WHERE id = @postId;";
-                }
-                else
-                {
-                    // Like: Add like and increase counter
-                    query = @"
-                        INSERT INTO api_schema.post_likes (user_id, post_id)
-                        SELECT u.id, @postId
-                        FROM api_schema.user u
-                        WHERE u.username = @username;
-
-                        UPDATE api_schema.post
-                        SET likes = likes + 1
-                        WHERE id = @postId;";
-                }
-
-                _databaseService.ExecuteNonQuery(query, parameters);
-                return true;
-            }
-            finally
-            {
-                command?.Dispose();
-                connection?.Dispose();
-            }
         }
-        catch (Exception ex)
+        finally
         {
-            Console.WriteLine($"Error in LikePost: {ex.Message}");
-            return false;
+            command?.Dispose();
+            connection?.Dispose();
         }
     }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in LikePost: {ex.Message}");
+        return new LikeResult { Success = false };
+    }
+}
 
     public bool IsPostLikedByUser(string username, long postId)
     {
