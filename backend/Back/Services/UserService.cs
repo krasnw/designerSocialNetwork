@@ -31,7 +31,7 @@ public class UserService : IUserService
                 (SELECT COALESCE(SUM(likes), 0) FROM api_schema.post WHERE user_id = u.id) as total_likes,
                 (SELECT COUNT(*) FROM api_schema.chat 
                  WHERE (buyer_id = u.id OR seller_id = u.id) 
-                 AND chat_status = 'closed') as completed_tasks,
+                 AND chat_status = 'disabled') as completed_tasks,
                 COALESCE(r.rating, 0) as rating
             FROM api_schema.user u
             LEFT JOIN api_schema.wallet w ON u.id = w.user_id
