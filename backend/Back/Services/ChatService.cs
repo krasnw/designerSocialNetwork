@@ -143,15 +143,15 @@ public class ChatService : IChatService
             other_user.username,
             other_user.first_name,
             other_user.last_name,
-            other_user.profile_picture
-        FROM api_schema.request r
+            other_user.profile_picture,
+            c.chat_status::text as chat_status
+        FROM api_schema.chat c
         JOIN api_schema.""user"" current_u 
-            ON (current_u.id = r.buyer_id OR current_u.id = r.seller_id)
+            ON (current_u.id = c.buyer_id OR current_u.id = c.seller_id)
         JOIN api_schema.""user"" other_user 
-            ON (other_user.id = r.buyer_id OR other_user.id = r.seller_id)
+            ON (other_user.id = c.buyer_id OR other_user.id = c.seller_id)
             AND other_user.id != current_u.id
         WHERE current_u.username = @Username
-        AND r.request_status = 'accepted'
         ORDER BY other_user.username";
 
         var users = new List<Chat.UserMiniProfile>();
@@ -167,7 +167,8 @@ public class ChatService : IChatService
                 Username = reader.GetString(0),
                 FirstName = reader.GetString(1),
                 LastName = reader.GetString(2),
-                ProfileImage = reader.IsDBNull(3) ? "" : reader.GetString(3)
+                ProfileImage = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                ChatStatus = reader.GetString(4)
             });
         }
 
@@ -1012,28 +1013,27 @@ public class ChatService : IChatService
     public async Task<ChatStatusResult> GetChatStatus(string username1, string username2)
     {
         var query = @"
-            SELECT chat_status
+            SELECT chat_status::text
             FROM api_schema.chat c
             JOIN api_schema.user u1 ON c.buyer_id = u1.id OR c.seller_id = u1.id
             JOIN api_schema.user u2 ON (c.buyer_id = u2.id OR c.seller_id = u2.id) AND u2.id != u1.id
-            WHERE u1.username = @Username1 
-            AND u2.username = @Username2";
+            WHERE (u1.username = @Username1 AND u2.username = @Username2)
+               OR (u1.username = @Username2 AND u2.username = @Username1)
+            ORDER BY c.id DESC
+            LIMIT 1";
 
         using var connection = _databaseService.GetConnection();
         using var cmd = new NpgsqlCommand(query, connection);
         cmd.Parameters.AddWithValue("@Username1", username1);
         cmd.Parameters.AddWithValue("@Username2", username2);
 
-        var status = await cmd.ExecuteScalarAsync();
-        if (status == null)
-        {
-            return ChatStatusResult.NonExistent;
-        }
-
-        return status.ToString() switch
+        var status = await cmd.ExecuteScalarAsync() as string;
+        
+        return status switch
         {
             "active" => ChatStatusResult.Active,
-            "closed" => ChatStatusResult.Disabled,
+            "disabled" => ChatStatusResult.Disabled,
+            null => ChatStatusResult.NonExistent,
             _ => ChatStatusResult.NonExistent
         };
     }
@@ -1062,6 +1062,19 @@ public class ChatService : IChatService
                 throw new InvalidOperationException("No active chat found between users");
             }
 
+            // Delete any existing end request messages from this sender
+            var deleteOldRequestsQuery = @"
+                DELETE FROM api_schema.message 
+                WHERE sender_id = @SenderId 
+                AND receiver_id = @ReceiverId
+                AND type = 'EndRequest'::api_schema.message_type";
+
+            using var deleteCmd = new NpgsqlCommand(deleteOldRequestsQuery, connection, transaction);
+            deleteCmd.Parameters.AddWithValue("@SenderId", senderId);
+            deleteCmd.Parameters.AddWithValue("@ReceiverId", receiverId);
+            await deleteCmd.ExecuteNonQueryAsync();
+
+            // Rest of the existing code...
             var timestamp = DateTime.UtcNow;
             var endRequestHash = GenerateEndRequestHash(senderUsername, receiverUsername, timestamp);
 
@@ -1121,13 +1134,13 @@ public class ChatService : IChatService
 
         try
         {
-            // Get end request details with approval check
-            var getEndRequestQuery = @"
+            // First get the request and chat details
+            var getDetailsQuery = @"
                 WITH EndRequestApproval AS (
-                    SELECT message_id 
-                    FROM api_schema.message 
-                    WHERE text_content = @EndRequestHash 
-                    AND type = 'EndRequestApproval'
+                    SELECT m.id 
+                    FROM api_schema.message m
+                    WHERE m.text_content = @EndRequestHash 
+                    AND m.type = 'EndRequestApproval'
                 )
                 SELECT 
                     m.id as message_id,
@@ -1137,19 +1150,24 @@ public class ChatService : IChatService
                     receiver.username as receiver_username,
                     m.created_at,
                     c.id as chat_id,
-                    CASE WHEN era.message_id IS NOT NULL THEN true ELSE false END as is_approved
+                    r.id as request_id
                 FROM api_schema.message m
                 JOIN api_schema.user sender ON m.sender_id = sender.id
                 JOIN api_schema.user receiver ON m.receiver_id = receiver.id
                 JOIN api_schema.chat c ON (c.buyer_id = m.sender_id AND c.seller_id = m.receiver_id)
                     OR (c.buyer_id = m.receiver_id AND c.seller_id = m.sender_id)
-                LEFT JOIN EndRequestApproval era ON m.id = era.message_id
+                JOIN api_schema.request r ON (r.buyer_id = m.sender_id AND r.seller_id = m.receiver_id)
+                    OR (r.buyer_id = m.receiver_id AND r.seller_id = m.sender_id)
+                LEFT JOIN EndRequestApproval era ON m.id = era.id
                 WHERE m.text_content = @EndRequestHash
                 AND m.type = 'EndRequest'
                 AND receiver.username = @ApproverUsername
-                AND c.chat_status = 'active'";
+                AND c.chat_status = 'active'
+                AND r.request_status = 'accepted'
+                AND era.id IS NULL
+                FOR UPDATE";  // Add locking to prevent race conditions
 
-            using var cmd = new NpgsqlCommand(getEndRequestQuery, connection, transaction);
+            using var cmd = new NpgsqlCommand(getDetailsQuery, connection, transaction);
             cmd.Parameters.AddWithValue("@EndRequestHash", endRequestHash);
             cmd.Parameters.AddWithValue("@ApproverUsername", approverUsername);
 
@@ -1162,23 +1180,44 @@ public class ChatService : IChatService
             var senderUsername = reader.GetString(2);
             var receiverId = reader.GetInt32(3);
             var receiverUsername = reader.GetString(4);
-            var createdAt = reader.GetDateTime(5);
             var chatId = reader.GetInt32(6);
-            var isApproved = reader.GetBoolean(7);
+            var requestId = reader.GetInt32(7);
             reader.Close();
 
-            if (isApproved)
-                throw new InvalidOperationException("This end request has already been approved");
+            // Update both chat and request status in a single atomic operation
+            var updateStatusQuery = @"
+                WITH chat_update AS (
+                    UPDATE api_schema.chat
+                    SET 
+                        chat_status = 'disabled'::api_schema.chat_status,
+                        message_id = @MessageId
+                    WHERE id = @ChatId 
+                    AND chat_status = 'active'
+                    RETURNING id
+                ),
+                request_update AS (
+                    UPDATE api_schema.request
+                    SET request_status = 'completed'::api_schema.request_status
+                    WHERE id = @RequestId
+                    AND request_status = 'accepted'
+                    AND EXISTS (SELECT 1 FROM chat_update)
+                    RETURNING seller_id
+                )
+                UPDATE api_schema.""user""
+                SET completed_requests = completed_requests + 1
+                WHERE id = (SELECT seller_id FROM request_update)
+                RETURNING id;";
 
-            // Update chat status to disabled instead of closed
-            var updateChatQuery = @"
-                UPDATE api_schema.chat
-                SET chat_status = 'disabled'::api_schema.chat_status
-                WHERE id = @ChatId";
-
-            using var updateCmd = new NpgsqlCommand(updateChatQuery, connection, transaction);
+            using var updateCmd = new NpgsqlCommand(updateStatusQuery, connection, transaction);
             updateCmd.Parameters.AddWithValue("@ChatId", chatId);
-            await updateCmd.ExecuteNonQueryAsync();
+            updateCmd.Parameters.AddWithValue("@MessageId", messageId);
+            updateCmd.Parameters.AddWithValue("@RequestId", requestId);
+
+            var result = await updateCmd.ExecuteScalarAsync();
+            if (result == null)
+            {
+                throw new InvalidOperationException("Failed to update chat and request status");
+            }
 
             // Create approval message
             var approvalMessageQuery = @"
@@ -1218,11 +1257,10 @@ public class ChatService : IChatService
                 Type = Chat.MessageType.EndRequestApproval
             };
 
-            // Notify the sender about the approval
+            // Notify both users about the changes
             await _hubContext.Clients.User(senderUsername)
                 .SendAsync("ReceiveEndRequestApproval", approvalMessage);
 
-            // Also notify about chat status change
             await _hubContext.Clients.Users(new[] { senderUsername, receiverUsername })
                 .SendAsync("ChatStatusChanged", new { ChatId = chatId, Status = "disabled" });
 

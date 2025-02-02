@@ -32,7 +32,8 @@ CREATE TABLE api_schema."user" (
     join_date DATE NOT NULL,
     account_status account_status NOT NULL,
     account_level account_level NOT NULL,
-    access_fee DECIMAL NOT NULL
+    access_fee DECIMAL NOT NULL,
+    completed_requests INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE api_schema.payment_method (
@@ -152,7 +153,8 @@ CREATE TABLE api_schema.chat (
     seller_id INTEGER REFERENCES "user"(id),
     history_file_path VARCHAR(100) NOT NULL,
     start_date DATE NOT NULL,
-    chat_status chat_status NOT NULL
+    chat_status chat_status NOT NULL,
+    message_id INTEGER
 );
 
 CREATE TABLE api_schema.message (
@@ -265,6 +267,15 @@ CREATE INDEX idx_transaction_hash ON api_schema.transaction_message(transaction_
 CREATE INDEX idx_transaction_approved_by ON api_schema.transaction_message(approved_by_message_id);
 CREATE INDEX idx_transaction_approved_at ON api_schema.transaction_message(approved_at);
 CREATE INDEX idx_user_rating_total_likes ON api_schema.user_rating(total_likes DESC);
+
+ALTER TABLE api_schema.chat 
+    DROP CONSTRAINT IF EXISTS fk_end_request_message;
+    
+ALTER TABLE api_schema.chat 
+    ADD CONSTRAINT fk_end_request_message 
+    FOREIGN KEY (message_id) 
+    REFERENCES api_schema.message(id)
+    ON DELETE SET NULL;
 
 GRANT USAGE ON SCHEMA api_schema TO api_user;
 GRANT ALL ON ALL TABLES IN SCHEMA api_schema TO api_user;

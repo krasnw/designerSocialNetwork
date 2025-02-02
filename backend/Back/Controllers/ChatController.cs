@@ -216,8 +216,8 @@ public class ChatController : ControllerBase
     }
 
     [Authorize]
-    [HttpGet("hasOpenRequest/{otherUsername}")]
-    public async Task<ActionResult<bool>> HasOpenRequest(string otherUsername)
+    [HttpGet("status/{otherUsername}")]
+    public async Task<ActionResult<object>> GetChatStatus(string otherUsername)
     {
         var currentUsername = User.Identity?.Name;
         if (string.IsNullOrEmpty(currentUsername))
@@ -225,38 +225,24 @@ public class ChatController : ControllerBase
 
         try
         {
-            var hasOpen = await _chatService.HasOpenRequest(currentUsername, otherUsername);
-            return Ok(new { hasOpenRequest = hasOpen });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = $"Error checking request status: {ex.Message}" });
-        }
-    }
-
-    [Authorize]
-    [HttpGet("chatStatus/{otherUsername}")]
-    public async Task<ActionResult<string>> GetChatStatus(string otherUsername)
-    {
-        var currentUsername = User.Identity?.Name;
-        if (string.IsNullOrEmpty(currentUsername))
-            return Unauthorized(new { message = "Blame the token, relog please" });
-
-        try
-        {
-            var status = await _chatService.GetChatStatus(currentUsername, otherUsername);
-            var statusString = status switch
+            var hasOpenRequest = await _chatService.HasOpenRequest(currentUsername, otherUsername);
+            var chatStatus = await _chatService.GetChatStatus(currentUsername, otherUsername);
+            var statusString = chatStatus switch
             {
                 ChatStatusResult.Active => "active",
                 ChatStatusResult.Disabled => "disabled",
                 ChatStatusResult.NonExistent => "does not exist",
                 _ => "unknown"
             };
-            return Ok(new { chatStatus = statusString });
+            
+            return Ok(new { 
+                hasOpenRequest = hasOpenRequest,
+                chatStatus = statusString 
+            });
         }
         catch (Exception ex)
         {
-            return BadRequest(new { message = $"Error retrieving chat status: {ex.Message}" });
+            return BadRequest(new { message = $"Error retrieving status: {ex.Message}" });
         }
     }
 

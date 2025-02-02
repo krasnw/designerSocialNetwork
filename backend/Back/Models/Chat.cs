@@ -33,6 +33,7 @@ public class Chat
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string ProfileImage { get; set; }
+        public string ChatStatus { get; set; }  // Add this property
     }
 
     // Message DTOs - all in one place
