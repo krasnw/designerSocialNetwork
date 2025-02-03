@@ -298,6 +298,31 @@ public class ChatService : IChatService
                 createCmd.Parameters.AddWithValue("@HistoryPath", 
                     $"/chats/chat_{buyerId}{sellerId}_{DateTime.UtcNow.Ticks}.txt");
                 existingChatId = await createCmd.ExecuteScalarAsync();
+
+                // Add initial message with request description
+                var insertMessageQuery = @"
+                    INSERT INTO api_schema.message (
+                        sender_id,
+                        receiver_id,
+                        text_content,
+                        type,
+                        created_at,
+                        is_read
+                    )
+                    SELECT 
+                        r.buyer_id,
+                        r.seller_id,
+                        r.request_description,
+                        'Text'::api_schema.message_type,
+                        CURRENT_TIMESTAMP,
+                        true
+                    FROM api_schema.request r
+                    WHERE r.id = @RequestId
+                    RETURNING id";
+
+                using var msgCmd = new NpgsqlCommand(insertMessageQuery, connection, transaction);
+                msgCmd.Parameters.AddWithValue("@RequestId", requestId);
+                await msgCmd.ExecuteNonQueryAsync();
             }
 
             // Update request status
