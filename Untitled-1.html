@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>WebSocket Test</title>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+		<style>
+			.message {
+				margin: 10px 0;
+				padding: 8px;
+				border: 1px solid #ddd;
+			}
+			.error {
+				color: red;
+			}
+			.success {
+				color: green;
+			}
+		</style>
+	</head>
+	<body>
+		<div>
+			<label for="jwtToken">JWT Token:</label>
+			<input
+				type="text"
+				id="jwtToken"
+				style="width: 300px"
+				placeholder="Paste your JWT token here" />
+			<button onclick="connect()">Connect with Token</button>
+		</div>
+		<div id="connectionStatus">Disconnected</div>
+		<div>
+			<button onclick="testConnection()">Test Connection</button>
+		</div>
+		<div id="messages"></div>
+
+		<script>
+			let connection;
+
+			function createConnection(token) {
+				return new signalR.HubConnectionBuilder()
+					.withUrl("http://localhost:8088/chathub", {
+						accessTokenFactory: () => token,
+						skipNegotiation: true,
+						transport: signalR.HttpTransportType.WebSockets,
+						headers: {
+							Authorization: `Bearer ${token}`,
+						},
+					})
+					.withAutomaticReconnect()
+					.configureLogging(signalR.LogLevel.Debug)
+					.build();
+			}
+
+			function addMessage(message, type = "normal") {
+				const messagesDiv = document.getElementById("messages");
+				const messageDiv = document.createElement("div");
+				messageDiv.className = `message ${type}`;
+				messageDiv.textContent =
+					typeof message === "object"
+						? JSON.stringify(message, null, 2)
+						: message;
+				messagesDiv.insertBefore(messageDiv, messagesDiv.firstChild);
+			}
+
+			async function connect() {
+				const token = document.getElementById("jwtToken").value;
+				if (!token) {
+					addMessage("Please enter a JWT token", "error");
+					return;
+				}
+
+				try {
+					// Disconnect existing connection if any
+					if (connection) {
+						await connection.stop();
+					}
+
+					connection = createConnection(token);
+
+					// Set up message handlers
+					connection.on("ReceiveMessage", (message) => {
+						console.log("Received message:", message);
+						addMessage(message, "success");
+					});
+
+					connection.on("TestResponse", (message) => {
+						console.log("Test response:", message);
+						addMessage(message, "success");
+					});
+
+					connection.on("ReceiveTransactionMessage", (message) => {
+						console.log("Transaction message:", message);
+						addMessage(message, "success");
+					});
+
+					connection.on("ReceiveTransactionApproval", (approval) => {
+						console.log("Transaction approval:", approval);
+						addMessage(approval, "success");
+					});
+
+					connection.on("ReceiveEndRequestMessage", (request) => {
+						console.log("End request:", request);
+						addMessage(request, "success");
+					});
+
+					connection.on("ReceiveEndRequestApproval", (approval) => {
+						console.log("End request approval:", approval);
+						addMessage(approval, "success");
+					});
+
+					connection.onreconnecting((error) => {
+						console.log("Reconnecting...", error);
+						document.getElementById(
+							"connectionStatus"
+						).textContent = "Reconnecting...";
+					});
+
+					connection.onreconnected((connectionId) => {
+						console.log("Reconnected.", connectionId);
+						document.getElementById(
+							"connectionStatus"
+						).textContent = "Connected";
+					});
+
+					connection.onclose((error) => {
+						console.log("Connection closed.", error);
+						document.getElementById(
+							"connectionStatus"
+						).textContent = "Disconnected";
+					});
+
+					// Start the connection
+					await connection.start();
+					const decodedToken = JSON.parse(atob(token.split(".")[1]));
+					const username = decodedToken.unique_name;
+					addMessage(`Connected as ${username}`, "success");
+					console.log("Connected successfully!");
+					document.getElementById("connectionStatus").textContent =
+						"Connected";
+					addMessage("Connected successfully!", "success");
+				} catch (err) {
+					console.error("Connection failed:", err);
+					document.getElementById("connectionStatus").textContent =
+						"Connection Failed";
+					addMessage(`Connection failed: ${err.message}`, "error");
+				}
+			}
+
+			async function testConnection() {
+				if (!connection || connection.state !== "Connected") {
+					addMessage("Not connected! Please connect first.", "error");
+					return;
+				}
+
+				try {
+					await connection.invoke("TestConnection");
+					console.log("Test message sent");
+				} catch (err) {
+					console.error("Error:", err);
+					addMessage(`Error: ${err.message}`, "error");
+				}
+			}
+		</script>
+	</body>
+</html>
