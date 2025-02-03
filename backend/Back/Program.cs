@@ -96,7 +96,18 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers();
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(hubOptions =>
+{
+    hubOptions.EnableDetailedErrors = true;
+    hubOptions.KeepAliveInterval = TimeSpan.FromSeconds(15);
+    hubOptions.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+    hubOptions.HandshakeTimeout = TimeSpan.FromSeconds(15);
+    hubOptions.MaximumReceiveMessageSize = 32 * 1024; // 32KB
+})
+.AddJsonProtocol(options =>
+{
+    options.PayloadSerializerOptions.PropertyNamingPolicy = null;
+});
 
 var app = builder.Build();
 
@@ -146,6 +157,12 @@ app.Use(async (context, next) =>
 
 app.MapControllers();
 app.MapHub<ChatHub>("/chathub");
+
+// Add WebSocket support
+app.UseWebSockets(new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromSeconds(120),
+});
 
 try
 {
