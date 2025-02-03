@@ -35,10 +35,10 @@ public enum ChatStatusResult
 public class ChatService : IChatService
 {
     private readonly IDatabaseService _databaseService;
-    private readonly IHubContext<ChatHub> _hubContext;
+    private readonly IHubContext<ChatHub, IChatClient> _hubContext; // Update type
     private readonly IImageService _imageService;
 
-    public ChatService(IDatabaseService databaseService, IHubContext<ChatHub> hubContext, IImageService imageService)
+    public ChatService(IDatabaseService databaseService, IHubContext<ChatHub, IChatClient> hubContext, IImageService imageService)
     {
         _databaseService = databaseService;
         _hubContext = hubContext;
@@ -182,7 +182,7 @@ public class ChatService : IChatService
                 SELECT 1 
                 FROM api_schema.chat 
                 WHERE (buyer_id = @BuyerId AND seller_id = @SellerId)
-                OR (buyer_id = @SellerId AND seller_id = @BuyerId)
+                OR (buyer_id = @SellerId AND buyer_id = @BuyerId)
             )";
 
         using var cmd = new NpgsqlCommand(query, connection);
@@ -313,7 +313,7 @@ public class ChatService : IChatService
                         r.buyer_id,
                         r.seller_id,
                         r.request_description,
-                        'Text'::api_schema.message_type,
+                        'Complex'::api_schema.message_type,
                         CURRENT_TIMESTAMP,
                         true
                     FROM api_schema.request r
@@ -392,73 +392,6 @@ public class ChatService : IChatService
         {
             Console.WriteLine($"Error deleting request: {ex.Message}");
             return false;
-        }
-    }
-
-    public async Task<Chat.MessageText> SendTextMessage(string senderUsername, string receiverUsername, string content)
-    {
-        using var connection = _databaseService.GetConnection();
-        using var transaction = connection.BeginTransaction();
-
-        try
-        {
-            var (senderId, receiverId) = await GetUserIds(senderUsername, receiverUsername);
-
-            // Verify active chat exists
-            var (chatActive, chatStatus) = await VerifyActiveChatExists(senderUsername, receiverUsername, connection);
-            if (!chatActive)
-            {
-                throw new InvalidOperationException(chatStatus == "disabled" ? 
-                    "Cannot send messages to a disabled chat" : 
-                    "No active chat found between users");
-            }
-
-            var insertQuery = @"
-                INSERT INTO api_schema.message (
-                    sender_id, 
-                    receiver_id, 
-                    text_content, 
-                    type, 
-                    created_at
-                )
-                VALUES (
-                    @SenderId, 
-                    @ReceiverId, 
-                    @TextContent, 
-                    'Text'::api_schema.message_type, 
-                    @CreatedAt
-                )
-                RETURNING id";
-
-            using var cmd = new NpgsqlCommand(insertQuery, connection, transaction);
-            cmd.Parameters.AddWithValue("@SenderId", senderId);
-            cmd.Parameters.AddWithValue("@ReceiverId", receiverId);
-            cmd.Parameters.AddWithValue("@TextContent", content);
-            cmd.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow);
-
-            var messageId = (int)await cmd.ExecuteScalarAsync();
-            await transaction.CommitAsync();
-
-            var message = new Chat.MessageText
-            {
-                Id = messageId,
-                SenderId = senderId,
-                SenderUsername = senderUsername,
-                ReceiverId = receiverId,
-                ReceiverUsername = receiverUsername,
-                TextContent = content,
-                Type = Chat.MessageType.Text
-            };
-
-            await _hubContext.Clients.User(receiverUsername)
-                .SendAsync("ReceiveMessage", message);
-
-            return message;
-        }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
         }
     }
 
@@ -547,8 +480,8 @@ public class ChatService : IChatService
                 Type = Chat.MessageType.Complex
             };
 
-            await _hubContext.Clients.User(request.ReceiverUsername)
-                .SendAsync("ReceiveMessage", message);
+            // Fix: Replace incorrect SendMessage call with SendAsync
+            await _hubContext.Clients.User(request.ReceiverUsername).ReceiveMessage(message);
 
             return message;
         }
@@ -623,17 +556,6 @@ public class ChatService : IChatService
                 var type = Enum.Parse<Chat.MessageType>(reader.GetString(6));
                 object message = type switch
                 {
-                    Chat.MessageType.Text => new Chat.MessageText
-                    {
-                        Id = reader.GetInt32(0),
-                        SenderId = reader.GetInt32(1),
-                        SenderUsername = reader.GetString(2),
-                        ReceiverId = reader.GetInt32(3),
-                        ReceiverUsername = reader.GetString(4),
-                        TextContent = reader.GetString(5),
-                        Type = type
-                    },
-
                     Chat.MessageType.Complex => new Chat.MessageComplex
                     {
                         Id = reader.GetInt32(0),
@@ -830,8 +752,7 @@ public class ChatService : IChatService
                 CreatedAt = timestamp
             };
 
-            await _hubContext.Clients.User(request.ReceiverUsername)
-                .SendAsync("ReceiveTransactionMessage", message);
+            await _hubContext.Clients.User(request.ReceiverUsername).ReceiveTransactionMessage(message);
 
             return message;
         }
@@ -931,7 +852,7 @@ public class ChatService : IChatService
             };
 
             await _hubContext.Clients.User(senderUsername)
-                .SendAsync("ReceiveTransactionApproval", approvalMessage);
+                .ReceiveTransactionApproval(approvalMessage);
 
             await transaction.CommitAsync();
             return approvalMessage;
@@ -1160,7 +1081,7 @@ public class ChatService : IChatService
             };
 
             await _hubContext.Clients.User(receiverUsername)
-                .SendAsync("ReceiveEndRequestMessage", message);
+                .ReceiveEndRequestMessage(message);
 
             return message;
         }
@@ -1298,15 +1219,16 @@ public class ChatService : IChatService
                 ApprovedBy = approverUsername,
                 ApprovedAt = DateTime.UtcNow,
                 EndRequestHash = endRequestHash,
-                Type = Chat.MessageType.EndRequestApproval
+                Type = Chat.MessageType.EndRequestApproval,
+                ReceiverUsername = senderUsername // Add this line
             };
 
-            // Notify both users about the changes
+            // Fix: Replace incorrect method calls with SendAsync
             await _hubContext.Clients.User(senderUsername)
-                .SendAsync("ReceiveEndRequestApproval", approvalMessage);
+                .ReceiveEndRequestApproval(approvalMessage);
 
             await _hubContext.Clients.Users(new[] { senderUsername, receiverUsername })
-                .SendAsync("ChatStatusChanged", new { ChatId = chatId, Status = "disabled" });
+                .ChatStatusChanged(new { ChatId = chatId, Status = "disabled" });
 
             return approvalMessage;
         }

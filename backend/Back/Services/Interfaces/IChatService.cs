@@ -13,7 +13,7 @@ namespace Back.Services.Interfaces
         Task<bool> HasOpenRequest(string username1, string username2);
 
         // Message handling
-        Task<Chat.MessageText> SendTextMessage(string senderUsername, string receiverUsername, string content);
+        // Task<Chat.MessageText> SendTextMessage(string senderUsername, string receiverUsername, string content);
         Task<Chat.MessageComplex> SendComplexMessage(string senderUsername, Chat.MessageRequest request);
         Task<List<object>> GetConversation(string user1Username, string user2Username);
 
