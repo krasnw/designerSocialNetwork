@@ -65,9 +65,12 @@ namespace Back.Models
             if (string.IsNullOrEmpty(senderUsername))
                 throw new HubException("Unauthorized");
 
+            _logger.LogInformation($"Sending message from {senderUsername} to {message.ReceiverUsername}");
             var result = await _chatService.SendComplexMessage(senderUsername, message);
+            _logger.LogInformation($"Message compiled: {result}");
             await Clients.User(message.ReceiverUsername)
                 .SendAsync("ReceiveMessage", result);
+            _logger.LogInformation($"Message sent to {message.ReceiverUsername}");
         }
 
         public async Task SendTransactionMessage(Chat.TransactionRequest request)
