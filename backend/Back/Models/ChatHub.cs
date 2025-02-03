@@ -21,8 +21,11 @@ namespace Back.Models
             try
             {
                 var username = Context.User?.Identity?.Name;
+                _logger.LogInformation($"Connection attempt - User identity: {Context.User?.Identity?.IsAuthenticated}, Username: {username}");
+                
                 if (string.IsNullOrEmpty(username))
                 {
+                    _logger.LogWarning("Unauthorized connection attempt - no username");
                     throw new HubException("Unauthorized connection attempt");
                 }
 
@@ -76,6 +79,21 @@ namespace Back.Models
             var result = await _chatService.SendTransactionMessage(senderUsername, request);
             await Clients.User(request.ReceiverUsername)
                 .SendAsync("ReceiveTransactionMessage", result);
+        }
+
+        public async Task TestConnection()
+        {
+            try
+            {
+                var username = Context.User?.Identity?.Name ?? "Anonymous";
+                await Clients.Caller.SendAsync("TestResponse", $"Connection successful for {username}");
+                _logger.LogInformation($"Test connection successful for user {username}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Test connection failed: {ex.Message}");
+                throw;
+            }
         }
     }
 }
