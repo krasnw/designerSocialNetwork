@@ -37,12 +37,14 @@ public class ChatService : IChatService
     private readonly IDatabaseService _databaseService;
     private readonly IHubContext<ChatHub, IChatClient> _hubContext; // Update type
     private readonly IImageService _imageService;
+    private readonly ILogger<ChatService> _logger; // Add this line
 
-    public ChatService(IDatabaseService databaseService, IHubContext<ChatHub, IChatClient> hubContext, IImageService imageService)
+    public ChatService(IDatabaseService databaseService, IHubContext<ChatHub, IChatClient> hubContext, IImageService imageService, ILogger<ChatService> logger) // Add logger parameter
     {
         _databaseService = databaseService;
         _hubContext = hubContext;
         _imageService = imageService;
+        _logger = logger; // Initialize logger
     }
 
     public ChatRequestResult SendRequest(string username, Chat.Request request)
@@ -485,8 +487,9 @@ public class ChatService : IChatService
 
             return message;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError($"Error sending message: {ex.Message}");
             await transaction.RollbackAsync();
             throw;
         }

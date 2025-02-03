@@ -18,11 +18,29 @@ namespace Back.Models
         public override async Task OnConnectedAsync()
         {
             var username = Context.User?.Identity?.Name;
+            _logger.LogInformation($"User attempting to connect: {username}");
+            
             if (!string.IsNullOrEmpty(username))
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, username);
+                _logger.LogInformation($"User {username} connected with connection ID {Context.ConnectionId}");
+            }
+            else
+            {
+                _logger.LogWarning($"Connection attempted without username. ConnectionId: {Context.ConnectionId}");
             }
             await base.OnConnectedAsync();
+        }
+
+        public override async Task OnDisconnectedAsync(Exception? exception)
+        {
+            var username = Context.User?.Identity?.Name;
+            if (!string.IsNullOrEmpty(username))
+            {
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, username);
+                _logger.LogInformation($"User {username} disconnected");
+            }
+            await base.OnDisconnectedAsync(exception);
         }
 
         public async Task SendMessage(Chat.MessageRequest message)
@@ -87,6 +105,20 @@ namespace Back.Models
         public async Task SendMessageStatus(string username, object status)
         {
             await Clients.User(username).MessageStatus(status);
+        }
+
+        public async Task TestConnection()
+        {
+            try
+            {
+                await Clients.Caller.TestResponse("Test message from server");
+                _logger.LogInformation("Test message sent successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error in TestConnection: {ex.Message}");
+                throw;
+            }
         }
     }
 }
