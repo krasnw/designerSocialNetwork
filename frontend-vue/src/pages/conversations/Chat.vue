@@ -25,7 +25,18 @@ export default {
   },
   async created() {
     await chatMessagesService.connect();
-
+    this.unsubscribe = chatMessagesService.onMessage(async (messagePromise) => {
+      try {
+        console.log("Message received:", messagePromise);
+        const message = await messagePromise;
+        this.addToMessages(message);
+        this.$nextTick(() => {
+          this.scrollToBottom();
+        });
+      } catch (error) {
+        console.error('Error processing message:', error);
+      }
+    });
   },
   beforeDestroy() {
     if (this.unsubscribe) {
@@ -40,8 +51,17 @@ export default {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
       }
     },
+    transformMessageKeys(message) {
+      return Object.keys(message).reduce((acc, key) => {
+        const newKey = key.charAt(0).toLowerCase() + key.slice(1);
+        acc[newKey] = message[key];
+        return acc;
+      }, {});
+    },
     addToMessages(message) {
-      this.messages.push(message);
+      const transformedMessage = this.transformMessageKeys(message);
+      console.log('Adding message:', transformedMessage);
+      this.messages.push(transformedMessage);
     }
   }
 };
