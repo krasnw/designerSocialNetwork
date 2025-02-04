@@ -1,6 +1,6 @@
-﻿namespace Back.Services;
+﻿namespace AdminPanel.Services;
 
-using Back.Services.Interfaces;
+using AdminPanel.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
@@ -88,6 +88,27 @@ public class AuthService : IAuthService
         return tokenHandler.WriteToken(token);
     }
     
+    public string? GenerateAdminToken(string username)
+    {
+        if (string.IsNullOrEmpty(_secretKey)) return null;
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new Claim[]
+            {
+                new Claim(ClaimTypes.Name, username),
+                new Claim(ClaimTypes.Role, "Admin")  // Set role as Admin
+            }),
+            Expires = DateTime.UtcNow.Add(_tokenLifetime),
+            Issuer = _issuer,
+            Audience = _audience,
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(_keyBytes), SecurityAlgorithms.HmacSha256Signature)
+        };
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        return tokenHandler.WriteToken(token);
+    }
+
     public string? RenewToken(string token)
     {
         var principal = ValidateToken(token);

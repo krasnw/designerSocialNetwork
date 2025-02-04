@@ -1,12 +1,11 @@
-using Back.Services;
-using Back.Services.Interfaces;
+using AdminPanel.Services;
+using AdminPanel.Services.Interfaces;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.SignalR;
-using Back.Models;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
@@ -14,7 +13,7 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     WebRootPath = "wwwroot"
 });
 
-DotNetEnv.Env.Load();
+dotenv.net.DotEnv.Load();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -47,8 +46,10 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Services.AddScoped<IDatabaseService, DatabaseService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IReportHandlerService, ReportHandlerService>();
 
-DotNetEnv.Env.Load();
+dotenv.net.DotEnv.Load();
 
 // Get JWT settings from environment variables
 var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER");

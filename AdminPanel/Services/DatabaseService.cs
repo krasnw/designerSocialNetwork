@@ -1,11 +1,11 @@
 ﻿using System.Data;
 using System.Data.Common;
 using Npgsql;
-using Back.Services.Interfaces;
+using AdminPanel.Services.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace Back.Services;
+namespace AdminPanel.Services;
 
 public class DatabaseService : IDatabaseService, IDisposable
 {
@@ -86,7 +86,7 @@ public class DatabaseService : IDatabaseService, IDisposable
         command.ExecuteNonQuery();
     }
 
-    public async Task ExecuteNonQueryAsync(string query, Dictionary<string, object>? parameters = null)
+    public async Task<int> ExecuteNonQueryAsync(string query, Dictionary<string, object>? parameters = null)
     {
         using var connection = GetConnection();
         using var command = new NpgsqlCommand(query, connection);
@@ -97,7 +97,7 @@ public class DatabaseService : IDatabaseService, IDisposable
                 command.Parameters.AddWithValue(param.Key, param.Value);
             }
         }
-        await command.ExecuteNonQueryAsync();
+        return await command.ExecuteNonQueryAsync();
     }
 
     public DbDataReader ExecuteQuery(string query, out NpgsqlConnection connection, out NpgsqlCommand command,

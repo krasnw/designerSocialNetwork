@@ -1,41 +1,3 @@
-# Database. path: ./database
-# FROM postgres:latest
-
-# ENV POSTGRES_USER=api_user
-# ENV POSTGRES_PASSWORD=api_user_password
-# ENV POSTGRES_DB=api_database
-
-# COPY ./scripts/01-init.sql /docker-entrypoint-initdb.d/
-# COPY ./scripts/02-dataToDatabase.sql /docker-entrypoint-initdb.d/
-
-# EXPOSE 5432
-
-# Server path: ./backend/Back
-# FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-# USER app
-# WORKDIR /app
-# EXPOSE 8080
-# EXPOSE 8081
-
-# FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-# ARG BUILD_CONFIGURATION=Release
-# WORKDIR /src
-# COPY ["Back/Back.csproj", "Back/"]
-# RUN dotnet restore "./Back/Back.csproj"
-# COPY . .
-# WORKDIR "/src/Back"
-# RUN dotnet build "./Back.csproj" -c $BUILD_CONFIGURATION -o /app/build
-
-# FROM build AS publish
-# ARG BUILD_CONFIGURATION=Release
-# RUN dotnet publish "./Back.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
-
-# FROM base AS final
-# WORKDIR /app
-# COPY --from=publish /app/publish .
-# ENTRYPOINT ["dotnet", "Back.dll"]
-version: "3.8"
-
 services:
     database:
         build:
@@ -75,6 +37,31 @@ services:
                 condition: service_healthy
         healthcheck:
             test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
+
+    adminpanel:
+        build:
+            context: ./AdminPanel
+            dockerfile: Dockerfile
+        environment:
+            - ASPNETCORE_ENVIRONMENT=Development
+            - ConnectionStrings__DefaultConnection=Host=database;Port=5432;Database=api_database;Username=api_user;Password=api_user_password
+            - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+            - JWT_ISSUER=${JWT_ISSUER}
+            - JWT_AUDIENCE=${JWT_AUDIENCE}
+        ports:
+            - "8082:8082"
+            - "8083:8083"
+        networks:
+            - api-network
+        depends_on:
+            database:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
             interval: 30s
             timeout: 10s
             retries: 3

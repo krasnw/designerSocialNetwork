@@ -171,31 +171,31 @@ VALUES
 ('Inne', 'post');
 
 
-INSERT INTO api_schema.user_report (reporter_id, reported_id, reason_id, report_date)
+INSERT INTO api_schema.user_report (reporter_id, reported_id, reason_id, report_date, status)
 VALUES
-(1, 2, 1, '2024-01-15'),
-(2, 3, 2, '2024-02-15'),
-(3, 4, 3, '2024-03-15'),
-(4, 5, 4, '2024-04-15'),
-(5, 6, 5, '2024-05-15');
+(1, 2, 1, '2024-01-15', 'pending'),
+(2, 3, 2, '2024-02-15', 'pending'),
+(3, 4, 3, '2024-03-15', 'resolved'),
+(4, 5, 4, '2024-04-15', 'pending'),
+(5, 6, 5, '2024-05-15', 'dismissed');
 
 
 
-INSERT INTO api_schema.post_report (reporter_id, reported_id, reason_id, report_date)
+INSERT INTO api_schema.post_report (reporter_id, reported_id, reason_id, report_date, status)
 VALUES
-(1, 1, 1, '2024-01-25'),
-(2, 2, 2, '2024-02-25'),
-(3, 3, 3, '2024-03-25'),
-(4, 4, 4, '2024-04-25'),
-(5, 5, 5, '2024-05-25');
+(1, 1, 1, '2024-01-25', 'pending'),
+(2, 2, 2, '2024-02-25', 'resolved'),
+(3, 3, 3, '2024-03-25', 'pending'),
+(4, 4, 4, '2024-04-25', 'dismissed'),
+(5, 5, 5, '2024-05-25', 'pending');
 
 
-INSERT INTO api_schema.image_report (reporter_id, reported_id, reason_id, report_date)
+INSERT INTO api_schema.image_report (reporter_id, reported_id, reason_id, report_date, status)
 VALUES
-(1, 1, 1, '2024-01-30'),
-(2, 2, 2, '2024-02-25'),
-(3, 3, 3, '2024-03-30'),
-(4, 4, 4, '2024-04-30');
+(1, 1, 1, '2024-01-30', 'pending'),
+(2, 2, 2, '2024-02-25', 'resolved'),
+(3, 3, 3, '2024-03-30', 'pending'),
+(4, 4, 4, '2024-04-30', 'dismissed');
 
 -- Add this new section instead
 INSERT INTO api_schema.user_rating (user_id, total_likes, last_updated)
