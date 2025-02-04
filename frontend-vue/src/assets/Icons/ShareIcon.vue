@@ -1,17 +1,11 @@
 <script>
 export default {
   name: 'ShareIcon',
-  methods: {
-    share() {
-      alert('Share this post');
-    }
-  }
 }
 </script>
 
 <template>
-  <svg class="share" @click="share" width="18" height="16" viewBox="0 0 18 16" fill="none"
-    xmlns="http://www.w3.org/2000/svg">
+  <svg class="share" width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path class="share-path" d="M17 8L10.6 1V4.5C7.4 4.5 1 6.6 1 15C1 13.833 2.92 11.5 10.6 11.5V15L17 8Z"
       stroke="white" stroke-opacity="0.6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
   </svg>

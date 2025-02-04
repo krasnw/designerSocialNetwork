@@ -3,6 +3,7 @@ import ReloadIcon from '@/assets/Icons/ReloadIcon.vue';
 import TagView from '../TagView.vue';
 import { filterTagService } from '@/services/filterTag';
 
+
 export default {
   name: "Filter",
   components: {

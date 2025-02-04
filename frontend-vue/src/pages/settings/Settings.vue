@@ -118,6 +118,10 @@ export default {
       <section class="settings background" v-if="isLoggedIn()">
         <h3>Ustawienia konta</h3>
         <article class="settings-cell">
+          <p>Zmiana danych użytkownika</p>
+          <button class="button" @click="$router.push('profile/me/edit')">Przejdź</button>
+        </article>
+        <article class="settings-cell">
           <p>Wylogowanie z aktywnego konta</p>
           <button class="button" @click="logout">Wyloguj się</button>
         </article>

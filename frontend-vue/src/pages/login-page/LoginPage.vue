@@ -63,8 +63,8 @@ export default {
     <h2 class="page-name">Zaloguj się</h2>
     <section>
       <form class="login-form background" @submit="handleLogin">
-        <input type="text" v-model="username" class="input" :class="{ 'error': usernameError }" placeholder="Email"
-          @blur="validateField('username')" />
+        <input type="text" v-model="username" class="input" :class="{ 'error': usernameError }"
+          placeholder="Nazwa użytkownika" @blur="validateField('username')" />
         <input type="password" v-model="password" class="input" :class="{ 'error': passwordError }" placeholder="Hasło"
           @blur="validateField('password')" />
         <button type="submit" class="button">Zaloguj się

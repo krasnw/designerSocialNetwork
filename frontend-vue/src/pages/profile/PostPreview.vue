@@ -2,12 +2,19 @@
 import LikeIcon from '@/assets/Icons/LikeIcon.vue';
 import PostView from '@/components/PostView.vue';
 import { postsContentService } from '@/services/postsContent';
+import Spinner from '@/assets/Icons/Spinner.vue';
+import { imageDirectory } from '@/services/constants';
+import Lock from '@/assets/Icons/Lock.vue';
+import Link from '@/assets/Icons/Link.vue';
 
 export default {
   name: 'PostPreview',
   components: {
     LikeIcon,
-    PostView
+    PostView,
+    Spinner,
+    Lock,
+    Link
   },
   data() {
     return {
@@ -29,6 +36,9 @@ export default {
         return (likes / 1000).toFixed(1).replace('.', ',') + ' K';
       }
       return likes;
+    },
+    imagePath() {
+      return imageDirectory + this.post.mainImageFilePath;
     }
   },
   methods: {
@@ -38,13 +48,15 @@ export default {
         this.isLoading = false;
       });
       this.fullPostVisible = true;
+      await console.log(this.fullPost);
     },
     hidePost() {
       this.fullPostVisible = false;
     },
     async deletePost() {
       await postsContentService.deletePost(this.post.id);
-      this.$root.reloadView();
+      this.hidePost();
+      await this.$root.reloadView();
     },
   }
 }
@@ -53,12 +65,14 @@ export default {
 <template>
   <section class="post-wrapper">
     <article v-if="!fullPostVisible" class="post-preview background" @click="showPost">
-      <img class="post-preview-img" :src="post.image" alt="post.title" onmousedown='return false;'
+      <img class="post-preview-img" :src="imagePath" alt="post.title" onmousedown='return false;'
         ondragstart='return false;'>
       <span class="post-preview-info background">
         <h4 class="post-preview-title">{{ post.title }}</h4>
         <span class="post-like">
-          <LikeIcon />
+          <Link v-if="post.access === 'protected'" />
+          <Lock v-if="post.access === 'private'" />
+          <LikeIcon :isLiked="post.isLiked" />
           <h4>{{ formattedLikes }}</h4>
         </span>
       </span>
@@ -105,8 +119,8 @@ export default {
 }
 
 .post-preview-img {
-  margin: 20px;
-  border-radius: 10px;
+  margin: 15px;
+  border-radius: 5px;
   width: 420px;
   height: 270px;
   object-fit: cover;

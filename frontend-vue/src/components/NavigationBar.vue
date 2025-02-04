@@ -5,16 +5,17 @@ import FeedIcon from '@/assets/Icons/FeedIcon.vue';
 import RankingIcon from '@/assets/Icons/RankingIcon.vue';
 import SettingsIcon from '@/assets/Icons/SettingsIcon.vue';
 import TaskListIcon from '@/assets/Icons/TaskListIcon.vue';
+import { markRaw } from 'vue'
 
 export default {
   name: "NavigationBar",
   components: {
-    AddPostIcon,
-    ConversationsIcon,
-    FeedIcon,
-    RankingIcon,
-    SettingsIcon,
-    TaskListIcon,
+    AddPostIcon: markRaw(AddPostIcon),
+    ConversationsIcon: markRaw(ConversationsIcon),
+    FeedIcon: markRaw(FeedIcon),
+    RankingIcon: markRaw(RankingIcon),
+    SettingsIcon: markRaw(SettingsIcon),
+    TaskListIcon: markRaw(TaskListIcon),
   },
   data() {
     return {
@@ -37,7 +38,7 @@ export default {
       });
     },
     currentRoute() {
-      return this.$route.name
+      return this.$route.name === 'chat' ? 'conversations' : this.$route.name;
     }
   },
 

@@ -39,6 +39,9 @@ export default {
       // page flags
       activePage: 1,
       showSuccess: false,
+      protectedPost: false,
+      protectedLink: '',
+      isCopied: false,
     }
   },
   computed: {
@@ -189,17 +192,26 @@ export default {
       this.mainImageIndex = index;
     },
 
+    async copyLink() {
+      const fullLink = `http://localhost:8080/post/protected/${this.protectedLink}`;
+      try {
+        await navigator.clipboard.writeText(fullLink);
+        this.isCopied = true;
+      } catch (err) {
+        console.error('Failed to copy link:', err);
+      }
+    },
+
     async publishPost() {
       try {
+        this.isCopied = false;
         const formData = new FormData();
         formData.append('Title', this.title);
         formData.append('Content', this.content);
         formData.append('MainImageIndex', this.mainImageIndex);
         formData.append('AccessLevel', this.accessLevel);
-
-        // Append all selected tags
         this.selectedOptions.forEach(tag => {
-          formData.append('Tags', tag.split(': ')[1]); // Extract tag value after ': '
+          formData.append('Tags', tag.split(': ')[1]);
         });
 
         // Append all images
@@ -207,11 +219,15 @@ export default {
           formData.append('Images', image.file);
         });
 
-        await postsContentService.createPost(formData);
+        const response = await postsContentService.createPost(formData);
+        this.protectedPost = response.access === 'protected';
+        if (this.protectedPost) {
+          this.protectedLink = response.protectedAccessLink;
+        }
+        this.activePage = 3;
         this.showSuccess = true;
       } catch (error) {
         console.error('Failed to publish post:', error);
-        // Here you might want to add error handling UI feedback
       }
     }
   }
@@ -337,34 +353,50 @@ export default {
       </section>
 
       <!-- third page of the form -->
-      <section v-if="showSuccess">
-        <section class="background no-select">
+      <section v-if="showSuccess" class="post-info">
+        <section class="success-message background no-select">
           <h3>Post jest wysłany</h3>
-          <p>Przejdź do profilu</p>
+          <p v-if="protectedPost" class="advice">Post jest zapisany jako <span class="green-gradient">chroniony</span>,
+            jest dostępny dla
+            ciebie w profilu w
+            zakładce <span class="red-gradient">Prywatne</span>
+            <br />
+            Dla wszystkich jest dostępny po prez <a @click="copyLink">Link</a>, <span v-if="isCopied"
+              class="green-gradient">Skopiowane</span><span v-else>kliknij aby skopiować</span>
+          </p>
+          <a class="link" @click="this.$router.push('profile/me')">Przejdź do profilu</a>
         </section>
 
         <span>
           <button class="button" @click="activePage = 1; showSuccess = false">Dodaj kolejny</button>
         </span>
       </section>
-
-      <section class="debug background">
-        <h3>Debug section only for dev</h3>
-        <pre>title: {{ title }}</pre>
-        <pre>content: {{ content }}</pre>
-        <pre>images: {{ images }}</pre>
-        <pre>index: {{ mainImageIndex }}</pre>
-        <pre>selected tags: {{ selectedOptions }}</pre>
-        <pre>access level: {{ accessLevel }}</pre>
-      </section>
     </section>
   </main>
 </template>
 
 <style scoped>
-.debug {
-  padding: 30px;
-  margin-top: 100px;
+.advice {
+  text-wrap: balance;
+  font-weight: 600;
+}
+
+.post-info {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.success-message {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 20px;
+}
+
+.link {
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .wrapper {

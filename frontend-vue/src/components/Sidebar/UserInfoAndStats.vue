@@ -3,10 +3,13 @@ import PenIcon from '@/assets/Icons/PenIcon.vue';
 import ProfileLike from '@/assets/Icons/ProfileLike.vue';
 import RankIcon from '@/assets/Icons/RankIcon.vue';
 import RubyIcon from '@/assets/Icons/RubyIcon.vue';
+import WhiteRuby from '@/assets/Icons/WhiteRuby.vue';
 import ShareProfileIcon from '@/assets/Icons/ShareProfileIcon.vue';
 import TasksIcon from '@/assets/Icons/TasksIcon.vue';
 import { userService } from '@/services/user';
+import { imageDirectory } from '@/services/constants';
 import defaultAvatar from '@/assets/Images/avatar.png';
+import PortfolioIcon from '@/assets/Icons/PortfolioIcon.vue';
 
 export default {
   name: "UserInfoAndStats",
@@ -15,8 +18,10 @@ export default {
     TasksIcon,
     ProfileLike,
     RubyIcon,
+    WhiteRuby,
     ShareProfileIcon,
-    PenIcon
+    PenIcon,
+    PortfolioIcon
   },
   props: {
     page: {
@@ -34,7 +39,7 @@ export default {
       user: {
         username: '',
         name: '',
-        image: defaultAvatar,
+        image: '',
         rank: 0,
         rubies: 0,
         tasks: 0,
@@ -48,14 +53,10 @@ export default {
       let userData;
       if (this.page === 'myProfile' || this.page === 'editProfile') {
         userData = await userService.getMyData();
-        console.log('My profile data:', userData);
-      } else if (this.page === 'portfolio' || this.page === 'addTask') {
-        // Get username from the closest route that has the parameter
+      } else if (this.page === 'portfolio' || this.page === 'addTask' || this.page === 'subscription') {
         const usernameFromRoute = this.$route.params.username;
         userData = await userService.getUserData(usernameFromRoute);
-        console.table('User profile data:', userData);
       } else {
-        console.log('No username provided, redirecting to 404');
         this.$router.push('/error/404');
         return;
       }
@@ -63,22 +64,18 @@ export default {
       this.user = {
         username: userData.username,
         name: `${userData.firstName} ${userData.lastName}`,
-        image: userData.profileImage || defaultAvatar,
-        // Fix here - access first rating position if it exists
-        rankName: userData.ratingPositions[0]?.name || 'No Rank',
-        rank: userData.ratingPositions[0]?.value || 0,
+        image: userData.profileImage || '',
         rubies: userData.rubies,
+        rank: userData.rating || userData.ratingPosition, //TODO remove ratingPosition when backend is updated
         tasks: userData.completedTasks,
         likes: userData.totalLikes,
         description: userData.description || 'Użytkownik nie dodał jeszcze opisu'
       };
     } catch (error) {
-      console.error('Full error object:', error);
       if (error.message === "404") {
         this.$router.push('/error/404');
         return;
       }
-      console.error('Ошибка при загрузке данных пользователя:', error);
     }
   },
   computed: {
@@ -106,6 +103,17 @@ export default {
     },
     requestModal() {
       this.$router.push('/' + this.user.username + '/add-task');
+    },
+    imagePathHandler(image) {
+      if (image === '') {
+        return defaultAvatar;
+      }
+      return imageDirectory + image;
+    },
+    formattedDescription(text) {
+      return text
+        ? text.replace(/\r?\n/g, '<br>')
+        : '';
     }
   }
 };
@@ -119,16 +127,16 @@ export default {
       </div>
     </article>
     <article class="profile-statistics">
-      <img class="profile-picture no-select" :src="user.image" alt="Profile picture" onmousedown='return false;'
-        ondragstart='return false;' />
+      <img class="profile-picture no-select" :src="imagePathHandler(user.image)" alt="Profile picture"
+        onmousedown='return false;' ondragstart='return false;' />
       <div class="stat-info">
         <h3>Statystyka</h3>
         <div class="stats-container">
-          <span class="stat-row" v-if="user.rank <= 1000 && user.rank > 0">
+          <span class="stat-row">
             <span class="stats-icon">
               <RankIcon />
             </span>
-            <span class="stat-label">{{ user.rankName }}</span>
+            <span class="stat-label">Miejsce</span>
             <span class="stat-number">{{ formatNumber(user.rank) }}</span>
           </span>
           <span class="stat-row" v-if="page === 'myProfile' || page === 'editProfile'">
@@ -158,8 +166,23 @@ export default {
     <article class="profile-description">
       <h3>Opis</h3>
       <div class="divider" />
-      <p class="text-description">{{ user.description }}</p>
+      <p class="text-description" v-html="formattedDescription(user.description)"></p>
     </article>
+    <button class="main-button subscribe" v-if="page === 'subscription'"
+      @click="$router.push(`/${user.username}/portfolio`)">
+      Zobacz portfolio
+      <PortfolioIcon />
+    </button>
+    <button class="main-button subscribe" v-else-if="page !== 'myProfile' && page !== 'editProfile'"
+      @click="$router.push(`/${user.username}/subscription`)">
+      <span v-if="!user.iisSubscribedTo">
+        Wykup dostęp
+      </span>
+      <span v-else>
+        Zarządzaj subskrypcją
+      </span>
+      <WhiteRuby />
+    </button>
     <span class="profile-buttons">
       <button class="main-button" v-if="page === 'myProfile'" @click="editPath">Edytuj profil
         <PenIcon />
@@ -207,6 +230,10 @@ button:hover {
 
 .text-description {
   font-size: 13px;
+}
+
+.subscribe {
+  margin-top: 20px;
 }
 
 .main-button {

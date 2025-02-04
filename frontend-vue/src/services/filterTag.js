@@ -7,27 +7,21 @@ const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export const filterTagService = {
   async getTags(forceRefresh = false) {
-    try {
-      if (!forceRefresh) {
-        const cachedData = await this.getFromCache();
-        if (cachedData) return cachedData;
-      }
-
-      const response = await fetch(`${API_URL}/Tag`, {
-        method: "GET",
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      const tags = await response.json();
-      await this.saveToCache(tags);
-      return tags;
-    } catch (error) {
-      throw new Error(`Error fetching tags: ${error.message}`);
+    if (!forceRefresh) {
+      const cachedData = await this.getFromCache();
+      if (cachedData) return cachedData;
     }
+
+    const response = await fetch(`${API_URL}/Tag`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    }).catch((error) => {
+      throw new Error(`Failed to fetch tags: ${error}`);
+    });
+
+    const tags = await response.json();
+    await this.saveToCache(tags);
+    return tags;
   },
 
   async getFromCache() {
