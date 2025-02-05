@@ -454,7 +454,7 @@ public class ChatService : IChatService
             cmd.Parameters.AddWithValue("@TextContent", (object?)request.TextContent ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow);
 
-            var messageId = (int)await cmd.ExecuteScalarAsync();
+            var dbMessageId = (int)await cmd.ExecuteScalarAsync();
 
             foreach (var path in uploadedImagePaths)
             {
@@ -463,7 +463,7 @@ public class ChatService : IChatService
                     VALUES (@MessageId, @ImagePath)";
 
                 using var imgCmd = new NpgsqlCommand(insertImageQuery, connection, transaction);
-                imgCmd.Parameters.AddWithValue("@MessageId", messageId);
+                imgCmd.Parameters.AddWithValue("@MessageId", dbMessageId);
                 imgCmd.Parameters.AddWithValue("@ImagePath", path);
                 await imgCmd.ExecuteNonQueryAsync();
             }
@@ -472,7 +472,7 @@ public class ChatService : IChatService
 
             var message = new Chat.MessageComplex
             {
-                Id = messageId,
+                Id = dbMessageId,
                 SenderId = senderId,
                 SenderUsername = senderUsername,
                 ReceiverId = receiverId,
@@ -482,8 +482,9 @@ public class ChatService : IChatService
                 Type = Chat.MessageType.Complex
             };
 
-            // Fix: Replace incorrect SendMessage call with SendAsync
-            await _hubContext.Clients.User(request.ReceiverUsername).ReceiveMessage(message);
+            var signalRMessageId = Guid.NewGuid().ToString();
+            await _hubContext.Clients.User(senderUsername).ReceiveMessage(message, signalRMessageId);
+            await _hubContext.Clients.User(request.ReceiverUsername).ReceiveMessage(message, signalRMessageId);
 
             return message;
         }
@@ -716,7 +717,7 @@ public class ChatService : IChatService
             msgCmd.Parameters.AddWithValue("@ReceiverId", receiverId);
             msgCmd.Parameters.AddWithValue("@Description", request.Description);
             msgCmd.Parameters.AddWithValue("@CreatedAt", timestamp);
-            var messageId = (int)await msgCmd.ExecuteScalarAsync();
+            var dbMessageId = (int)await msgCmd.ExecuteScalarAsync();
 
             // Insert transaction details
             var insertTransactionQuery = @"
@@ -730,7 +731,7 @@ public class ChatService : IChatService
                 )";
 
             using var transCmd = new NpgsqlCommand(insertTransactionQuery, connection, transaction);
-            transCmd.Parameters.AddWithValue("@MessageId", messageId);
+            transCmd.Parameters.AddWithValue("@MessageId", dbMessageId);
             transCmd.Parameters.AddWithValue("@ChatId", chatId);
             transCmd.Parameters.AddWithValue("@TransactionNumber", transactionNumber);
             transCmd.Parameters.AddWithValue("@TransactionHash", transactionHash);
@@ -741,7 +742,7 @@ public class ChatService : IChatService
 
             var message = new Chat.MessageTransaction
             {
-                Id = messageId,
+                Id = dbMessageId,
                 SenderId = senderId,
                 SenderUsername = senderUsername,
                 ReceiverId = receiverId,
@@ -755,7 +756,9 @@ public class ChatService : IChatService
                 CreatedAt = timestamp
             };
 
-            await _hubContext.Clients.User(request.ReceiverUsername).ReceiveTransactionMessage(message);
+            var signalRMessageId = Guid.NewGuid().ToString();
+            await _hubContext.Clients.User(senderUsername).ReceiveMessage(message, signalRMessageId);
+            await _hubContext.Clients.User(request.ReceiverUsername).ReceiveTransactionMessage(message, signalRMessageId);
 
             return message;
         }
@@ -854,8 +857,9 @@ public class ChatService : IChatService
                 Type = Chat.MessageType.TransactionApproval
             };
 
-            await _hubContext.Clients.User(senderUsername)
-                .ReceiveTransactionApproval(approvalMessage);
+            var signalRMessageId = Guid.NewGuid().ToString();
+            await _hubContext.Clients.User(senderUsername).ReceiveMessage(message, signalRMessageId);
+            await _hubContext.Clients.User(senderUsername).ReceiveTransactionApproval(approvalMessage, signalRMessageId);
 
             await transaction.CommitAsync();
             return approvalMessage;
@@ -1069,12 +1073,12 @@ public class ChatService : IChatService
             cmd.Parameters.AddWithValue("@EndRequestHash", endRequestHash);
             cmd.Parameters.AddWithValue("@CreatedAt", timestamp);
 
-            var messageId = (int)await cmd.ExecuteScalarAsync();
+            var dbMessageId = (int)await cmd.ExecuteScalarAsync();
             await transaction.CommitAsync();
 
             var message = new Chat.MessageEndRequest
             {
-                Id = messageId,
+                Id = dbMessageId,
                 SenderId = senderId,
                 SenderUsername = senderUsername,
                 ReceiverId = receiverId,
@@ -1083,8 +1087,9 @@ public class ChatService : IChatService
                 Type = Chat.MessageType.EndRequest
             };
 
-            await _hubContext.Clients.User(receiverUsername)
-                .ReceiveEndRequestMessage(message);
+            var signalRMessageId = Guid.NewGuid().ToString();
+            await _hubContext.Clients.User(senderUsername).ReceiveMessage(message, signalRMessageId);
+            await _hubContext.Clients.User(receiverUsername).ReceiveEndRequestMessage(message, signalRMessageId);
 
             return message;
         }
@@ -1226,9 +1231,9 @@ public class ChatService : IChatService
                 ReceiverUsername = senderUsername // Add this line
             };
 
-            // Fix: Replace incorrect method calls with SendAsync
-            await _hubContext.Clients.User(senderUsername)
-                .ReceiveEndRequestApproval(approvalMessage);
+            var signalRMessageId = Guid.NewGuid().ToString();
+            await _hubContext.Clients.User(senderUsername).ReceiveMessage(message, signalRMessageId);
+            await _hubContext.Clients.User(senderUsername).ReceiveEndRequestApproval(approvalMessage, signalRMessageId);
 
             await _hubContext.Clients.Users(new[] { senderUsername, receiverUsername })
                 .ChatStatusChanged(new { ChatId = chatId, Status = "disabled" });
