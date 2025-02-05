@@ -757,7 +757,7 @@ public class ChatService : IChatService
             };
 
             var signalRMessageId = Guid.NewGuid().ToString();
-            await _hubContext.Clients.User(senderUsername).ReceiveMessage(message, signalRMessageId);
+            await _hubContext.Clients.User(senderUsername).ReceiveTransactionMessage(message, signalRMessageId);
             await _hubContext.Clients.User(request.ReceiverUsername).ReceiveTransactionMessage(message, signalRMessageId);
 
             return message;
@@ -858,8 +858,8 @@ public class ChatService : IChatService
             };
 
             var signalRMessageId = Guid.NewGuid().ToString();
-            await _hubContext.Clients.User(senderUsername).ReceiveMessage(message, signalRMessageId);
             await _hubContext.Clients.User(senderUsername).ReceiveTransactionApproval(approvalMessage, signalRMessageId);
+            await _hubContext.Clients.User(approverUsername).ReceiveTransactionApproval(approvalMessage, signalRMessageId);
 
             await transaction.CommitAsync();
             return approvalMessage;
@@ -1088,7 +1088,7 @@ public class ChatService : IChatService
             };
 
             var signalRMessageId = Guid.NewGuid().ToString();
-            await _hubContext.Clients.User(senderUsername).ReceiveMessage(message, signalRMessageId);
+            await _hubContext.Clients.User(senderUsername).ReceiveEndRequestMessage(message, signalRMessageId);
             await _hubContext.Clients.User(receiverUsername).ReceiveEndRequestMessage(message, signalRMessageId);
 
             return message;
@@ -1232,8 +1232,8 @@ public class ChatService : IChatService
             };
 
             var signalRMessageId = Guid.NewGuid().ToString();
-            await _hubContext.Clients.User(senderUsername).ReceiveMessage(message, signalRMessageId);
             await _hubContext.Clients.User(senderUsername).ReceiveEndRequestApproval(approvalMessage, signalRMessageId);
+            await _hubContext.Clients.User(approverUsername).ReceiveEndRequestApproval(approvalMessage, signalRMessageId);
 
             await _hubContext.Clients.Users(new[] { senderUsername, receiverUsername })
                 .ChatStatusChanged(new { ChatId = chatId, Status = "disabled" });
