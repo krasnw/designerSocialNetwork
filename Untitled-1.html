@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>WebSocket Test</title>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+		<style>
+			.message {
+				margin: 10px 0;
+				padding: 8px;
+				border: 1px solid #ddd;
+			}
+			.error {
+				color: red;
+			}
+			.success {
+				color: green;
+				text-align: left;
+			}
+			.sent {
+				color: blue;
+				text-align: right;
+			}
+			.received {
+				color: green;
+				text-align: left;
+			}
+			.message-form {
+				margin: 20px 0;
+				padding: 10px;
+				border: 1px solid #ccc;
+				border-radius: 4px;
+			}
+			.form-group {
+				margin: 10px 0;
+			}
+			.form-group label {
+				display: inline-block;
+				width: 120px;
+			}
+			select,
+			input[type="text"] {
+				width: 200px;
+				padding: 4px;
+			}
+		</style>
+	</head>
+	<body>
+		<div>
+			<label for="jwtToken">JWT Token:</label>
+			<input
+				type="text"
+				id="jwtToken"
+				style="width: 300px"
+				placeholder="Paste your JWT token here" />
+			<button onclick="connect()">Connect with Token</button>
+		</div>
+		<div id="connectionStatus">Disconnected</div>
+		<div>
+			<button onclick="testConnection()">Test Connection</button>
+		</div>
+		<div class="message-form">
+			<h3>Send Test Messages</h3>
+			<div class="form-group">
+				<label for="messageType">Message Type:</label>
+				<select id="messageType" onchange="updateMessageForm()">
+					<option value="message">Regular Message</option>
+					<option value="transaction">Transaction Message</option>
+					<option value="endRequest">End Request</option>
+				</select>
+			</div>
+			<div class="form-group">
+				<label for="receiverUsername">Receiver:</label>
+				<input
+					type="text"
+					id="receiverUsername"
+					placeholder="Receiver username" />
+			</div>
+			<div id="messageFields"></div>
+			<button onclick="sendTestMessage()">Send Message</button>
+		</div>
+		<div id="messages"></div>
+
+		<script>
+			let connection;
+			let processedMessageIds = new Set();
+			let reconnectAttempts = 0;
+			const MAX_RECONNECT_ATTEMPTS = 5;
+			let connectionMonitorTimeout;
+
+			function createConnection(token) {
+				return new signalR.HubConnectionBuilder()
+					.withUrl("http://localhost:8088/chathub", {
+						accessTokenFactory: () => token,
+						skipNegotiation: true,
+						transport: signalR.HttpTransportType.WebSockets,
+						headers: {
+							Authorization: `Bearer ${token}`,
+						},
+					})
+					.withAutomaticReconnect([0, 2000, 5000, 10000, 20000]) // Progressive retry delays
+					.configureLogging(signalR.LogLevel.Debug)
+					.build();
+			}
+
+			function addMessage(
+				message,
+				type = "normal",
+				direction = "received"
+			) {
+				const messagesDiv = document.getElementById("messages");
+				const messageDiv = document.createElement("div");
+				messageDiv.className = `message ${type} ${direction}`;
+
+				let content = "";
+				if (typeof message === "object") {
+					// Add message ID to display if available
+					if (message.messageId) {
+						message.displayId =
+							message.messageId.substring(0, 8) + "...";
+					}
+					content = `<pre>${JSON.stringify(message, null, 2)}</pre>`;
+					messageDiv.innerHTML = `${
+						direction === "sent" ? "Sent: " : "Received: "
+					}${content}`;
+				} else {
+					messageDiv.textContent = `${
+						direction === "sent" ? "Sent: " : "Received: "
+					}${message}`;
+				}
+
+				if (messagesDiv.firstChild) {
+					messagesDiv.insertBefore(
+						messageDiv,
+						messagesDiv.firstChild
+					);
+				} else {
+					messagesDiv.appendChild(messageDiv);
+				}
+			}
+
+			function setupMessageHandlers(connection) {
+				const handleMessage = async (message, messageId, type) => {
+					if (!messageId) {
+						console.warn(
+							`Received ${type} without messageId:`,
+							message
+						);
+						return;
+					}
+
+					if (processedMessageIds.has(messageId)) {
+						console.log(
+							`Skipping duplicate ${type} with messageId:`,
+							messageId
+						);
+						return;
+					}
+
+					console.log(`Received ${type}:`, message);
+					addMessage(message, "success", "received");
+					processedMessageIds.add(messageId);
+
+					try {
+						console.log(
+							`Acknowledging ${type} with messageId:`,
+							messageId
+						);
+						await connection.invoke(
+							"AcknowledgeMessage",
+							messageId
+						);
+						console.log(
+							`Successfully acknowledged ${type} with messageId:`,
+							messageId
+						);
+					} catch (err) {
+						console.error(`Failed to acknowledge ${type}:`, err);
+					}
+				};
+
+				connection.on("ReceiveMessage", async (message, messageId) => {
+					await handleMessage(message, messageId, "message");
+				});
+
+				connection.on(
+					"ReceiveTransactionMessage",
+					async (message, messageId) => {
+						await handleMessage(message, messageId, "transaction");
+					}
+				);
+
+				connection.on(
+					"ReceiveTransactionApproval",
+					async (approval, messageId) => {
+						await handleMessage(
+							approval,
+							messageId,
+							"transaction approval"
+						);
+					}
+				);
+
+				connection.on(
+					"ReceiveEndRequestMessage",
+					async (request, messageId) => {
+						await handleMessage(request, messageId, "end request");
+					}
+				);
+
+				connection.on(
+					"ReceiveEndRequestApproval",
+					async (approval, messageId) => {
+						await handleMessage(
+							approval,
+							messageId,
+							"end request approval"
+						);
+					}
+				);
+
+				connection.on("MessageStatus", (status) => {
+					console.log("Message status update:", status);
+					addMessage(status, "success", "received");
+				});
+
+				// ...other handlers...
+			}
+
+			async function connect() {
+				const token = document.getElementById("jwtToken").value;
+				if (!token) {
+					addMessage("Please enter a JWT token", "error");
+					return;
+				}
+
+				try {
+					// Disconnect existing connection if any
+					if (connection) {
+						await connection.stop();
+					}
+
+					connection = createConnection(token);
+					setupMessageHandlers(connection);
+
+					connection.on("TestResponse", (message) => {
+						console.log("Test response:", message);
+						addMessage(message, "success", "received");
+					});
+
+					connection.on("Heartbeat", () => {
+						console.log("Heartbeat received");
+						// Reset connection monitoring
+						clearTimeout(connectionMonitorTimeout);
+						startConnectionMonitoring();
+					});
+
+					connection.onreconnecting((error) => {
+						console.log("Reconnecting...", error);
+						document.getElementById(
+							"connectionStatus"
+						).textContent = "Reconnecting...";
+						reconnectAttempts++;
+
+						if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+							connection.stop();
+							document.getElementById(
+								"connectionStatus"
+							).textContent =
+								"Connection Failed - Please reconnect manually";
+						}
+					});
+
+					connection.onreconnected((connectionId) => {
+						console.log("Reconnected.", connectionId);
+						document.getElementById(
+							"connectionStatus"
+						).textContent = "Connected";
+						reconnectAttempts = 0;
+						startConnectionMonitoring();
+					});
+
+					connection.onclose((error) => {
+						console.log("Connection closed.", error);
+						document.getElementById(
+							"connectionStatus"
+						).textContent = "Disconnected";
+					});
+
+					// Add handlers for sent messages
+					const originalInvoke = connection.invoke;
+					connection.invoke = async function () {
+						const method = arguments[0];
+						const args = Array.from(arguments).slice(1);
+						const result = await originalInvoke.apply(
+							this,
+							arguments
+						);
+						addMessage({ method, args }, "success", "sent");
+						return result;
+					};
+
+					 // Reset processed message IDs when connecting
+					 processedMessageIds.clear();
+
+					// Start the connection
+					await connection.start();
+					const decodedToken = JSON.parse(atob(token.split(".")[1]));
+					const username = decodedToken.unique_name;
+					addMessage(`Connected as ${username}`, "success");
+					console.log("Connected successfully!");
+					document.getElementById("connectionStatus").textContent =
+						"Connected";
+					addMessage("Connected successfully!", "success");
+					startConnectionMonitoring();
+				} catch (err) {
+					console.error("Connection failed:", err);
+					document.getElementById("connectionStatus").textContent =
+						"Connection Failed";
+					addMessage(`Connection failed: ${err.message}`, "error");
+				}
+			}
+
+			async function testConnection() {
+				if (!connection || connection.state !== "Connected") {
+					addMessage("Not connected! Please connect first.", "error");
+					return;
+				}
+
+				try {
+					await connection.invoke("TestConnection");
+					console.log("Test message sent");
+				} catch (err) {
+					console.error("Error:", err);
+					addMessage(`Error: ${err.message}`, "error");
+				}
+			}
+
+			function startConnectionMonitoring() {
+				// Check connection every 45 seconds (heartbeat is every 30 seconds)
+				connectionMonitorTimeout = setTimeout(() => {
+					if (connection.state === "Connected") {
+						connect(); // Reconnect if we missed multiple heartbeats
+					}
+				}, 45000);
+			}
+
+			// Clean up when page unloads
+			window.addEventListener("beforeunload", () => {
+				if (connection) {
+					connection.stop();
+				}
+				clearTimeout(connectionMonitorTimeout);
+			});
+
+			function updateMessageForm() {
+				const type = document.getElementById("messageType").value;
+				const fields = document.getElementById("messageFields");
+
+				let html = "";
+				switch (type) {
+					case "message":
+						html = `
+							<div class="form-group">
+								<label for="content">Content:</label>
+								<input type="text" id="content" placeholder="Message content">
+							</div>`;
+						break;
+					case "transaction":
+						html = `
+							<div class="form-group">
+								<label for="amount">Amount:</label>
+								<input type="number" id="amount" placeholder="Amount">
+							</div>
+							<div class="form-group">
+								<label for="description">Description:</label>
+								<input type="text" id="description" placeholder="Transaction description">
+							</div>`;
+						break;
+					case "endRequest":
+						html = `
+							<div class="form-group">
+								<label for="reason">Reason:</label>
+								<input type="text" id="reason" placeholder="End request reason">
+							</div>`;
+						break;
+				}
+				fields.innerHTML = html;
+			}
+
+			async function sendTestMessage() {
+				if (!connection || connection.state !== "Connected") {
+					addMessage("Not connected! Please connect first.", "error");
+					return;
+				}
+
+				const type = document.getElementById("messageType").value;
+				const receiver =
+					document.getElementById("receiverUsername").value;
+
+				try {
+					switch (type) {
+						case "message":
+							const content =
+								document.getElementById("content").value;
+							await connection.invoke("SendMessage", {
+								receiverUsername: receiver,
+								content: content,
+								type: "text",
+							});
+							break;
+
+						case "transaction":
+							const amount =
+								document.getElementById("amount").value;
+							const description =
+								document.getElementById("description").value;
+							await connection.invoke("SendTransactionMessage", {
+								receiverUsername: receiver,
+								amount: parseFloat(amount),
+								description: description,
+							});
+							break;
+
+						case "endRequest":
+							const reason =
+								document.getElementById("reason").value;
+							await connection.invoke("SendEndRequest", {
+								receiverUsername: receiver,
+								reason: reason,
+							});
+							break;
+					}
+				} catch (err) {
+					console.error("Error sending message:", err);
+					addMessage(`Error: ${err.message}`, "error");
+				}
+			}
+
+			// Initialize form on load
+			document.addEventListener("DOMContentLoaded", () => {
+				updateMessageForm();
+			});
+		</script>
+	</body>
+</html>
