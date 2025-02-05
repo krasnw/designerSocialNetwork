@@ -82,16 +82,13 @@ class ChatMessagesService {
   }
 
   async sendMessage(formData) {
-    try {
-      if (!this.connection || this.connection.state !== "Connected") {
-        await this.connect();
-      }
-
-      return await this.connection.invoke("SendMessage", formData);
-    } catch (error) {
-      console.error("Error sending message:", error);
-      throw error;
-    }
+    const response = await axios.post(`${API_URL}/Chat/messages`, formData, {
+      headers: {
+        ...getAuthHeaders(),
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
   }
 
   onMessage(callback) {
