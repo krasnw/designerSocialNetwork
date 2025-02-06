@@ -26,7 +26,7 @@ export default {
       hidden: sidebarAlwaysOpen ? false : (JSON.parse(localStorage.getItem('sidebarHidden')) || false),
       rotated: sidebarAlwaysOpen ? true : (JSON.parse(localStorage.getItem('sidebarRotated')) || true),
       alwaysOpen: sidebarAlwaysOpen,
-      pagesWithUserInfo: ['myProfile', 'editProfile', 'portfolio', 'addTask', 'subscription'],
+      pagesWithUserInfo: ['myProfile', 'editProfile', 'portfolio', 'addTask', 'subscription', 'buyRubies'],
     };
   },
   created() {

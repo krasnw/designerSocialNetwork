@@ -60,6 +60,7 @@ export default {
 :root {
   --font: 'Montserrat';
   --secondary-font: 'Inter';
+  --bank-card-font: 'OCR B', monospace;
   --element-dark-color: rgba(30, 30, 30, 0.4);
   --element-dark-hover-color: rgba(30, 30, 30, 0.6);
   --element-light-color: rgba(255, 255, 255, 0.15);

@@ -51,7 +51,7 @@ export default {
   async created() {
     try {
       let userData;
-      if (this.page === 'myProfile' || this.page === 'editProfile') {
+      if (this.page === 'myProfile' || this.page === 'editProfile' || this.page === 'buyRubies') {
         userData = await userService.getMyData();
       } else if (this.page === 'portfolio' || this.page === 'addTask' || this.page === 'subscription') {
         const usernameFromRoute = this.$route.params.username;
@@ -98,6 +98,9 @@ export default {
     copyLink() {
       navigator.clipboard.writeText('http://localhost:8080/' + this.user.username + '/portfolio');
     },
+    navigateToRubies() {
+      this.$router.push('/profile/rubies');
+    },
     editPath() {
       this.$router.push('/profile/me/edit');
     },
@@ -139,7 +142,8 @@ export default {
             <span class="stat-label">Miejsce</span>
             <span class="stat-number">{{ formatNumber(user.rank) }}</span>
           </span>
-          <span class="stat-row" v-if="page === 'myProfile' || page === 'editProfile'">
+          <span class="stat-row rubies-link"
+            v-if="page === 'myProfile' || page === 'editProfile' || page === 'buyRubies'" @click="navigateToRubies">
             <span class="stats-icon">
               <RubyIcon />
             </span>
@@ -173,9 +177,10 @@ export default {
       Zobacz portfolio
       <PortfolioIcon />
     </button>
-    <button class="main-button subscribe" v-else-if="page !== 'myProfile' && page !== 'editProfile'"
+    <button class="main-button subscribe"
+      v-else-if="page !== 'myProfile' && page !== 'editProfile' && page !== 'buyRubies'"
       @click="$router.push(`/${user.username}/subscription`)">
-      <span v-if="!user.iisSubscribedTo">
+      <span v-if="!user.isSubscribedTo">
         Wykup dostęp
       </span>
       <span v-else>
@@ -184,7 +189,7 @@ export default {
       <WhiteRuby />
     </button>
     <span class="profile-buttons">
-      <button class="main-button" v-if="page === 'myProfile'" @click="editPath">Edytuj profil
+      <button class="main-button" v-if="page === 'myProfile' || page === 'buyRubies'" @click="editPath">Edytuj profil
         <PenIcon />
       </button>
       <button class="main-button" v-else-if="page === 'editProfile'" @click="$router.go(-1)">Powrót ↩︎
@@ -349,6 +354,14 @@ button:hover {
   display: flex;
   align-items: center;
   width: 100%;
+}
+
+.rubies-link {
+  cursor: copy;
+}
+
+.rubies-link:hover {
+  text-decoration: underline;
 }
 
 .stats-icon {
