@@ -20,7 +20,7 @@ export default {
       return this.message.receiverUsername == this.$route.params.username;
     },
     messageSize() {
-      const textLength = this.message.textContent.split(' ').length;
+      const textLength = this.message.textContent.split(' ').length ?? 1;
       let size;
       if (this.message.imagePaths.length == 0) {
         size = textLength > 30 ? 'large' : textLength > 15 ? 'medium' : 'small';
@@ -48,6 +48,10 @@ export default {
     closeModal() {
       this.showModal = false;
       this.selectedImage = null;
+    },
+    formattedText(text) {
+      return String(text || '')
+        .replace(/\r?\n/g, '<br>');
     }
   }
 };
@@ -60,7 +64,7 @@ export default {
         <img v-for="imagePath in this.message.imagePaths" :key="imagePath" :src="imagePathHandler(imagePath)"
           @click="openImage(imagePath)" alt="Obrazek" />
       </span>
-      <p class="message-text">{{ this.message.textContent }}</p>
+      <p class="message-text" v-html="formattedText(message.textContent)"></p>
     </div>
     <!-- Модальное окно для просмотра изображений -->
     <div v-if="showModal" class="modal" @click="closeModal">

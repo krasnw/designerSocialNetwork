@@ -171,6 +171,7 @@ p {
   flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   -webkit-user-select: none;
   -ms-user-select: none;
   user-select: none;

@@ -67,7 +67,7 @@ export default {
           placeholder="Nazwa użytkownika" @blur="validateField('username')" />
         <input type="password" v-model="password" class="input" :class="{ 'error': passwordError }" placeholder="Hasło"
           @blur="validateField('password')" />
-        <button type="submit" class="button">Zaloguj się
+        <button type="submit" class="button accept-button">Zaloguj się
           <Spinner v-if="isLoading" class="spinner" />
         </button>
       </form>
@@ -101,23 +101,7 @@ export default {
   font-size: 16px;
 }
 
-.button {
-  padding: 10px 20px;
-  border-radius: 10px;
-  background-color: var(--element-light-color);
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--primery-text-color);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-}
 
-.button:hover {
-  background-color: var(--element-border-light-color);
-  cursor: pointer;
-}
 
 .error-garbage {
   margin-top: 20px;

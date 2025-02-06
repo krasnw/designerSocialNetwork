@@ -30,22 +30,41 @@ export default {
     }
   },
   methods: {
-    send() {
+    async send() {
       if (this.message || this.selectedImages.length) {
         const formData = new FormData();
+        const cleanUpMessage = this.message.trim();
         formData.append('ReceiverUsername', this.$route.params.username);
-        formData.append('TextContent', this.message);
+        formData.append('TextContent', cleanUpMessage);
         this.selectedImages.forEach(image => {
           formData.append('Images', image.file);
         });
 
-        chatMessagesService.sendMessage(formData).catch(error => {
+        await chatMessagesService.sendMessage(formData).catch(error => {
           this.$router.push(`/error/${error.status}`);
+        }).finally(() => {
+          this.message = '';
+          this.selectedImages = [];
+          const textarea = this.$el.querySelector('textarea');
+          if (textarea) {
+            textarea.style.height = 'auto';
+          }
         });
-
-        this.message = '';
-        this.selectedImages = [];
       }
+    },
+    handleEnterPress(event) {
+      if (event.shiftKey) {
+        // Allow new line with Shift+Enter
+        return;
+      }
+      // Prevent new line and send message
+      event.preventDefault();
+      this.send();
+    },
+    adjustTextareaHeight(event) {
+      const textarea = event.target;
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
     },
     toggleMenu() {
       this.isMenuOpen = !this.isMenuOpen;
@@ -128,13 +147,13 @@ export default {
           </span>
           <span class="message-input" @dragover="handleDragOver" @drop="handleDrop">
             <span class="text-edit-panel">
-              <ClipIcon @click="toggleMenu" />
+              <ClipIcon @click="toggleMenu" class="icon" :class="{ 'rotated': isMenuOpen }" />
               <textarea v-model="message" placeholder="Napisz wiadomość" rows="1"
-                @input="$event.target.style.height = ''; $event.target.style.height = $event.target.scrollHeight + 'px'"></textarea>
+                @keydown.enter="handleEnterPress($event)" @input="adjustTextareaHeight($event)"></textarea>
               <input type="file" ref="fileInput" accept="image/*" style="display: none" @change="handleFileSelect">
             </span>
             <Transition name="send-icon">
-              <SendIcon v-if="message || selectedImages" @click="send" />
+              <SendIcon v-if="message.length > 0 || selectedImages.length > 0" @click="send" />
             </Transition>
           </span>
         </span>
@@ -155,7 +174,6 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 15px;
 }
 
 .conversation-container {
@@ -224,10 +242,11 @@ export default {
 
 .floating-bars {
   position: absolute;
-  bottom: 80px;
+  bottom: 100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding-bottom: 10px;
 }
 
 .clip-menu {
@@ -238,6 +257,16 @@ export default {
   width: max-content;
   padding: 8px;
   min-width: 150px;
+}
+
+.icon {
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+
+.rotated {
+  transform: rotate(45deg);
+  transition: transform 0.3s;
 }
 
 .menu-item {

@@ -88,9 +88,10 @@ export default {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
   gap: 10px;
   min-height: 0;
-  padding-right: 10px;
+  padding: 0 10px 10px 15px;
 }
 
 .messages::-webkit-scrollbar {

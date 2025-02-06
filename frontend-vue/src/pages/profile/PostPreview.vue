@@ -67,7 +67,7 @@ export default {
     <article v-if="!fullPostVisible" class="post-preview background" @click="showPost">
       <img class="post-preview-img" :src="imagePath" alt="post.title" onmousedown='return false;'
         ondragstart='return false;'>
-      <span class="post-preview-info background">
+      <span class="post-preview-info">
         <h4 class="post-preview-title">{{ post.title }}</h4>
         <span class="post-like">
           <Link v-if="post.access === 'protected'" />
@@ -130,11 +130,11 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-radius: 15px;
+  border: 0.5px solid var(--element-border-light-color);
   background: var(--element-light-color);
-  ;
   padding: 15px 30px;
   box-shadow: 5px 5px 25px 0px var(--shadow-color);
-
 }
 
 .post-preview-title {

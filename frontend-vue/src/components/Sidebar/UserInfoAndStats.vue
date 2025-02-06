@@ -110,7 +110,7 @@ export default {
       }
       return imageDirectory + image;
     },
-    formattedDescription(text) {
+    formattedText(text) {
       return text
         ? text.replace(/\r?\n/g, '<br>')
         : '';
@@ -166,7 +166,7 @@ export default {
     <article class="profile-description">
       <h3>Opis</h3>
       <div class="divider" />
-      <p class="text-description" v-html="formattedDescription(user.description)"></p>
+      <p class="text-description" v-html="formattedText(user.description)"></p>
     </article>
     <button class="main-button subscribe" v-if="page === 'subscription'"
       @click="$router.push(`/${user.username}/portfolio`)">
