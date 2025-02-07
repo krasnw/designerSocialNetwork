@@ -511,6 +511,7 @@ input[type="number"] {
 .card__number-part,
 .card__date-part {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .card input::placeholder {
