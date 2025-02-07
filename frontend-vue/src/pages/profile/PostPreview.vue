@@ -53,6 +53,15 @@ export default {
     hidePost() {
       this.fullPostVisible = false;
     },
+    reportPost() {
+      this.$router.push({
+        path: '/report',
+        query: {
+          postId: this.post.id,
+          username: this.fullPost.author.username
+        }
+      });
+    },
     async deletePost() {
       await postsContentService.deletePost(this.post.id);
       this.hidePost();
@@ -65,7 +74,7 @@ export default {
 <template>
   <section class="post-wrapper">
     <article v-if="!fullPostVisible" class="post-preview background" @click="showPost">
-      <img class="post-preview-img" :src="imagePath" alt="post.title" onmousedown='return false;'
+      <img class="post-preview-img" :src="imagePath" loading="lazy" alt="post.title" onmousedown='return false;'
         ondragstart='return false;'>
       <span class="post-preview-info">
         <h4 class="post-preview-title">{{ post.title }}</h4>
@@ -85,7 +94,7 @@ export default {
       <section class="post-control-buttons">
         <button class="accept-button button" @click="hidePost">Schowaj</button>
         <button class="delete-button button" v-if="!$route.params.username" @click="deletePost">Usuń</button>
-        <button class="delete-button button" v-else>Report</button>
+        <button class="delete-button button" v-else @click="reportPost">Report</button>
       </section>
     </article>
   </section>

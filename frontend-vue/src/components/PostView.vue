@@ -89,8 +89,8 @@ export default {
     <div class="post-content">
       <Splide class="picture-slider" :options="splideOptions" aria-label="Post slides">
         <SplideSlide v-for="(picture, index) in post.images" :key="index">
-          <img class="slide" :src="imagePathHandler(picture)" alt="Post Picture" onmousedown='return false;'
-            ondragstart='return false;'>
+          <img class="slide" :src="imagePathHandler(picture)" loading="lazy" alt="Post Picture"
+            onmousedown='return false;' ondragstart='return false;'>
         </SplideSlide>
       </Splide>
       <article class="post-description">
@@ -107,7 +107,7 @@ export default {
 
     <header class="post-header">
       <span class="post-profile" @click="navigateToPortfolio" role="button">
-        <img :src="imagePathHandler(post.author.profileImage)" alt="User Profile Picture">
+        <img :src="imagePathHandler(post.author.profileImage)" loading="lazy" alt="User Profile Picture">
         <h4>{{ post.author.firstName }} {{ post.author.lastName }}</h4>
       </span>
 

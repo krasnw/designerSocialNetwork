@@ -24,7 +24,7 @@ export default {
 
 <template>
   <article class="profile-badge" :class="{ 'profile-badge--pinned': isPinned }">
-    <img :src="imagePathHandler(user.profileImage)" alt="User avatar" class="profile-badge__avatar" />
+    <img :src="imagePathHandler(user.profileImage)" loading="lazy" alt="User avatar" class="profile-badge__avatar" />
     <h3 class="profile-badge__name">{{ user.firstName + ' ' + user.lastName }}</h3>
   </article>
 </template>

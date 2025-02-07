@@ -30,7 +30,7 @@ export default {
   <section class="user-badge background" @click="goToProfile">
     <span class="user-badge__info">
       <p class="user-badge__place">{{ data.place }}</p>
-      <img class="user-badge__avatar" :src="imagePathHandler(data.user.profileImage)" alt="User avatar">
+      <img class="user-badge__avatar" :src="imagePathHandler(data.user.profileImage)" loading="lazy" alt="User avatar">
       <h3 class="user-badge__name">{{ data.user.firstName + " " + data.user.lastName }}</h3>
     </span>
     <span class="user-badge__stats">
