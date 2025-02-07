@@ -24,6 +24,11 @@ async function fetchUserData(endpoint) {
   return response;
 }
 
+const clearProfileCache = async () => {
+  const cacheStorage = await caches.open("user-cache-v1");
+  await cacheStorage.delete("/api/user-profile");
+};
+
 // API error handler
 function handleFetchError(response, defaultErrorMessage) {
   if (response.status === 404) {
@@ -105,6 +110,19 @@ export const userService = {
     const response = await axios.post(`${API_URL}/Chat/sendRequest`, formData, {
       headers: getAuthHeaders(),
     });
+
+    return response.data;
+  },
+
+  async buyRubies(formData) {
+    const response = await axios.post(
+      `${API_URL}/WalletTest/add-money`,
+      formData,
+      {
+        headers: getAuthHeaders(),
+      }
+    );
+    clearProfileCache();
 
     return response.data;
   },

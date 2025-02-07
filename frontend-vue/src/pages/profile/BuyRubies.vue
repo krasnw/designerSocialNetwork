@@ -1,4 +1,6 @@
 <script>
+import { userService } from '@/services/user';
+
 const MULTIPLIER = 0.1;
 
 export default {
@@ -31,7 +33,7 @@ export default {
       return this.cardParts.every(part => part.length === 4)
         && this.cardMonth.length === 2
         && this.cardYear.length === 2
-        && this.cardCvc.length === 3
+        && this.inRange(this.cardCvc.length, 3, 4)
         && this.cardHolder.length > 0;
     },
     isBlikValid() {
@@ -68,6 +70,9 @@ export default {
   methods: {
     selectPayment(method) {
       this.paymentMethod = method;
+    },
+    inRange(value, min, max) {
+      return value >= min && value <= max;
     },
     handlePayment() {
       if ((this.paymentMethod === 'card' && this.isCardValid) ||
@@ -115,6 +120,19 @@ export default {
         prevInput?.focus();
       }
     },
+    async handlePayment() {
+      try {
+        const userData = await userService.getMyData();
+        const username = userData.username;
+        const formData = new FormData();
+        formData.append('amount', this.rubiesAmount);
+        formData.append('username', username);
+        const response = await userService.buyRubies(formData);
+        this.page = 3;
+      } catch (error) {
+        this.error = error.response.data;
+      }
+    }
   }
 }
 </script>
@@ -203,7 +221,7 @@ export default {
         </article>
 
         <article class="option-section" v-else-if="page === 2 && paymentMethod === 'blik'" key="page2blik">
-          <h3>Kod BLIK</h3>
+          <h3>Wprowadź kod BLIK</h3>
           <div class="blik-input-container">
             <input v-for="(part, index) in blikParts" :key="index" type="text" v-model="blikParts[index]"
               :ref="'blikPart' + index" maxlength="3" :placeholder="'123'" class="blik-input-part"
@@ -215,7 +233,7 @@ export default {
         </article>
 
         <article class="option-section" v-else-if="page === 3" key="page3">
-          <h3>Płatność zakończona pomyślnie! ✅</h3>
+          <h3>Płatność zakończona pomyślnie!</h3>
           <p>Dziękujemy za zakup. Rubiny zostały dodane do Twojego <span class="blue-gradient"
               @click="$router.push('/profile/me')">konta</span>.</p>
           <p @click="page = 1">Kup więcej <span class="green-gradient" style="cursor: pointer;">rubinów</span></p>
