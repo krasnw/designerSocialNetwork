@@ -405,7 +405,7 @@ input[type="number"] {
   background: transparent;
   border: none;
   color: white;
-  font-size: 1.5em;
+  font-size: 15px;
   width: 75px;
   text-align: center;
   letter-spacing: 1px;
@@ -418,6 +418,7 @@ input[type="number"] {
 }
 
 .card__info {
+  padding-top: 20px;
   display: flex;
   justify-content: space-between;
   color: white;
@@ -425,6 +426,14 @@ input[type="number"] {
 
 .card__info-item {
   display: flex;
+  align-items: left;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.card__info-item:nth-child(2) {
+  display: flex;
+  align-items: center;
   flex-direction: column;
   gap: 5px;
 }
@@ -440,8 +449,9 @@ input[type="number"] {
   background: transparent;
   border: none;
   color: white;
-  font-size: 1.1em;
+  font-size: 12px;
   font-family: var(--bank-card-font);
+  letter-spacing: 1px;
   box-shadow: none;
 }
 
@@ -450,7 +460,7 @@ input[type="number"] {
 }
 
 .card__expiry {
-  width: 80px;
+  width: 100px;
 }
 
 .card input::placeholder {
@@ -488,8 +498,8 @@ input[type="number"] {
   background: transparent;
   border: none;
   color: white;
-  font-size: 1.1em;
-  width: 30px;
+  font-size: 12px;
+  width: 50px;
   text-align: center;
   font-family: var(--bank-card-font);
   box-shadow: none;
