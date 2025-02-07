@@ -1,6 +1,4 @@
 <script>
-import { userService } from '@/services/user';
-
 const MULTIPLIER = 0.1;
 
 export default {
@@ -23,6 +21,12 @@ export default {
       cardParts: ['', '', '', ''],
       cardMonth: '',
       cardYear: '',
+      cardErrors: {
+        number: false,
+        holder: false,
+        date: false,
+        cvc: false
+      }
     };
   },
   computed: {
@@ -30,11 +34,10 @@ export default {
       return this.paymentMethod && this.rubiesAmount > 0;
     },
     isCardValid() {
-      return this.cardParts.every(part => part.length === 4)
-        && this.cardMonth.length === 2
-        && this.cardYear.length === 2
-        && this.inRange(this.cardCvc.length, 3, 4)
-        && this.cardHolder.length > 0;
+      return this.validateCardNumber() &&
+        this.validateCardDate() &&
+        this.validateCardHolder() &&
+        this.validateCvc();
     },
     isBlikValid() {
       return this.blikParts.every(part => part.length === 3) &&
@@ -68,11 +71,19 @@ export default {
     },
   },
   methods: {
+    goBack() {
+      this.page--;
+      if (this.page === 1) {
+        this.cardErrors = {
+          number: false,
+          holder: false,
+          date: false,
+          cvc: false
+        };
+      }
+    },
     selectPayment(method) {
       this.paymentMethod = method;
-    },
-    inRange(value, min, max) {
-      return value >= min && value <= max;
     },
     handlePayment() {
       if ((this.paymentMethod === 'card' && this.isCardValid) ||
@@ -120,19 +131,78 @@ export default {
         prevInput?.focus();
       }
     },
-    async handlePayment() {
-      try {
-        const userData = await userService.getMyData();
-        const username = userData.username;
-        const formData = new FormData();
-        formData.append('amount', this.rubiesAmount);
-        formData.append('username', username);
-        const response = await userService.buyRubies(formData);
-        this.page = 3;
-      } catch (error) {
-        this.error = error.response.data;
+    validateCardNumber() {
+      if (!this.cardParts.every(part => part.length === 4)) return false;
+
+      const number = this.cardParts.join('');
+      let sum = 0;
+      let isEven = false;
+
+      // Luhn algorithm
+      for (let i = number.length - 1; i >= 0; i--) {
+        let digit = parseInt(number[i]);
+
+        if (isEven) {
+          digit *= 2;
+          if (digit > 9) {
+            digit -= 9;
+          }
+        }
+
+        sum += digit;
+        isEven = !isEven;
       }
-    }
+
+      return sum % 10 === 0;
+    },
+
+    validateCardDate() {
+      if (!this.cardMonth || !this.cardYear) return false;
+
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear() % 100;
+      const currentMonth = currentDate.getMonth() + 1;
+
+      const month = parseInt(this.cardMonth);
+      const year = parseInt(this.cardYear);
+
+      if (month < 1 || month > 12) return false;
+      if (year < currentYear) return false;
+      if (year === currentYear && month < currentMonth) return false;
+
+      return true;
+    },
+
+    validateCardHolder() {
+      if (!this.cardHolder) return false;
+      return /^[A-Za-z\s.-]+$/.test(this.cardHolder);
+    },
+
+    validateCvc() {
+      if (!this.cardCvc) return false;
+      return /^\d{3}$/.test(this.cardCvc);
+    },
+
+    handleCardBlur(field) {
+      switch (field) {
+        case 'number':
+          if (this.cardParts.every(part => part.length === 4)) {
+            this.cardErrors.number = !this.validateCardNumber();
+          }
+          break;
+        case 'date':
+          if (this.cardMonth.length === 2 && this.cardYear.length === 2) {
+            this.cardErrors.date = !this.validateCardDate();
+          }
+          break;
+        case 'holder':
+          this.cardErrors.holder = !this.validateCardHolder();
+          break;
+        case 'cvc':
+          this.cardErrors.cvc = !this.validateCvc();
+          break;
+      }
+    },
   }
 }
 </script>
@@ -175,7 +245,13 @@ export default {
         </article>
 
         <article class="option-section" v-else-if="page === 2 && paymentMethod === 'card'" key="page2card">
-          <h3>Dane płatnicze</h3>
+          <div class="nav-buttons">
+            <button @click="goBack" class="back-button">
+              ← Wróć
+            </button>
+            <div class="divider"></div>
+            <h3>Dane płatnicze</h3>
+          </div>
           <div class="row-bank">
             <span>
               <p>Wprowadź dane karty bankowej</p>
@@ -186,21 +262,25 @@ export default {
                     <div class="card__number-group">
                       <input v-for="(part, index) in cardParts" :key="index" type="text" v-model="cardParts[index]"
                         :ref="'cardPart' + index" maxlength="4" :placeholder="'0000'" class="card__number-part"
-                        @input="handleCardInput(index, $event)" @keydown="handleKeyDown(index, $event)" />
+                        :class="{ 'error': cardErrors.number }" @input="handleCardInput(index, $event)"
+                        @keydown="handleKeyDown(index, $event)" @blur="handleCardBlur('number')" />
                     </div>
                     <div class="card__info">
                       <div class="card__info-item">
                         <span>Właściciel karty</span>
-                        <input type="text" v-model="cardHolder" placeholder="IMIĘ NAZWISKO" class="card__holder" />
+                        <input type="text" v-model="cardHolder" placeholder="IMIĘ NAZWISKO" class="card__holder"
+                          :class="{ 'error': cardErrors.holder }" @blur="handleCardBlur('holder')" />
                       </div>
                       <div class="card__info-item">
                         <span>Ważność</span>
                         <div class="card__date">
                           <input type="text" v-model="cardMonth" placeholder="MM" maxlength="2" class="card__date-part"
-                            @input="formatCardMonth" />
+                            :class="{ 'error': cardErrors.date }" @input="formatCardMonth"
+                            @blur="handleCardBlur('date')" />
                           <span class="card__date-separator">/</span>
                           <input type="text" v-model="cardYear" ref="yearInput" placeholder="RR" maxlength="2"
-                            class="card__date-part" @keydown="handleDateKeyDown" />
+                            class="card__date-part" :class="{ 'error': cardErrors.date }" @keydown="handleDateKeyDown"
+                            @blur="handleCardBlur('date')" />
                         </div>
                       </div>
                     </div>
@@ -212,7 +292,8 @@ export default {
               <p class="cvc-hint">
                 Wprowadź kod CVC z tyłu karty
               </p>
-              <input type="text" v-model="cardCvc" ref="cvcInput" placeholder="CVC" maxlength="4" class="cvc-input" />
+              <input type="text" v-model="cardCvc" ref="cvcInput" placeholder="CVC" maxlength="3" class="cvc-input"
+                :class="{ 'error': cardErrors.cvc }" @blur="handleCardBlur('cvc')" />
             </span>
           </div>
           <button @click="handlePayment" class="accept-button button" :disabled="!isCardValid">
@@ -221,7 +302,13 @@ export default {
         </article>
 
         <article class="option-section" v-else-if="page === 2 && paymentMethod === 'blik'" key="page2blik">
-          <h3>Wprowadź kod BLIK</h3>
+          <div class="nav-buttons">
+            <button @click="goBack" class="back-button">
+              ← Wróć
+            </button>
+            <div class="divider"></div>
+            <h3>Wprowadź kod BLIK</h3>
+          </div>
           <div class="blik-input-container">
             <input v-for="(part, index) in blikParts" :key="index" type="text" v-model="blikParts[index]"
               :ref="'blikPart' + index" maxlength="3" :placeholder="'123'" class="blik-input-part"
@@ -316,6 +403,15 @@ input {
 .no-spinners::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+.divider {
+  margin: 0;
+  border: none;
+  background-color: var(--element-light-color);
+  border-radius: 1px;
+  height: 15px;
+  width: 2px;
 }
 
 .no-spinners {
@@ -418,8 +514,8 @@ input[type="number"] {
 }
 
 .card__info {
-  padding-top: 20px;
   display: flex;
+  padding-top: 20px;
   justify-content: space-between;
   color: white;
 }
@@ -450,8 +546,8 @@ input[type="number"] {
   border: none;
   color: white;
   font-size: 12px;
-  font-family: var(--bank-card-font);
   letter-spacing: 1px;
+  font-family: var(--bank-card-font);
   box-shadow: none;
 }
 
@@ -530,6 +626,8 @@ input[type="number"] {
 
 .blik-input-container {
   display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 16px;
 }
 
@@ -554,5 +652,38 @@ input[type="number"] {
 .blik-input-part::placeholder {
   color: rgba(255, 255, 255, 0.3);
   letter-spacing: normal;
+}
+
+.error {
+  color: var(--placeholder-error-color) !important;
+}
+
+.error::placeholder {
+  color: var(--placeholder-error-color) !important;
+}
+
+.nav-buttons {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.back-button {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  padding: 8px;
+  font-size: 1em;
+  transition: opacity 0.3s ease;
+}
+
+.back-button:hover {
+  opacity: 0.7;
+}
+
+/* Override existing h3 styles in nav-buttons */
+.nav-buttons h3 {
+  margin: 0;
 }
 </style>
