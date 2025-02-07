@@ -79,6 +79,19 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: "/report",
+    name: "report",
+    component: () => import("@/pages/report/ReportPage.vue"),
+    beforeEnter: (to, from, next) => {
+      const { username, postId } = to.query;
+      if (!username && !postId) {
+        next("/error/400");
+      } else {
+        next();
+      }
+    },
+  },
+  {
     path: "/profile/me",
     name: "myProfile",
     component: () => import("@/pages/profile/Portfolio.vue"),

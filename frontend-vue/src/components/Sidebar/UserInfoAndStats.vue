@@ -10,6 +10,7 @@ import { userService } from '@/services/user';
 import { imageDirectory } from '@/services/constants';
 import defaultAvatar from '@/assets/Images/avatar.png';
 import PortfolioIcon from '@/assets/Icons/PortfolioIcon.vue';
+import ReportIcon from '@/assets/Icons/ReportIcon.vue';
 
 export default {
   name: "UserInfoAndStats",
@@ -21,7 +22,8 @@ export default {
     WhiteRuby,
     ShareProfileIcon,
     PenIcon,
-    PortfolioIcon
+    PortfolioIcon,
+    ReportIcon
   },
   props: {
     page: {
@@ -97,6 +99,14 @@ export default {
   methods: {
     copyLink() {
       navigator.clipboard.writeText('http://localhost:8080/' + this.user.username + '/portfolio');
+    },
+    reportUser() {
+      this.$router.push({
+        path: '/report',
+        query: {
+          username: this.user.username
+        }
+      });
     },
     navigateToRubies() {
       this.$router.push('/profile/rubies');
@@ -199,6 +209,10 @@ export default {
       </button>
       <button class="copy-button" @click="copyLink">
         <ShareProfileIcon />
+      </button>
+      <button class="copy-button" v-if="page !== 'myProfile' && page !== 'buyRubies' && page !== 'editProfile'"
+        @click="reportUser">
+        <ReportIcon />
       </button>
     </span>
   </span>
