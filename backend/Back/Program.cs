@@ -1,5 +1,6 @@
 using Back.Services;
 using Back.Services.Interfaces;
+using Back.Middleware;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -165,6 +166,10 @@ if (app.Environment.IsDevelopment())
 app.UseRouting();
 app.UseCors("AllowAll");
 app.UseAuthentication();
+
+app.UseMiddleware<FrozenUserMiddleware>();
+
+app.UseAuthorization();
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(

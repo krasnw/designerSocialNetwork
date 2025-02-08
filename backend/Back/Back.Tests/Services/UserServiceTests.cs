@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Threading.Tasks;
 using Back.Models;
 using Back.Services;
 using Back.Services.Interfaces;
@@ -12,17 +13,19 @@ namespace Back.Tests.Services
     {
         private readonly Mock<IDatabaseService> _mockDbService;
         private readonly Mock<IImageService> _mockImageService;
+        private readonly Mock<IAuthService> _mockAuthService; // Added new field
         private readonly UserService _userService;
 
         public UserServiceTests()
         {
             _mockDbService = new Mock<IDatabaseService>();
             _mockImageService = new Mock<IImageService>();
-            _userService = new UserService(_mockDbService.Object, _mockImageService.Object);
+            _mockAuthService = new Mock<IAuthService>(); // Initialize new field
+            _userService = new UserService(_mockDbService.Object, _mockImageService.Object, _mockAuthService.Object);
         }
 
         [Fact]
-        public void Login_WithValidCredentials_ReturnsTrue()
+        public async Task Login_WithValidCredentials_ReturnsTrue() // Made async
         {
             // Arrange
             var username = "testUser";
@@ -31,15 +34,18 @@ namespace Back.Tests.Services
 
             SetupMockDbForSuccessfulLogin(username, hashedPassword);
 
+            // Setup authService to return a token
+            _mockAuthService.Setup(x => x.GenerateToken(username)).ReturnsAsync("validtoken");
+
             // Act
-            var result = _userService.Login(username, password);
+            var result = await _userService.Login(username, password); // Await async call
 
             // Assert
             Assert.True(result);
         }
 
         [Fact]
-        public void Login_WithInvalidCredentials_ReturnsFalse()
+        public async Task Login_WithInvalidCredentials_ReturnsFalse() // Made async
         {
             // Arrange
             var username = "testUser";
@@ -48,15 +54,18 @@ namespace Back.Tests.Services
 
             SetupMockDbForSuccessfulLogin(username, hashedPassword);
 
+            // Setup authService to return a token (not used if password check fails)
+            _mockAuthService.Setup(x => x.GenerateToken(username)).ReturnsAsync("validtoken");
+
             // Act
-            var result = _userService.Login(username, password);
+            var result = await _userService.Login(username, password); // Await async call
 
             // Assert
             Assert.False(result);
         }
 
         [Fact]
-        public void Logout_ExistingUser_ReturnsTrue()
+        public async Task Logout_ExistingUser_ReturnsTrue() // Made async
         {
             // Arrange
             var username = "testUser";
@@ -64,10 +73,10 @@ namespace Back.Tests.Services
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
 
             SetupMockDbForSuccessfulLogin(username, hashedPassword);
+            _mockAuthService.Setup(x => x.GenerateToken(username)).ReturnsAsync("validtoken");
 
             // Act
-            _userService.Login(username, password); // Ensure user is logged in
-            
+            await _userService.Login(username, password); // Await async login
             var result = _userService.Logout(username);
 
             // Assert

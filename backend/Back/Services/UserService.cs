@@ -77,11 +77,13 @@ public class UserService : IUserService
     private readonly HashSet<string> _loggedInUsers = new();
     private readonly IDatabaseService _databaseService;
     private readonly IImageService _imageService; // Add this field
+    private readonly IAuthService _authService; // Add this field
 
-    public UserService(IDatabaseService databaseService, IImageService imageService)
+    public UserService(IDatabaseService databaseService, IImageService imageService, IAuthService authService)
     {
         _databaseService = databaseService;
         _imageService = imageService;
+        _authService = authService;
     }
 
     private void ValidateUserData(string username, string email, string password, string firstName,
@@ -243,9 +245,9 @@ public class UserService : IUserService
         }
     }
 
-    public bool Login(string username, string password)
+    public async Task<bool> Login(string username, string password)
     {
-        string query = "SELECT user_password FROM api_schema.user WHERE username = @Username";
+        string query = "SELECT user_password, account_status FROM api_schema.user WHERE username = @Username";
         NpgsqlConnection connection = null;
         NpgsqlCommand command = null;
         try
@@ -260,8 +262,22 @@ public class UserService : IUserService
 
             reader.Read();
             string storedPassword = reader.GetString(0);
+            string accountStatus = reader.GetString(1);
+
+            if (accountStatus == "frozen")
+            {
+                throw new UnauthorizedAccessException("Account is frozen");
+            }
+
             if (BCrypt.Net.BCrypt.Verify(password, storedPassword.Trim()))
             {
+                // Generate token asynchronously
+                var token = await _authService.GenerateToken(username);
+                if (token == null)
+                {
+                    return false;
+                }
+
                 _loggedInUsers.Add(username);
                 return true;
             }

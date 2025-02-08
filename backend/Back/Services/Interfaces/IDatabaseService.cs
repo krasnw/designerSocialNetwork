@@ -16,4 +16,5 @@ public interface IDatabaseService
         NpgsqlConnection connection, NpgsqlTransaction transaction);
     Task<int> ExecuteNonQueryAsync(string query, Dictionary<string, object> parameters, 
         NpgsqlConnection connection, NpgsqlTransaction transaction);
+    Task<string?> GetUserStatus(string username);
 }
