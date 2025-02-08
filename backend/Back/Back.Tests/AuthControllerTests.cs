@@ -90,7 +90,7 @@ namespace Back.Tests.Controllers
                 signUpRequest.LastName,
                 signUpRequest.PhoneNumber,
                 It.IsAny<string>()))
-                .ReturnsAsync(string.Empty);
+                .Returns(string.Empty);
 
             _authServiceMock.Setup(x => x.GenerateToken(signUpRequest.Username))
                 .ReturnsAsync(expectedToken);
