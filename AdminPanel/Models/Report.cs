@@ -5,6 +5,7 @@ public abstract class Report
     public long Id { get; set; }
     public string ReportReason { get; set; }
     public DateTime ReportDate { get; set; }
+    public string Description { get; set; }
 }
 
 public class UserReport : Report

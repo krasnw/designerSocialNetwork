@@ -18,13 +18,12 @@ public class ReportHandlerService : IReportHandlerService
             SELECT ur.id,
                    r.reason_name as report_reason, 
                    ur.report_date,
-                   -- Reporter details
+                   ur.description,
                    reporter.username as reporter_username,
                    reporter.first_name as reporter_first_name,
                    reporter.last_name as reporter_last_name,
                    reporter.profile_picture as reporter_profile_image,
                    reporter.profile_description as reporter_description,
-                   -- Reported user details
                    reported.username as reported_username,
                    reported.first_name as reported_first_name,
                    reported.last_name as reported_last_name,
@@ -46,6 +45,7 @@ public class ReportHandlerService : IReportHandlerService
                 Id = reader.GetInt64(reader.GetOrdinal("id")),
                 ReportReason = reader.GetString(reader.GetOrdinal("report_reason")),
                 ReportDate = reader.GetDateTime(reader.GetOrdinal("report_date")),
+                Description = reader.GetString(reader.GetOrdinal("description")),  // Add this line
                 Reporter = new UserMiniDTO(
                     reader.GetString(reader.GetOrdinal("reporter_username")),
                     reader.GetString(reader.GetOrdinal("reporter_first_name")),
@@ -80,18 +80,16 @@ public class ReportHandlerService : IReportHandlerService
             SELECT pr.id,
                 r.reason_name as report_reason,
                 pr.report_date,
-                -- Reporter details
+                pr.description,
                 reporter.username as reporter_username,
                 reporter.first_name as reporter_first_name,
                 reporter.last_name as reporter_last_name,
                 reporter.profile_picture as reporter_profile_image,
                 reporter.profile_description as reporter_description,
-                -- Post details
                 p.id as post_id,
                 p.post_name as post_title,
                 p.post_text as content,
-                ic.main_image_path,
-                -- Post author details
+                img.image_file_path as main_image_path,
                 author.username as author_username,
                 author.first_name as author_first_name,
                 author.last_name as author_last_name,
@@ -102,6 +100,7 @@ public class ReportHandlerService : IReportHandlerService
             JOIN api_schema.post p ON pr.reported_id = p.id
             JOIN api_schema.""user"" author ON p.user_id = author.id
             LEFT JOIN api_schema.image_container ic ON p.container_id = ic.id
+            LEFT JOIN api_schema.image img ON ic.main_image_id = img.id
             JOIN api_schema.reason r ON pr.reason_id = r.id
             ORDER BY pr.report_date DESC";
 
@@ -115,6 +114,7 @@ public class ReportHandlerService : IReportHandlerService
                 Id = reader.GetInt64(reader.GetOrdinal("id")),
                 ReportReason = reader.GetString(reader.GetOrdinal("report_reason")),
                 ReportDate = reader.GetDateTime(reader.GetOrdinal("report_date")),
+                Description = reader.GetString(reader.GetOrdinal("description")),
                 Reporter = new UserMiniDTO(
                     reader.GetString(reader.GetOrdinal("reporter_username")),
                     reader.GetString(reader.GetOrdinal("reporter_first_name")),

@@ -213,6 +213,7 @@ CREATE TABLE api_schema.user_report (
     reporter_id INTEGER REFERENCES "user"(id),
     reported_id INTEGER REFERENCES "user"(id),
     reason_id INTEGER REFERENCES reason(id),
+    description TEXT,
     report_date DATE NOT NULL
 );
 
@@ -221,31 +222,7 @@ CREATE TABLE api_schema.post_report (
     reporter_id INTEGER REFERENCES "user"(id),
     reported_id INTEGER REFERENCES post(id),
     reason_id INTEGER REFERENCES reason(id),
-    report_date DATE NOT NULL
-);
-
-CREATE TABLE api_schema.image_report (
-    id SERIAL PRIMARY KEY,
-    reporter_id INTEGER REFERENCES "user"(id),
-    reported_id INTEGER REFERENCES image_container(id),
-    reason_id INTEGER REFERENCES reason(id),
-    report_date DATE NOT NULL,
-    status report_status NOT NULL DEFAULT 'pending'
-);
-
-CREATE TABLE api_schema.chat_report (
-    id SERIAL PRIMARY KEY,
-    reporter_id INTEGER REFERENCES "user"(id),
-    reported_id INTEGER REFERENCES chat(id),
-    reason_id INTEGER REFERENCES reason(id),
-    report_date DATE NOT NULL
-);
-
-CREATE TABLE api_schema.chat_image_report (
-    id SERIAL PRIMARY KEY,
-    reporter_id INTEGER REFERENCES "user"(id),
-    reported_id INTEGER REFERENCES chat_image(id),
-    reason_id INTEGER REFERENCES reason(id),
+    description TEXT,
     report_date DATE NOT NULL
 );
 

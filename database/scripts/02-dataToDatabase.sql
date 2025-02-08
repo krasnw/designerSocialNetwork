@@ -171,23 +171,23 @@ VALUES
 ('Inne', 'post');
 
 
-INSERT INTO api_schema.user_report (reporter_id, reported_id, reason_id, report_date)
+INSERT INTO api_schema.user_report (reporter_id, reported_id, reason_id, report_date, description)
 VALUES
-(1, 2, 1, '2024-01-15'),
-(2, 3, 2, '2024-02-15'),
-(3, 4, 3, '2024-03-15'),
-(4, 5, 4, '2024-04-15'),
-(5, 6, 5, '2024-05-15');
+(1, 2, 1, '2024-01-15', 'Spam report'),
+(2, 3, 2, '2024-02-15', 'Inappropriate behavior'),
+(3, 4, 3, '2024-03-15', 'Impersonation'),
+(4, 5, 4, '2024-04-15', 'Inappropriate profile'),
+(5, 6, 5, '2024-05-15', 'Other');
 
 
 
-INSERT INTO api_schema.post_report (reporter_id, reported_id, reason_id, report_date)
+INSERT INTO api_schema.post_report (reporter_id, reported_id, reason_id, report_date, description)
 VALUES
-(1, 1, 1, '2024-01-25'),
-(2, 2, 2, '2024-02-25'),
-(3, 3, 3, '2024-03-25'),
-(4, 4, 4, '2024-04-25'),
-(5, 5, 5, '2024-05-25');
+(1, 1, 1, '2024-01-25', 'Spam post'),
+(2, 2, 2, '2024-02-25', 'Inappropriate content'),
+(3, 3, 3, '2024-03-25', 'Content theft'),
+(4, 4, 4, '2024-04-25', 'Misleading information'),
+(5, 5, 5, '2024-05-25', 'Other');
 
 -- Add this new section instead
 INSERT INTO api_schema.user_rating (user_id, total_likes, last_updated)

@@ -80,19 +80,21 @@ namespace Back.Services
                         throw new ReportException("You have already reported this user today");
 
                     const string sql = @"
-                        INSERT INTO api_schema.user_report (reporter_id, reported_id, reason_id, report_date)
-                        VALUES (@ReporterId, @ReportedId, @ReasonId, CURRENT_DATE)";
+                        INSERT INTO api_schema.user_report (reporter_id, reported_id, reason_id, report_date, description)
+                        VALUES (@ReporterId, @ReportedId, @ReasonId, CURRENT_DATE, @Description)";
 
                     await connection.ExecuteAsync(sql, new { 
                         ReporterId = reporterId.Value,
                         ReportedId = reportedId.Value,
-                        ReasonId = reasonId.Value
+                        ReasonId = reasonId.Value,
+                        Description = request.Description
                     }, transaction);
 
                     await transaction.CommitAsync();
                 }
-                catch
+                catch (Exception ex)
                 {
+                    _logger.LogError(ex, "Error during transaction");
                     await transaction.RollbackAsync();
                     throw;
                 }
@@ -180,13 +182,14 @@ namespace Back.Services
                         throw new ReportException("You have already reported this post today");
 
                     const string sql = @"
-                        INSERT INTO api_schema.post_report (reporter_id, reported_id, reason_id, report_date)
-                        VALUES (@ReporterId, @ReportedId, @ReasonId, CURRENT_DATE)";
+                        INSERT INTO api_schema.post_report (reporter_id, reported_id, reason_id, report_date, description)
+                        VALUES (@ReporterId, @ReportedId, @ReasonId, CURRENT_DATE, @Description)";
 
                     await connection.ExecuteAsync(sql, new { 
                         ReporterId = reporterId.Value,
                         ReportedId = request.PostId,
-                        ReasonId = reasonId.Value
+                        ReasonId = reasonId.Value,
+                        Description = request.Description
                     }, transaction);
 
                     await transaction.CommitAsync();

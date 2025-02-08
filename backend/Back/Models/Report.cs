@@ -6,12 +6,14 @@ namespace Back.Models
     {
         public string Username { get; set; }
         public string Reason { get; set; }
+        public string Description { get; set; }
     }
 
     public class CreatePostReportRequest
     {
         public int PostId { get; set; }
         public string Reason { get; set; }
+        public string Description { get; set; }
     }
 
     public class ReasonResponse
