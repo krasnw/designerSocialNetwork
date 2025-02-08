@@ -181,7 +181,7 @@ VALUES
 
 
 
-INSERT INTO api_schema.post_report (reporter_id, reported_id, reason_id, report_date,)
+INSERT INTO api_schema.post_report (reporter_id, reported_id, reason_id, report_date)
 VALUES
 (1, 1, 1, '2024-01-25'),
 (2, 2, 2, '2024-02-25'),
