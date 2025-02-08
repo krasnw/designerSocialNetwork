@@ -44,6 +44,16 @@ export default {
     }
     chatMessagesService.disconnect();
   },
+  computed: {
+    filteredMessages() {
+      const type3Count = this.messages.filter(msg => msg.type === 3).length;
+      const type4Count = this.messages.filter(msg => msg.type === 4).length;
+
+      return this.messages.filter(msg =>
+        msg.type !== 3 || (msg.type === 3 && type3Count > type4Count)
+      );
+    }
+  },
   methods: {
     scrollToBottom() {
       const messagesContainer = this.$el.querySelector('.messages');
@@ -70,7 +80,7 @@ export default {
 <template>
   <main class="chat-container">
     <section class="messages" ref="messages">
-      <Message v-for="message in messages" :key="message.id" :message="message" />
+      <Message v-for="message in filteredMessages" :key="message.id" :message="message" />
     </section>
   </main>
 </template>
