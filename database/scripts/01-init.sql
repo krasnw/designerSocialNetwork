@@ -18,6 +18,7 @@ CREATE TYPE api_schema.request_status AS ENUM ('pending', 'accepted', 'completed
 CREATE TYPE api_schema.chat_status AS ENUM ('active', 'disabled');  -- changed from ('active', 'closed')
 CREATE TYPE api_schema.message_type AS ENUM ('Complex', 'Transaction', 'TransactionApproval', 'EndRequest', 'EndRequestApproval');
 CREATE TYPE api_schema.reason_type AS ENUM ('user', 'post');
+CREATE TYPE api_schema.report_status AS ENUM ('pending', 'resolved', 'dismissed');
 
 CREATE TABLE api_schema."user" (
     id SERIAL PRIMARY KEY,
@@ -228,7 +229,8 @@ CREATE TABLE api_schema.image_report (
     reporter_id INTEGER REFERENCES "user"(id),
     reported_id INTEGER REFERENCES image_container(id),
     reason_id INTEGER REFERENCES reason(id),
-    report_date DATE NOT NULL
+    report_date DATE NOT NULL,
+    status report_status NOT NULL DEFAULT 'pending'
 );
 
 CREATE TABLE api_schema.chat_report (
