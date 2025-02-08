@@ -67,10 +67,10 @@ export default {
         username: userData.username,
         name: `${userData.firstName} ${userData.lastName}`,
         image: userData.profileImage || '',
-        rubies: userData.rubies,
-        rank: userData.rating || userData.ratingPosition, //TODO remove ratingPosition when backend is updated
-        tasks: userData.completedTasks,
-        likes: userData.totalLikes,
+        rubies: Number(userData.rubies || 0),
+        rank: Number((userData.rating || userData.ratingPosition) || 0),  //TODO remove ratingPosition when backend is updated
+        tasks: Number(userData.completedTasks || 0),
+        likes: Number(userData.totalLikes || 0),
         description: userData.description || 'Użytkownik nie dodał jeszcze opisu'
       };
     } catch (error) {

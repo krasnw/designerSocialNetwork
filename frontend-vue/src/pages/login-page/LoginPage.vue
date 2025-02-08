@@ -46,7 +46,18 @@ export default {
         window.dispatchEvent(new Event('loginStatusChanged'));
         this.$router.push({ name: 'feed' });
       } catch (error) {
-        this.error = error.message;
+        // Parse error message from JSON string
+        const errorString = error.message;
+        const match = errorString.match(/\{.*\}/);
+
+        if (match) {
+          const parsedError = JSON.parse(match[0]);
+          this.error = parsedError.message === "Account is frozen"
+            ? "Konto zostało zablokowane, skontaktuj się z administratorem"
+            : "Nieprawidłowe dane logowania";
+        } else {
+          this.error = "Wystąpił błąd podczas logowania";
+        }
       } finally {
         this.isLoading = false;
       }

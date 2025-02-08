@@ -82,6 +82,7 @@ const routes = [
     path: "/report",
     name: "report",
     component: () => import("@/pages/report/ReportPage.vue"),
+    meta: { requiresAuth: true },
     beforeEnter: (to, from, next) => {
       const { username, postId } = to.query;
       if (!username && !postId) {
