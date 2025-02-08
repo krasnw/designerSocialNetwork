@@ -2,10 +2,8 @@
 import SideBarArrow from '@/assets/Icons/SideBarArrow.vue';
 import ProfileInfo from './ProfileInfo.vue';
 import Filter from './Filter.vue';
-import Search from './Search.vue';
 import UserInfoAndStats from './UserInfoAndStats.vue';
-import ProfileBadge from './ProfileBadge.vue';
-
+import ChatBadges from './ChatBadges.vue';
 
 export default {
   name: "SideBar",
@@ -13,9 +11,8 @@ export default {
     SideBarArrow,
     ProfileInfo,
     UserInfoAndStats,
+    ChatBadges,
     Filter,
-    Search,
-    ProfileBadge
   },
   props: {
     page: {
@@ -29,29 +26,7 @@ export default {
       hidden: sidebarAlwaysOpen ? false : (JSON.parse(localStorage.getItem('sidebarHidden')) || false),
       rotated: sidebarAlwaysOpen ? true : (JSON.parse(localStorage.getItem('sidebarRotated')) || true),
       alwaysOpen: sidebarAlwaysOpen,
-      // TODO: Вынести чаты в отдельный компонент
-      users: [
-        {
-          name: 'Steve Jobs',
-          avatar: 'https://placehold.co/600x600',
-        },
-        {
-          name: 'Mykhailo Krylov',
-          avatar: 'https://placehold.co/600x600',
-        },
-        {
-          name: 'Volodymyr Dobrohorskyi',
-          avatar: 'https://placehold.co/600x600',
-        },
-        {
-          name: 'Friendly Thug 52 NGG',
-          avatar: 'https://placehold.co/600x600',
-        },
-        {
-          name: 'Pan Spinacz',
-          avatar: 'https://placehold.co/600x600',
-        }
-      ]
+      pagesWithUserInfo: ['myProfile', 'editProfile', 'portfolio', 'addTask', 'subscription', 'buyRubies'],
     };
   },
   created() {
@@ -100,26 +75,18 @@ export default {
 
 
     <section v-if="!hidden" class="sidebar">
-      <UserInfoAndStats
-        v-if="page === 'myProfile' || page === 'editProfile' || page === 'portfolio' || page === 'addTask'"
-        :page="page" />
+      <UserInfoAndStats v-if="pagesWithUserInfo.includes(page)" :page="page" />
       <ProfileInfo v-else />
 
       <!-- cases for other pages -->
       <div v-if="page === 'feed'" class="wrap">
-        <Search />
         <Filter />
       </div>
       <div v-else-if="page === 'myProfile' || page === 'portfolio'" class="wrap">
         <Filter />
       </div>
-      <div v-else-if="page === 'conversations'" class="wrap">
-        <Search />
-        <article class="profile-badges">
-          <h3>Czaty</h3>
-
-          <ProfileBadge v-for="user in users" :key="user.name" :user="user" />
-        </article>
+      <div v-else-if="page === 'conversations' || page === 'chat'" class="wrap">
+        <ChatBadges />
       </div>
     </section>
   </aside>

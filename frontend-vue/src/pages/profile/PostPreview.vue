@@ -2,12 +2,19 @@
 import LikeIcon from '@/assets/Icons/LikeIcon.vue';
 import PostView from '@/components/PostView.vue';
 import { postsContentService } from '@/services/postsContent';
+import Spinner from '@/assets/Icons/Spinner.vue';
+import { imageDirectory } from '@/services/constants';
+import Lock from '@/assets/Icons/Lock.vue';
+import Link from '@/assets/Icons/Link.vue';
 
 export default {
   name: 'PostPreview',
   components: {
     LikeIcon,
-    PostView
+    PostView,
+    Spinner,
+    Lock,
+    Link
   },
   data() {
     return {
@@ -29,6 +36,9 @@ export default {
         return (likes / 1000).toFixed(1).replace('.', ',') + ' K';
       }
       return likes;
+    },
+    imagePath() {
+      return imageDirectory + this.post.mainImageFilePath;
     }
   },
   methods: {
@@ -38,13 +48,24 @@ export default {
         this.isLoading = false;
       });
       this.fullPostVisible = true;
+      await console.log(this.fullPost);
     },
     hidePost() {
       this.fullPostVisible = false;
     },
+    reportPost() {
+      this.$router.push({
+        path: '/report',
+        query: {
+          postId: this.post.id,
+          username: this.fullPost.author.username
+        }
+      });
+    },
     async deletePost() {
       await postsContentService.deletePost(this.post.id);
-      this.$root.reloadView();
+      this.hidePost();
+      await this.$root.reloadView();
     },
   }
 }
@@ -53,12 +74,14 @@ export default {
 <template>
   <section class="post-wrapper">
     <article v-if="!fullPostVisible" class="post-preview background" @click="showPost">
-      <img class="post-preview-img" :src="post.image" alt="post.title" onmousedown='return false;'
+      <img class="post-preview-img" :src="imagePath" loading="lazy" alt="post.title" onmousedown='return false;'
         ondragstart='return false;'>
-      <span class="post-preview-info background">
+      <span class="post-preview-info">
         <h4 class="post-preview-title">{{ post.title }}</h4>
         <span class="post-like">
-          <LikeIcon />
+          <Link v-if="post.access === 'protected'" />
+          <Lock v-if="post.access === 'private'" />
+          <LikeIcon :isLiked="post.isLiked" />
           <h4>{{ formattedLikes }}</h4>
         </span>
       </span>
@@ -71,7 +94,7 @@ export default {
       <section class="post-control-buttons">
         <button class="accept-button button" @click="hidePost">Schowaj</button>
         <button class="delete-button button" v-if="!$route.params.username" @click="deletePost">Usuń</button>
-        <button class="delete-button button" v-else>Report</button>
+        <button class="delete-button button" v-else @click="reportPost">Report</button>
       </section>
     </article>
   </section>
@@ -105,8 +128,8 @@ export default {
 }
 
 .post-preview-img {
-  margin: 20px;
-  border-radius: 10px;
+  margin: 15px;
+  border-radius: 5px;
   width: 420px;
   height: 270px;
   object-fit: cover;
@@ -116,11 +139,11 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-radius: 15px;
+  border: 0.5px solid var(--element-border-light-color);
   background: var(--element-light-color);
-  ;
   padding: 15px 30px;
   box-shadow: 5px 5px 25px 0px var(--shadow-color);
-
 }
 
 .post-preview-title {

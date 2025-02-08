@@ -1,4 +1,4 @@
-using Back.Models;
+using Back.Models.UserDto;
 using Back.Services.Interfaces;
 using Npgsql;
 using Dapper;
@@ -76,7 +76,7 @@ public class RatingService : IRatingService
         var result = await connection.QueryAsync<UserRatingTemp>(sql, new { Limit = limit, Offset = offset });
         return result.Select(r => new UserRating
         {
-            User = new UserDetails
+            User = new UserMiniDto()
             {
                 Username = r.Username,
                 FirstName = r.FirstName,

@@ -1,122 +1,180 @@
 <script>
+import defaultAvatar from "@/assets/Images/avatar.png";
+import { imageDirectory } from "@/services/constants";
+import { taskService } from "@/services/task";
+
 export default {
   name: "TaskView",
   props: {
-    username: {
-      type: String,
-      required: true
-    },
-    userProfilePicture: {
-      type: String,
-      required: true
-    },
-    description: {
-      type: String,
+    task: {
+      type: Object,
       required: true
     }
   },
   data() {
     return {
-      reply: false
-    };
+      isAccepted: false,
+      isDeleted: false,
+      isAllowed: true,
+      deleteTimer: null,
+      deleteCountdown: 10
+    }
   },
   methods: {
-    replyTask() {
-      this.reply = !this.reply;
+    async acceptTask() {
+      try {
+        await taskService.acceptRequest(this.task.id);
+        this.isAccepted = true;
+      } catch (error) {
+        if (error.status === 400) {
+          this.isAllowed = false;
+        } else {
+          this.$router.push(`/error/${error.status}`);
+        }
+      }
+    },
+    deleteTask() {
+      this.deleteCountdown = 10;
+      this.isDeleted = true;
+      this.deleteTimer = setInterval(() => {
+        this.deleteCountdown--;
+        if (this.deleteCountdown === 0) {
+          this.confirmDelete();
+        }
+      }, 1000);
+    },
+    cancelDelete() {
+      clearInterval(this.deleteTimer);
+      this.isDeleted = false;
+      this.deleteCountdown = 10;
+    },
+    async confirmDelete() {
+      try {
+        clearInterval(this.deleteTimer);
+        await taskService.rejectRequest(this.task.id);
+        this.$emit('task-deleted', this.task.id);
+      } catch (error) {
+        this.$router.push(`/error/${error.status}`);
+      }
+    },
+    goToProfile() {
+      this.$router.push(`/${this.task.senderProfile.username}/portfolio`);
+    },
+    goToChat() {
+      this.$router.push(`/conversations/${this.task.senderProfile.username}`);
+    },
+    imagePathHandler(image) {
+      return image ? imageDirectory + image : defaultAvatar;
     }
   }
 };
 </script>
 
 <template>
-  <article class="background task" :class="{ 'task-with-reply': reply }">
-    <span class="task-info">
-      <img class="profile-picture" :src="userProfilePicture" alt="Profile Picture">
-      <h4 class="username">{{ username }}</h4>
+  <p class="message background" v-if="isAccepted">Zlecenie zostało <span class="green-gradient">zaakceptowane</span>
+    <br>Przejdź do <a @click="goToChat" class="chat-link blue-gradient">czatu</a>
+  </p>
+  <div class="delete-message" v-if="isDeleted">
+    <p class="message background">
+      Zlecenie zostało <span class="red-gradient">usunięte</span>
+    </p>
+    <button @click="cancelDelete" class="delete-button button">
+      Cofnij ({{ deleteCountdown }})
+    </button>
+  </div>
+  <article v-if="!(isAccepted || isDeleted)" class="task background">
+    <span class="task-info" @click="goToProfile">
+      <img class="profile-picture no-select" :src="imagePathHandler(task.senderProfile.profileImage)"
+        alt="Profile Picture">
+      <h3 class="username">{{ task.senderProfile.firstName + " " + task.senderProfile.lastName }}</h3>
     </span>
-    <p class="task-description">{{ description }}</p>
-
-    <transition name="fade">
-      <textarea v-show="reply" class="reply-textarea" placeholder="reply to the task"></textarea>
-    </transition>
-
-    <span class="control-buttons">
-      <button class="delete-button button" v-if="!reply">Usuń</button>
-      <button class="delete-button button" @click="reply = false" v-else>Anuluj</button>
-
-      <button @click="replyTask" class="accept-button button" v-if="!reply">Odpowiedź</button>
-      <button @click="replyTask" class="accept-button button" v-else>Wyslij</button>
+    <p class="task-description">{{ task.description }}</p>
+    <span :class="isAllowed ? 'common-control-buttons' : 'warning-control-buttons'">
+      <p v-if="!isAllowed" class="warning">Nie można rozpocząć tego zlecenia, póki<br>jest <span
+          class="red-gradient">nie
+          zamknięte</span> z tym
+        <a @click="goToChat" class="chat-link blue-gradient">użytkownikiem</a>
+      </p>
+      <span class="control-buttons">
+        <button @click="deleteTask" class="delete-button button">Usuń</button>
+        <button v-if="isAllowed" @click="acceptTask" class="accept-button button">Zatwierdź</button>
+      </span>
     </span>
   </article>
 </template>
 
 <style scoped>
+.message {
+  padding: 15px;
+  width: max-content;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.warning {
+  text-wrap: balance;
+}
+
+.delete-message {
+  display: flex;
+  flex-direction: column;
+
+  gap: 10px;
+}
+
+.chat-link {
+  cursor: pointer;
+  text-decoration: none;
+}
+
 .task {
-  padding: 30px 40px;
+  padding: 20px;
   max-width: 925px;
   width: 80%;
   min-width: 550px;
   transition: all 0.3s ease;
   overflow: hidden;
-}
-
-.username {
-  font-weight: 700;
-  font-size: 21px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  border-radius: 30px;
 }
 
 .task-info {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.username:hover {
+  color: var(--text-color);
 }
 
 .profile-picture {
-  width: 40px;
-  height: 40px;
+  width: 35px;
+  height: 35px;
   border: 0.5px solid var(--element-border-light-color);
   padding: 2px;
   border-radius: 50%;
 }
 
 .task-description {
-  font-weight: 400;
-  font-size: 18px;
-  margin-top: 16px;
-}
-
-.reply-textarea {
-  margin-top: 16px;
-  width: 100%;
-  height: 150px;
-  transition: all 0.3s ease;
+  text-wrap: balance;
 }
 
 .control-buttons {
-  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+}
+
+.common-control-buttons {
   display: flex;
   justify-content: flex-end;
-  gap: 20px;
 }
 
-.delete-button {
-  background: var(--delete-button-color);
-  border-color: var(--delete-button-border-color);
-}
-
-.accept-button {
-  background: var(--element-light-color);
-  border-color: var(--element-border-light-color);
-}
-
-.fade-enter-active {
-  transition: all 0.5s ease;
-  max-height: 150px;
-}
-
-.fade-enter-from {
-  opacity: 0;
-  transform: translateY(-20px);
-  max-height: 0;
+.warning-control-buttons {
+  display: flex;
+  justify-content: space-between;
 }
 </style>

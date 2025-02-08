@@ -60,6 +60,7 @@ export default {
 :root {
   --font: 'Montserrat';
   --secondary-font: 'Inter';
+  --bank-card-font: 'Michroma', monospace;
   --element-dark-color: rgba(30, 30, 30, 0.4);
   --element-dark-hover-color: rgba(30, 30, 30, 0.6);
   --element-light-color: rgba(255, 255, 255, 0.15);
@@ -92,7 +93,7 @@ html {
 body {
   margin: 0;
   padding: 0;
-  background-image: url('assets/Images/main_bg2.jpg');
+  background-image: url('assets/Images/main_bg5.png');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -110,7 +111,10 @@ hr {
 
 a {
   text-decoration: none;
-  color: #09f;
+  background: linear-gradient(120deg, #4f6fbb 0%, #71cadc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 a:hover {
@@ -155,7 +159,7 @@ p {
 .button {
   border: 0.5px solid;
   border-radius: 12px;
-  padding: 10px;
+  padding: 10px 15px;
   width: 100px;
   color: rgba(255, 255, 255, 0.8);
   font-weight: 700;
@@ -163,12 +167,21 @@ p {
   backdrop-filter: blur(40px);
   box-shadow: 5px 5px 25px 0px rgba(0, 0, 0, 0.25);
   cursor: pointer;
+  width: fit-content;
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   -webkit-user-select: none;
   -ms-user-select: none;
   user-select: none;
+  transition: all 0.3s;
+}
+
+.button:hover {
+  transform: scale(1.03);
+  transition: all 0.3s;
 }
 
 input,
@@ -178,9 +191,8 @@ textarea {
   border-radius: 10px;
   background-color: var(--element-light-color);
   padding: 19px 23px;
-  margin-top: 23px;
   box-shadow: 5px 5px 25px var(--shadow-color);
-  font-weight: 800;
+  font-weight: 700;
   font-family: var(--font);
   font-size: clamp(9px, 1.5vw, 14px);
 }
@@ -229,6 +241,37 @@ select {
   -webkit-user-select: none;
   -ms-user-select: none;
   user-select: none;
+}
+
+.green-gradient {
+  background: linear-gradient(120deg, #4fbb94 0%, #709fbc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.red-gradient {
+  background: linear-gradient(120deg, #ec4389 0%, #eba83d 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.blue-gradient {
+  background: linear-gradient(120deg, #8d74df 0%, #5aaee3 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.delete-button {
+  background: var(--delete-button-color);
+  border-color: var(--delete-button-border-color);
+}
+
+.accept-button {
+  background: var(--element-light-color);
+  border-color: var(--element-border-light-color);
 }
 
 .error-wrap {

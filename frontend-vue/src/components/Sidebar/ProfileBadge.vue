@@ -1,19 +1,31 @@
 <script>
+import { imageDirectory } from '@/services/constants';
+import defaultImage from '@/assets/Images/avatar.png';
+
 export default {
   name: "ProfileBadge",
   props: {
     user: {
       type: Object,
       required: true
+    },
+    isPinned: {
+      type: Boolean,
+      default: false
+    }
+  },
+  methods: {
+    imagePathHandler(image) {
+      return image ? `${imageDirectory}${image}` : defaultImage;
     }
   }
 };
 </script>
 
 <template>
-  <article class="profile-badge">
-    <img :src="user.avatar" alt="User avatar" class="profile-badge__avatar" />
-    <h3 class="profile-badge__name">{{ user.name }}</h3>
+  <article class="profile-badge" :class="{ 'profile-badge--pinned': isPinned }">
+    <img :src="imagePathHandler(user.profileImage)" loading="lazy" alt="User avatar" class="profile-badge__avatar" />
+    <h3 class="profile-badge__name">{{ user.firstName + ' ' + user.lastName }}</h3>
   </article>
 </template>
 
@@ -41,5 +53,9 @@ export default {
 .profile-badge__name {
   font-size: 14px;
   font-weight: 700;
+}
+
+.profile-badge--pinned {
+  background-color: var(--element-border-light-color);
 }
 </style>

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Back.Models;
 using Back.Services.Interfaces;
+using Back.Exceptions;
 
 namespace Back.Controllers
 {
@@ -91,7 +92,11 @@ namespace Back.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (InvalidOperationException ex)
+            catch (NotFoundReportException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ReportException ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
@@ -142,24 +147,6 @@ namespace Back.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = "Failed to submit report", details = ex.Message });
-            }
-        }
-
-        [HttpGet("all")]
-        public async Task<ActionResult<AllReportsResponse>> GetAllReports()
-        {
-            try
-            {
-                var reports = await _reportService.GetAllReportsAsync();
-                if (reports.UserReports?.Any() != true && reports.PostReports?.Any() != true)
-                {
-                    return NotFound(new { message = "No reports found" });
-                }
-                return Ok(reports);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "Failed to retrieve reports", details = ex.Message });
             }
         }
     }

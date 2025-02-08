@@ -1,4 +1,4 @@
-using Back.Models;
+using Back.Models.UserDto;
 
 namespace Back.Services.Interfaces
 {

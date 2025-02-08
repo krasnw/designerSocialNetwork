@@ -18,7 +18,7 @@ export default {
   },
   computed: {
     isFormValid() {
-      return Boolean(this.selectedFiles.length > 0 && this.title.trim());
+      return this.selectedFiles.length > 0 && this.title;
     },
   },
   methods: {
@@ -116,12 +116,14 @@ export default {
         <div class="upload-post-window background">
           <transition mode="out-in">
             <div class="upload-post" v-if="!showTagSelection">
+              <h3>Obrazki</h3>
               <div class="file-upload"
                 :class="{ active: dragActive, 'error-shadow': showErrors && selectedFiles.length === 0 }"
                 @dragover="handleDragOver" @dragleave="handleDragLeave" @drop="handleDrop">
                 <input type="file" multiple class="hidden-input" @change="handleFileChange" ref="fileInput"
                   accept="image/*" />
                 <div class="file-content">
+
                   <template v-if="selectedFiles.length">
                     <div class="photos-container">
                       <div v-for="(file, index) in selectedFiles" :key="index" class="photo-wrapper">
@@ -141,17 +143,19 @@ export default {
                       + Dodaj więcej zdjęć
                     </button>
                   </template>
+
                   <template v-else>
                     <div class="placeholder" @click.stop.prevent="$refs.fileInput.click()">
                       <span>+</span>
                       <p>Przeciągnij obrazki lub wybierz pliki (max. 10)</p>
                     </div>
                   </template>
+
                 </div>
               </div>
 
               <label class="title-input">
-                <h3>Tutył</h3>
+                <h3>Tytuł</h3>
                 <input v-model="title" type="text" placeholder="Wpisz tutył"
                   :class="{ 'error-shadow': showErrors && !title }" />
               </label>

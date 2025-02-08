@@ -19,13 +19,8 @@ public class User(
     public string FirstName { get; set; } = firstName;
     public string LastName { get; set; } = lastName;
     public string PhoneNumber { get; set; } = phoneNumber;
-    public DateTime JoinDate { get; set; } = DateTime.Now;
     public string AccountStatus { get; set; } = accountStatus;
     public string AccountLevel { get; set; } = accountLevel;
-    public bool IsLoggedIn { get; set; } = false;
-    public string Token { get; set; } = "";
-    public DateTime LastLoginTime { get; set; } = DateTime.MinValue;
-    public string LastLoginIP { get; set; } = "";
     public decimal AccessFee { get; set; } = accessFee;
     public string Description { get; set; } = description;
     public string ProfileImage { get; set; } = profileImage;

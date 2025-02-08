@@ -148,12 +148,23 @@ public class ChatController : ControllerBase
 
         try
         {
+            // Add validation
+            if (string.IsNullOrEmpty(request.ReceiverUsername))
+                return BadRequest(new { message = "Receiver username is required" });
+
+            if (senderUsername.Equals(request.ReceiverUsername, StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { message = "Cannot send message to yourself" });
+
             var result = await _chatService.SendComplexMessage(senderUsername, request);
             return Ok(result);
         }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
-            return BadRequest(new { message = $"Error sending message: {ex.Message}" });
+            return StatusCode(500, new { message = $"Error sending message: {ex.Message}" });
         }
     }
 

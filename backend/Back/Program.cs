@@ -81,6 +81,28 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey))
     };
+    
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+                {
+                    accessToken = authHeader.Substring("Bearer ".Length);
+                }
+            }
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chathub"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 builder.Services.AddAuthorization();
@@ -99,14 +121,24 @@ builder.Services.AddControllers();
 builder.Services.AddSignalR(hubOptions =>
 {
     hubOptions.EnableDetailedErrors = true;
-    hubOptions.KeepAliveInterval = TimeSpan.FromSeconds(15);
-    hubOptions.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
-    hubOptions.HandshakeTimeout = TimeSpan.FromSeconds(15);
-    hubOptions.MaximumReceiveMessageSize = 32 * 1024; // 32KB
+    hubOptions.ClientTimeoutInterval = TimeSpan.FromMinutes(2);
+    hubOptions.HandshakeTimeout = TimeSpan.FromSeconds(30);
+    hubOptions.MaximumReceiveMessageSize = 102400; // 100KB
 })
 .AddJsonProtocol(options =>
 {
     options.PayloadSerializerOptions.PropertyNamingPolicy = null;
+});
+
+// Add this line to configure user identifier for SignalR
+builder.Services.AddSingleton<IUserIdProvider, NameUserIdProvider>();
+
+// Add logging
+builder.Services.AddLogging(logging =>
+{
+    logging.AddConsole();
+    logging.AddDebug();
+    logging.SetMinimumLevel(LogLevel.Debug);
 });
 
 var app = builder.Build();
@@ -175,3 +207,12 @@ catch (Exception ex)
 }
 
 public partial class Program {}
+
+// Add this class at the end of the file
+public class NameUserIdProvider : IUserIdProvider
+{
+    public string GetUserId(HubConnectionContext connection)
+    {
+        return connection.User?.Identity?.Name;
+    }
+}

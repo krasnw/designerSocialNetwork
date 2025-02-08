@@ -1,8 +1,12 @@
 <script>
+import WhiteRuby from '@/assets/Icons/WhiteRuby.vue';
 import { filterTagService } from '@/services/filterTag';
 
 export default {
   name: "SettingsPage",
+  components: {
+    WhiteRuby
+  },
   data() {
     return {
       allowArrow: localStorage.getItem('allowArrow') === 'true',
@@ -53,7 +57,6 @@ export default {
     }
   },
   mounted() {
-    // Меняем значение по умолчанию на false
     if (localStorage.getItem('allowArrow') === null) {
       localStorage.setItem('allowArrow', 'false');
     }
@@ -117,6 +120,16 @@ export default {
 
       <section class="settings background" v-if="isLoggedIn()">
         <h3>Ustawienia konta</h3>
+        <article class="settings-cell">
+          <p>Doładowanie konta walutą wewnętrzną</p>
+          <button class="button" @click="$router.push('/profile/rubies')">Kupuj
+            <WhiteRuby />
+          </button>
+        </article>
+        <article class="settings-cell">
+          <p>Zmiana danych użytkownika</p>
+          <button class="button" @click="$router.push('/profile/me/edit')">Przejdź</button>
+        </article>
         <article class="settings-cell">
           <p>Wylogowanie z aktywnego konta</p>
           <button class="button" @click="logout">Wyloguj się</button>

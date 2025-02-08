@@ -24,14 +24,14 @@ export default {
         this.error = null;
         if (!this.validateForm()) return;
 
-        await userService.sendRequest(
-          this.$route.params.username,
-          this.description
-        );
+        const formData = new FormData();
+        formData.append("description", this.description);
+        formData.append("receiver", this.$route.params.username);
+
+        await userService.sendRequest(formData);
         this.returnToPortfolio();
       } catch (error) {
-        console.error("Error sending task:", error);
-        this.error = "Przepraszamy, funkcja jest tymczasowo niedostępna";
+        this.$router.push(`/error/${error.status}`);
       }
     }
   }

@@ -1,4 +1,5 @@
 using Back.Models;
+using Back.Models.UserDto;
 using Back.Models.PostDto;
 using Xunit;
 

@@ -1,5 +1,6 @@
 import { getAuthHeaders } from "./auth";
 import { API_URL } from "./constants";
+import axios from "axios";
 
 const CACHE_NAME = "user-cache-v1";
 const CACHE_KEY = "/api/user-profile";
@@ -22,6 +23,11 @@ async function fetchUserData(endpoint) {
   });
   return response;
 }
+
+const clearProfileCache = async () => {
+  const cacheStorage = await caches.open("user-cache-v1");
+  await cacheStorage.delete("/api/user-profile");
+};
 
 // API error handler
 function handleFetchError(response, defaultErrorMessage) {
@@ -100,33 +106,24 @@ export const userService = {
     }
   },
 
-  async sendRequest(receiver, description) {
-    try {
-      const requestData = {
-        receiver: receiver.toString(),
-        description: description.toString(),
-      };
-      const response = await fetch(`${API_URL}/Chat/sendRequest`, {
-        method: "POST",
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestData),
-      });
+  async sendRequest(formData) {
+    const response = await axios.post(`${API_URL}/Chat/sendRequest`, formData, {
+      headers: getAuthHeaders(),
+    });
 
-      if (!response.ok) {
-        throw new Error(ERROR_MESSAGES.REQUEST_FAILED);
+    return response.data;
+  },
+
+  async buyRubies(formData) {
+    const response = await axios.post(
+      `${API_URL}/WalletTest/add-money`,
+      formData,
+      {
+        headers: getAuthHeaders(),
       }
+    );
+    clearProfileCache();
 
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        return await response.json();
-      }
-
-      return { success: true };
-    } catch (error) {
-      throw new Error(`${ERROR_MESSAGES.REQUEST_ERROR} ${error.message}`);
-    }
+    return response.data;
   },
 };

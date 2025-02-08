@@ -16,7 +16,7 @@ CREATE TYPE api_schema.tag_type AS ENUM ('ui element', 'style', 'color');
 CREATE TYPE api_schema.access_level AS ENUM ('public', 'private', 'protected');
 CREATE TYPE api_schema.request_status AS ENUM ('pending', 'accepted', 'completed');
 CREATE TYPE api_schema.chat_status AS ENUM ('active', 'disabled');  -- changed from ('active', 'closed')
-CREATE TYPE api_schema.message_type AS ENUM ('Text', 'Complex', 'Transaction', 'TransactionApproval', 'EndRequest', 'EndRequestApproval');
+CREATE TYPE api_schema.message_type AS ENUM ('Complex', 'Transaction', 'TransactionApproval', 'EndRequest', 'EndRequestApproval');
 CREATE TYPE api_schema.reason_type AS ENUM ('user', 'post');
 CREATE TYPE api_schema.report_status AS ENUM ('pending', 'resolved', 'dismissed');
 
@@ -213,9 +213,7 @@ CREATE TABLE api_schema.user_report (
     reporter_id INTEGER REFERENCES "user"(id),
     reported_id INTEGER REFERENCES "user"(id),
     reason_id INTEGER REFERENCES reason(id),
-    description TEXT,
-    report_date DATE NOT NULL,
-    status report_status NOT NULL DEFAULT 'pending'
+    report_date DATE NOT NULL
 );
 
 CREATE TABLE api_schema.post_report (
@@ -223,9 +221,7 @@ CREATE TABLE api_schema.post_report (
     reporter_id INTEGER REFERENCES "user"(id),
     reported_id INTEGER REFERENCES post(id),
     reason_id INTEGER REFERENCES reason(id),
-    description TEXT,
-    report_date DATE NOT NULL,
-    status report_status NOT NULL DEFAULT 'pending'
+    report_date DATE NOT NULL
 );
 
 CREATE TABLE api_schema.image_report (

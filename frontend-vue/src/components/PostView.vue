@@ -1,87 +1,84 @@
 <script>
 import LikeIcon from '@/assets/Icons/LikeIcon.vue';
 import Lock from '@/assets/Icons/Lock.vue';
+import Link from '@/assets/Icons/Link.vue';
 import ShareIcon from '@/assets/Icons/ShareIcon.vue';
 import { Splide, SplideSlide } from '@splidejs/vue-splide';
 import '@splidejs/vue-splide/css';
-import { API_URL } from '@/services/constants';
 import defaultAvatar from '@/assets/Images/avatar.png';
+import { imageDirectory, formatNumber } from '@/services/constants';
+import { postsContentService } from '@/services/postsContent';
 
 export default {
   name: 'PostView',
+  data() {
+    return {
+      isCopied: false,
+      isLiked: false
+    }
+  },
 
   components: {
     LikeIcon,
     ShareIcon,
-    Lock
+    Lock,
+    Link
   },
-
   props: {
     post: {
       type: Object,
       required: true,
-      validator(post) {
-        // Обновляем валидатор под структуру данных с сервера
-        return ['title', 'content', 'author', 'mainImageFilePath'].every(prop => prop in post)
-      }
     }
   },
-
-  computed: {
-    formattedPost() {
-      return {
-        ...this.post,
-        username: this.post.author?.username || '',
-        displayName: `${this.post.author?.firstName || ''} ${this.post.author?.lastName || ''}`.trim(),
-        userProfilePicture: this.post.author?.avatar || defaultAvatar,
-        postPictures: this.post.mainImageFilePath ? [`${API_URL}${this.post.mainImageFilePath}`] : [],
-        tags: this.post.tags || [],
-        likes: this.post.likes || 0,
-        shares: 0,
-        isPrivate: this.post.access === 'private'
-      }
-    },
-    formattedLikes() {
-      const likes = this.post.likes;
-      if (likes >= 1000) {
-        return (likes / 1000).toFixed(1).replace('.', ',') + ' K';
-      }
-      return likes;
-    },
-    formattedShares() {
-      const shares = this.formattedPost.shares;
-      //for thousands
-      if (shares >= 1000) {
-        return (shares / 1000).toFixed(1).replace('.', ',') + ' K';
-      } // for millions
-      else if (shares >= 1000000) {
-        return (shares / 1000000).toFixed(1).replace('.', ',') + ' M';
-      } // for billions
-      else if (shares >= 1000000000) {
-        return (shares / 1000000000).toFixed(1).replace('.', ',') + ' B';
-      }
-      return shares;
-    },
+  methods: {
     splideOptions() {
       return {
         rewind: true,
-        arrows: (localStorage.getItem('allowArrow') === 'true') ? this.formattedPost.postPictures.length > 1 : false,
+        arrows: (localStorage.getItem('allowArrow') === 'true') ? this.post.images.length > 1 : false,
         wheel: localStorage.getItem('allowWheel') === 'true',
         waitForTransition: localStorage.getItem('allowWheel') === 'true',
         releaseWheel: false,
         lazyLoad: 'nearby',
         preloadPages: 1,
         gap: '20px',
-        pagination: this.formattedPost.postPictures.length > 1, // скрываем пагинацию если картинка одна
+        pagination: this.post.images.length > 1,
       }
-    }
-  },
-
-  methods: {
+    },
+    formatLikes() {
+      return formatNumber(this.post.likes);
+    },
+    imagePathHandler(image) {
+      if (!image) {
+        return defaultAvatar;
+      }
+      return imageDirectory + image;
+    },
     navigateToPortfolio() {
-      if (this.formattedPost.username) {
-        this.$router.push(`/${this.formattedPost.username}/portfolio`);
+      if (this.post.author.username) {
+        this.$router.push(`/${this.post.author.username}/portfolio`);
       }
+    },
+    copyLink() {
+      let url;
+      if (this.post.access === 'protected') {
+        url = `${window.location.origin}/post/protected/${this.post.protectedAccessLink}`;
+      } else {
+        url = `${window.location.origin}/post/${this.post.id}`;
+      }
+      navigator.clipboard.writeText(url);
+      this.isCopied = true;
+      setTimeout(() => {
+        this.isCopied = false;
+      }, 3000);
+    },
+    async likePost() {
+      try {
+        const response = await postsContentService.likePost(this.post.id)
+        this.post.isLiked = response.isLiked;
+        this.post.likes = response.likes;
+      } catch (error) {
+        this.$router.push(`/login`);
+      };
     }
   }
 }
@@ -91,16 +88,17 @@ export default {
   <article class="post background">
     <div class="post-content">
       <Splide class="picture-slider" :options="splideOptions" aria-label="Post slides">
-        <SplideSlide v-for="(picture, index) in formattedPost.postPictures" :key="index">
-          <img class="slide" :src="picture" alt="Post Picture" onmousedown='return false;' ondragstart='return false;'>
+        <SplideSlide v-for="(picture, index) in post.images" :key="index">
+          <img class="slide" :src="imagePathHandler(picture)" loading="lazy" alt="Post Picture"
+            onmousedown='return false;' ondragstart='return false;'>
         </SplideSlide>
       </Splide>
       <article class="post-description">
         <h3>{{ post.title }}</h3>
         <div class="divider-horizontal"></div>
         <span class="post-sub-content">
-          <p style="white-space: pre-wrap">{{ formattedPost.description }}</p>
-          <span class="tags no-select">
+          <p style="white-space: pre-wrap">{{ post.content }}</p>
+          <span class="tags no-select" :class="{ 'tag-top-divider': post.tags?.length > 0 }">
             <span v-for="(tag, index) in post.tags" :key="index">{{ tag }}</span>
           </span>
         </span>
@@ -109,19 +107,25 @@ export default {
 
     <header class="post-header">
       <span class="post-profile" @click="navigateToPortfolio" role="button">
-        <img :src="formattedPost.userProfilePicture" alt="User Profile Picture">
-        <h4>{{ formattedPost.displayName }}</h4>
+        <img :src="imagePathHandler(post.author.profileImage)" loading="lazy" alt="User Profile Picture">
+        <h4>{{ post.author.firstName }} {{ post.author.lastName }}</h4>
       </span>
 
       <div class="stats no-select">
-        <span v-if="formattedPost.isPrivate">
-          <Lock />Prywatne
+        <span v-if="post.access === 'protected'">
+          <p class="access-type">Chroniony</p>
+          <Link />
+        </span>
+        <span v-if="post.access === 'private'">
+          <p class="access-type">Prywatny</p>
+          <Lock />
         </span>
         <span>
-          <ShareIcon />
+          <p v-if="isCopied" class="access-type">Skopiowane</p>
+          <ShareIcon @click="copyLink" />
         </span>
-        <span>
-          <LikeIcon />{{ formattedLikes }}
+        <span @click="likePost" class="post-like">
+          <LikeIcon :isLiked="post.isLiked" />{{ formatLikes() }}
         </span>
       </div>
     </header>
@@ -129,6 +133,11 @@ export default {
 </template>
 
 <style scoped>
+.access-type {
+  font-weight: 500;
+  font-size: 13px;
+}
+
 .post {
   display: flex;
   flex-direction: column;
@@ -142,11 +151,17 @@ export default {
   padding: 20px 30px 20px 20px;
 }
 
+.post-like {
+  cursor: pointer;
+}
+
 .picture-slider {
   display: flex;
   flex-direction: row;
   width: 400px;
   height: 350px;
+  display: flex;
+  justify-content: center;
 
   :deep(.splide__track) {
     height: 100%;
@@ -208,7 +223,6 @@ export default {
     display: flex;
     flex-wrap: wrap;
     gap: 5px;
-    border-top: 1px solid var(--element-light-color);
 
     span {
       padding: 5px 10px;
@@ -219,6 +233,10 @@ export default {
       font-size: 12px;
       color: var(--primery-text-color);
     }
+  }
+
+  .tag-top-divider {
+    border-top: 1px solid var(--element-light-color);
   }
 
   /* scrollbar styling */

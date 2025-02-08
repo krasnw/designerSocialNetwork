@@ -1,216 +1,258 @@
 using Back.Models;
 using Back.Services.Interfaces;
+using Back.Exceptions;
 using Npgsql;
 using Dapper;
+using Back.Models.UserDto;
+using Back.Models.PostDto;
 
 namespace Back.Services
 {
     public class ReportService : IReportService
     {
         private readonly string _connectionString;
+        private readonly ILogger<ReportService> _logger;
 
-        public ReportService(IConfiguration configuration)
+        public ReportService(IConfiguration configuration, ILogger<ReportService> logger)
         {
-            _connectionString = configuration.GetConnectionString("DefaultConnection");
+            _connectionString = configuration.GetConnectionString("DefaultConnection") 
+                ?? throw new ArgumentNullException(nameof(configuration));
+            _logger = logger;
         }
 
         public async Task CreateUserReportAsync(string username, CreateUserReportRequest request)
         {
+            if (string.IsNullOrWhiteSpace(username))
+                throw new ArgumentNullException(nameof(username));
+            
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            if (string.IsNullOrWhiteSpace(request.Username))
+                throw new ArgumentException("Username cannot be empty", nameof(request));
+
+            if (string.IsNullOrWhiteSpace(request.Reason))
+                throw new ArgumentException("Reason cannot be empty", nameof(request));
+
             using var connection = new NpgsqlConnection(_connectionString);
             try 
             {
-                // First check if reporter exists
-                const string reporterIdSql = "SELECT id FROM api_schema.\"user\" WHERE username = @Username";
-                var reporterId = await connection.QueryFirstOrDefaultAsync<int?>(reporterIdSql, new { Username = username });
-                if (!reporterId.HasValue)
+                await connection.OpenAsync();
+                using var transaction = await connection.BeginTransactionAsync();
+                try
                 {
-                    throw new InvalidOperationException("Reporter account not found");
-                }
+                    const string reporterIdSql = "SELECT id FROM api_schema.\"user\" WHERE username = @Username";
+                    var reporterId = await connection.QueryFirstOrDefaultAsync<int?>(reporterIdSql, 
+                        new { Username = username });
+                    
+                    if (!reporterId.HasValue)
+                        throw new ReportException("Reporter account not found");
 
-                // Then check if reported user exists
-                const string reportedIdSql = "SELECT id FROM api_schema.\"user\" WHERE username = @Username";
-                var reportedId = await connection.QueryFirstOrDefaultAsync<int?>(reportedIdSql, new { Username = request.Username });
-                if (!reportedId.HasValue)
+                    var reportedId = await connection.QueryFirstOrDefaultAsync<int?>(reporterIdSql, 
+                        new { Username = request.Username });
+                    
+                    if (!reportedId.HasValue)
+                        throw new NotFoundReportException($"Reported user '{request.Username}' not found");
+
+                    if (reporterId == reportedId)
+                        throw new ReportException("You cannot report yourself");
+
+                    if (!int.TryParse(request.Reason, out int reasonIdValue))
+                        throw new ReportException("Invalid reason format - must be a number");
+
+                    const string reasonIdSql = "SELECT id FROM api_schema.reason WHERE id = @ReasonId AND reason_type = 'user'";
+                    var reasonId = await connection.QueryFirstOrDefaultAsync<int?>(reasonIdSql, 
+                        new { ReasonId = reasonIdValue });
+                    
+                    if (!reasonId.HasValue)
+                        throw new ReportException("Invalid reason specified");
+
+                    const string existingReportSql = @"
+                        SELECT COUNT(*) FROM api_schema.user_report 
+                        WHERE reporter_id = @ReporterId 
+                        AND reported_id = @ReportedId 
+                        AND report_date = CURRENT_DATE";
+                    
+                    var existingReportCount = await connection.ExecuteScalarAsync<int>(existingReportSql, 
+                        new { ReporterId = reporterId.Value, ReportedId = reportedId.Value });
+                    
+                    if (existingReportCount > 0)
+                        throw new ReportException("You have already reported this user today");
+
+                    const string sql = @"
+                        INSERT INTO api_schema.user_report (reporter_id, reported_id, reason_id, report_date)
+                        VALUES (@ReporterId, @ReportedId, @ReasonId, CURRENT_DATE)";
+
+                    await connection.ExecuteAsync(sql, new { 
+                        ReporterId = reporterId.Value,
+                        ReportedId = reportedId.Value,
+                        ReasonId = reasonId.Value
+                    }, transaction);
+
+                    await transaction.CommitAsync();
+                }
+                catch
                 {
-                    throw new InvalidOperationException($"Reported user '{request.Username}' not found");
+                    await transaction.RollbackAsync();
+                    throw;
                 }
-
-                // Look up reason ID by name
-                const string reasonIdSql = "SELECT id FROM api_schema.reason WHERE reason_name = @ReasonName AND reason_type = 'user'";
-                var reasonId = await connection.QueryFirstOrDefaultAsync<int?>(reasonIdSql, new { ReasonName = request.Reason });
-                if (!reasonId.HasValue)
-                {
-                    throw new InvalidOperationException("Invalid reason specified");
-                }
-
-                // Check if user is already reported
-                const string existingReportSql = @"
-                    SELECT COUNT(*) FROM api_schema.user_report 
-                    WHERE reporter_id = @ReporterId 
-                    AND reported_id = @ReportedId 
-                    AND report_date = CURRENT_DATE";
-                
-                var existingReportCount = await connection.ExecuteScalarAsync<int>(existingReportSql, 
-                    new { ReporterId = reporterId.Value, ReportedId = reportedId.Value });
-                
-                if (existingReportCount > 0)
-                {
-                    throw new InvalidOperationException("You have already reported this user today");
-                }
-
-                const string sql = @"
-                    INSERT INTO api_schema.user_report (reporter_id, reported_id, reason_id, description, report_date)
-                    VALUES (@ReporterId, @ReportedId, @ReasonId, @Description, CURRENT_DATE)";
-
-                await connection.ExecuteAsync(sql, new { 
-                    ReporterId = reporterId.Value,
-                    ReportedId = reportedId.Value,
-                    ReasonId = reasonId.Value,
-                    request.Description
-                });
             }
-            catch (FormatException)
+            catch (NotFoundReportException)
             {
-                throw new InvalidOperationException("Invalid reason format");
+                throw;
             }
-            catch (InvalidOperationException)
+            catch (PostgresException pgEx)
             {
-                throw; // Re-throw user-friendly exceptions
+                _logger.LogError(pgEx, "Database error while creating user report");
+                throw new ReportException("Database error occurred", pgEx);
+            }
+            catch (ReportException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                throw new Exception($"Failed to create report: {ex.Message}");
+                _logger.LogError(ex, "Unexpected error while creating user report");
+                throw new ReportException("An unexpected error occurred", ex);
             }
         }
 
         public async Task CreatePostReportAsync(string username, CreatePostReportRequest request)
         {
+            if (string.IsNullOrWhiteSpace(username))
+                throw new ArgumentNullException(nameof(username));
+            
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            if (request.PostId <= 0)
+                throw new ArgumentException("Invalid post ID", nameof(request));
+
+            if (string.IsNullOrWhiteSpace(request.Reason))
+                throw new ArgumentException("Reason cannot be empty", nameof(request));
+
             using var connection = new NpgsqlConnection(_connectionString);
             try
             {
-                // Check if reporter exists
-                const string reporterIdSql = "SELECT id FROM api_schema.\"user\" WHERE username = @Username";
-                var reporterId = await connection.QueryFirstOrDefaultAsync<int?>(reporterIdSql, new { Username = username });
-                if (!reporterId.HasValue)
+                await connection.OpenAsync();
+                using var transaction = await connection.BeginTransactionAsync();
+                try
                 {
-                    throw new InvalidOperationException("Reporter account not found");
-                }
+                    const string reporterIdSql = "SELECT id FROM api_schema.\"user\" WHERE username = @Username";
+                    var reporterId = await connection.QueryFirstOrDefaultAsync<int?>(reporterIdSql, 
+                        new { Username = username });
+                    
+                    if (!reporterId.HasValue)
+                        throw new ReportException("Reporter account not found");
 
-                // Check if post exists
-                const string postExistsSql = "SELECT COUNT(*) FROM api_schema.post WHERE id = @PostId";
-                var postExists = await connection.ExecuteScalarAsync<int>(postExistsSql, new { PostId = request.PostId });
-                if (postExists == 0)
+                    const string postExistsSql = @"
+                        SELECT CASE 
+                            WHEN EXISTS (SELECT 1 FROM api_schema.post WHERE id = @PostId) THEN 1
+                            ELSE 0
+                        END";
+                    
+                    var postExists = await connection.ExecuteScalarAsync<bool>(postExistsSql, 
+                        new { PostId = request.PostId });
+                    
+                    if (!postExists)
+                        throw new ReportException($"Post with ID {request.PostId} not found");
+
+                    if (!int.TryParse(request.Reason, out int reasonIdValue))
+                        throw new ReportException("Invalid reason format - must be a number");
+
+                    const string reasonIdSql = "SELECT id FROM api_schema.reason WHERE id = @ReasonId AND reason_type = 'post'";
+                    var reasonId = await connection.QueryFirstOrDefaultAsync<int?>(reasonIdSql, 
+                        new { ReasonId = reasonIdValue });
+                    
+                    if (!reasonId.HasValue)
+                        throw new ReportException("Invalid reason specified");
+
+                    const string existingReportSql = @"
+                        SELECT COUNT(*) FROM api_schema.post_report 
+                        WHERE reporter_id = @ReporterId 
+                        AND reported_id = @ReportedId 
+                        AND report_date = CURRENT_DATE";
+                    
+                    var existingReportCount = await connection.ExecuteScalarAsync<int>(existingReportSql, 
+                        new { ReporterId = reporterId.Value, ReportedId = request.PostId });
+                    
+                    if (existingReportCount > 0)
+                        throw new ReportException("You have already reported this post today");
+
+                    const string sql = @"
+                        INSERT INTO api_schema.post_report (reporter_id, reported_id, reason_id, report_date)
+                        VALUES (@ReporterId, @ReportedId, @ReasonId, CURRENT_DATE)";
+
+                    await connection.ExecuteAsync(sql, new { 
+                        ReporterId = reporterId.Value,
+                        ReportedId = request.PostId,
+                        ReasonId = reasonId.Value
+                    }, transaction);
+
+                    await transaction.CommitAsync();
+                }
+                catch
                 {
-                    throw new InvalidOperationException($"Post with ID {request.PostId} not found");
+                    await transaction.RollbackAsync();
+                    throw;
                 }
-
-                // Check if reason exists
-                const string reasonIdSql = "SELECT id FROM api_schema.reason WHERE id = @ReasonId AND reason_type = 'post'";
-                var reasonId = await connection.QueryFirstOrDefaultAsync<int?>(reasonIdSql, new { ReasonId = int.Parse(request.Reason) });
-                if (!reasonId.HasValue)
-                {
-                    throw new InvalidOperationException("Invalid reason specified");
-                }
-
-                // Check if post is already reported by this user
-                const string existingReportSql = @"
-                    SELECT COUNT(*) FROM api_schema.post_report 
-                    WHERE reporter_id = @ReporterId 
-                    AND reported_id = @ReportedId 
-                    AND report_date = CURRENT_DATE";
-                
-                var existingReportCount = await connection.ExecuteScalarAsync<int>(existingReportSql, 
-                    new { ReporterId = reporterId.Value, ReportedId = request.PostId });
-                
-                if (existingReportCount > 0)
-                {
-                    throw new InvalidOperationException("You have already reported this post today");
-                }
-
-                const string sql = @"
-                    INSERT INTO api_schema.post_report (reporter_id, reported_id, reason_id, description, report_date)
-                    VALUES (@ReporterId, @ReportedId, @ReasonId, @Description, CURRENT_DATE)";
-
-                await connection.ExecuteAsync(sql, new { 
-                    ReporterId = reporterId.Value,
-                    ReportedId = request.PostId,
-                    ReasonId = reasonId.Value,
-                    request.Description
-                });
             }
-            catch (FormatException)
+            catch (PostgresException pgEx)
             {
-                throw new InvalidOperationException("Invalid reason format");
+                _logger.LogError(pgEx, "Database error while creating post report");
+                throw new ReportException("Database error occurred", pgEx);
             }
-            catch (InvalidOperationException)
+            catch (ReportException)
             {
-                throw; // Re-throw user-friendly exceptions
+                throw;
             }
             catch (Exception ex)
             {
-                throw new Exception($"Failed to create report: {ex.Message}");
+                _logger.LogError(ex, "Unexpected error while creating post report");
+                throw new ReportException("An unexpected error occurred", ex);
             }
         }
 
         public async Task<IEnumerable<ReasonResponse>> GetUserReasonsAsync()
         {
             using var connection = new NpgsqlConnection(_connectionString);
-            const string sql = @"
-                SELECT id as Id, reason_name as ReasonName 
-                FROM api_schema.reason 
-                WHERE reason_type = 'user'";
-            
-            return await connection.QueryAsync<ReasonResponse>(sql);
+            try
+            {
+                await connection.OpenAsync();
+                const string sql = @"
+                    SELECT id as Id, reason_name as ReasonName 
+                    FROM api_schema.reason 
+                    WHERE reason_type = 'user'
+                    ORDER BY id";
+                
+                return await connection.QueryAsync<ReasonResponse>(sql);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving user reasons");
+                throw new ReportException("Failed to retrieve user reasons", ex);
+            }
         }
 
         public async Task<IEnumerable<ReasonResponse>> GetPostReasonsAsync()
         {
             using var connection = new NpgsqlConnection(_connectionString);
-            const string sql = @"
-                SELECT id as Id, reason_name as ReasonName 
-                FROM api_schema.reason 
-                WHERE reason_type = 'post'";
-            
-            return await connection.QueryAsync<ReasonResponse>(sql);
-        }
-
-        public async Task<AllReportsResponse> GetAllReportsAsync()
-        {
-            using var connection = new NpgsqlConnection(_connectionString);
-            
-            const string userReportsQuery = @"
-                SELECT 
-                    ur.id,
-                    reporter.username as reporter_username,
-                    reported.username as reported_username,
-                    r.reason_name,
-                    ur.description,
-                    ur.report_date
-                FROM api_schema.user_report ur
-                JOIN api_schema.""user"" reporter ON ur.reporter_id = reporter.id
-                JOIN api_schema.""user"" reported ON ur.reported_id = reported.id
-                JOIN api_schema.reason r ON ur.reason_id = r.id";
-
-            const string postReportsQuery = @"
-                SELECT 
-                    pr.id,
-                    u.username as reporter_username,
-                    pr.reported_id as post_id,
-                    r.reason_name,
-                    pr.description,
-                    pr.report_date
-                FROM api_schema.post_report pr
-                JOIN api_schema.""user"" u ON pr.reporter_id = u.id
-                JOIN api_schema.reason r ON pr.reason_id = r.id";
-
-            var userReports = await connection.QueryAsync<AllReportsResponse.UserReport>(userReportsQuery);
-            var postReports = await connection.QueryAsync<AllReportsResponse.PostReport>(postReportsQuery);
-
-            return new AllReportsResponse
+            try
             {
-                UserReports = userReports,
-                PostReports = postReports
-            };
+                await connection.OpenAsync();
+                const string sql = @"
+                    SELECT id as Id, reason_name as ReasonName 
+                    FROM api_schema.reason 
+                    WHERE reason_type = 'post'
+                    ORDER BY id";
+                
+                return await connection.QueryAsync<ReasonResponse>(sql);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving post reasons");
+                throw new ReportException("Failed to retrieve post reasons", ex);
+            }
         }
     }
 }

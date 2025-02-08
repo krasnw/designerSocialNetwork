@@ -1,31 +1,30 @@
 <script>
+import Spinner from '@/assets/Icons/Spinner.vue';
 import TaskView from './TaskView.vue';
+import { taskService } from '@/services/task';
 
 export default {
   name: "TaskListPage",
   components: {
-    TaskView
+    TaskView,
+    Spinner
+  },
+  methods: {
+    handleTaskDelete(taskId) {
+      this.tasks = this.tasks.filter(task => task.id !== taskId);
+    }
   },
   data() {
     return {
-      tasks: [
-        {
-          username: 'User 1',
-          userProfilePicture: 'https://placehold.co/100x100',
-          description: 'Task 1 description lorem ipsum dolor sit amet.'
-        },
-        {
-          username: 'User 2',
-          userProfilePicture: 'https://placehold.co/100x100',
-          description: 'Task 2 description lorem ipsum dolor sit amet.'
-        },
-        {
-          username: 'User 3',
-          userProfilePicture: 'https://placehold.co/100x100',
-          description: 'Task 3 description lorem ipsum dolor sit amet.'
-        }
-      ]
+      isLoading: true,
+      tasks: []
     }
+  },
+  async created() {
+    this.tasks = await taskService.getTasks().catch(() => {
+      return [];
+    });
+    this.isLoading = false;
   }
 };
 </script>
@@ -33,11 +32,18 @@ export default {
 <template>
   <main>
     <h2 class="page-name">Lista zleceń</h2>
-    <section class="task-list">
-      <article v-for="(task, index) in tasks" :key="index">
-        <TaskView :username="task.username" :description="task.description"
-          :userProfilePicture="task.userProfilePicture" />
-      </article>
+    <section>
+      <div v-if="isLoading" class="loading">Ładowanie
+        <Spinner class="spinner" />
+      </div>
+      <section class="task-list" v-else>
+        <article v-for="task in tasks" :key="task.id">
+          <TaskView :task="task" @task-deleted="handleTaskDelete" />
+        </article>
+        <div class="no-tasks" v-if="!tasks.length">
+          Brak Zleceń
+        </div>
+      </section>
     </section>
   </main>
 </template>
@@ -46,7 +52,36 @@ export default {
 .task-list {
   display: flex;
   flex-direction: column;
-  gap: 50px;
+  gap: 30px;
   padding-bottom: 60px;
+}
+
+.loading {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--info-text-color);
+  background-color: var(--element-dark-color);
+  border: 0.5px solid var(--element-light-color);
+  padding: 20px;
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+  display: flex;
+  gap: 15px;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  width: max-content;
+}
+
+.no-tasks {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--info-text-color);
+  background-color: var(--element-dark-color);
+  border: 0.5px solid var(--element-light-color);
+  padding: 40px 80px;
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+  width: max-content;
 }
 </style>

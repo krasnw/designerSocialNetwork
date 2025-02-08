@@ -64,8 +64,8 @@ export default {
       }
     }
   },
-  mounted() {
-    this.loadPosts();
+  async mounted() {
+    await this.loadPosts();
     // Даем время для рендеринга DOM перед установкой observer
     this.$nextTick(() => {
       this.setupIntersectionObserver();

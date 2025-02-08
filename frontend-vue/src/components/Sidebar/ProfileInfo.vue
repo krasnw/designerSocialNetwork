@@ -1,6 +1,7 @@
 <script>
 import { userService } from '@/services/user';
 import defaultAvatar from '@/assets/Images/avatar.png';
+import { imageDirectory } from '@/services/constants';
 
 export default {
   name: "ProfileInfo",
@@ -28,14 +29,18 @@ export default {
     goToProfile() {
       this.$router.push({ name: 'myProfile' });
     },
+    imagePathHandler(image) {
+      if (!image) {
+        return defaultAvatar;
+      }
+      return imageDirectory + image;
+    },
     async loadUserData() {
       if (this.isLoggedIn) {
         try {
           const userData = await userService.getMyData();
           this.user.name = `${userData.firstName} ${userData.lastName}`;
-          if (userData.profilePicture) {
-            this.user.image = userData.profilePicture;
-          }
+          this.user.image = this.imagePathHandler(userData.profileImage);
         } catch (error) {
           console.error('Ошибка при загрузке данных пользователя:', error);
         }
@@ -136,12 +141,19 @@ export default {
 
 
 .sidebar-profile img {
+  box-sizing: border-box;
   border: 0.5px solid white;
   background-color: var(--element-border-light-color);
   padding: 2px;
   width: 50px;
   height: 50px;
+  min-width: 50px;
+  /* Prevent shrinking */
+  min-height: 50px;
+  /* Prevent shrinking */
   border-radius: 50%;
   object-fit: cover;
+  display: block;
+  /* Remove any default inline spacing */
 }
 </style>

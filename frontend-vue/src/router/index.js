@@ -1,5 +1,23 @@
 // src/router/index.js
+import { userService } from "@/services/user";
 import { createRouter, createWebHistory } from "vue-router";
+
+const checkIfOwnProfile = async (to, from, next) => {
+  const isAuthenticated = !!localStorage.getItem("JWT");
+  if (!isAuthenticated) {
+    next();
+    return;
+  }
+
+  try {
+    const userData = await userService.getMyData();
+    to.params.username === userData.username
+      ? next({ name: "myProfile" })
+      : next();
+  } catch (error) {
+    next();
+  }
+};
 
 const routes = [
   {
@@ -7,12 +25,13 @@ const routes = [
     redirect: "/feed",
   },
   {
-    path: "/profile",
-    redirect: "/profile/me",
+    path: "/:pathMatch(.*)*",
+    name: "notFound",
+    component: () => import("@/pages/Errors/404.vue"),
   },
   {
-    path: "/:username",
-    redirect: "/:username/portfolio",
+    path: "/profile",
+    redirect: "/profile/me",
   },
   {
     path: "/feed",
@@ -20,9 +39,19 @@ const routes = [
     component: () => import("@/pages/feed/Feed.vue"),
   },
   {
+    path: "/post/:id",
+    name: "post",
+    component: () => import("@/pages/singlePost/SinglePost.vue"),
+  },
+  {
+    path: "/post/protected/:hash",
+    name: "protectedPost",
+    component: () => import("@/pages/singlePost/SinglePost.vue"),
+  },
+  {
     path: "/add-post",
     name: "addPost",
-    component: () => import("@/pages/upload-post/UploadPost.vue"),
+    component: () => import("@/pages/upload-post/AddPost.vue"),
     meta: { requiresAuth: true },
   },
   {
@@ -30,6 +59,13 @@ const routes = [
     name: "conversations",
     component: () => import("@/pages/conversations/Conversations.vue"),
     meta: { requiresAuth: true },
+    children: [
+      {
+        path: ":username",
+        name: "chat",
+        component: () => import("@/pages/conversations/Chat.vue"),
+      },
+    ],
   },
   {
     path: "/ranking",
@@ -43,9 +79,28 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: "/report",
+    name: "report",
+    component: () => import("@/pages/report/ReportPage.vue"),
+    beforeEnter: (to, from, next) => {
+      const { username, postId } = to.query;
+      if (!username && !postId) {
+        next("/error/400");
+      } else {
+        next();
+      }
+    },
+  },
+  {
     path: "/profile/me",
     name: "myProfile",
     component: () => import("@/pages/profile/Portfolio.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/profile/rubies",
+    name: "buyRubies",
+    component: () => import("@/pages/profile/BuyRubies.vue"),
     meta: { requiresAuth: true },
   },
   {
@@ -59,6 +114,15 @@ const routes = [
     name: "portfolio",
     component: () => import("@/pages/profile/Portfolio.vue"),
     props: true,
+    beforeEnter: checkIfOwnProfile,
+  },
+  {
+    path: "/:username/subscription",
+    name: "subscription",
+    component: () => import("@/pages/profile/Subscription.vue"),
+    meta: { requiresAuth: true },
+    props: true,
+    beforeEnter: checkIfOwnProfile,
   },
   {
     path: "/:username/add-task",
