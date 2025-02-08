@@ -21,7 +21,9 @@ export default {
       messageTypes: {
         REGULAR: 0,
         PAYMENT_REQUEST: 1,
-        PAYMENT_APPROVED: 2
+        PAYMENT_APPROVED: 2,
+        END_REQUEST: 3,
+        END_APPROVED: 4
       }
     }
   },
@@ -37,6 +39,12 @@ export default {
     },
     isPaymentApproved() {
       return this.message.type === this.messageTypes.PAYMENT_APPROVED;
+    },
+    isEndRequest() {
+      return this.message.type === this.messageTypes.END_REQUEST;
+    },
+    isEndApproved() {
+      return this.message.type === this.messageTypes.END_APPROVED;
     },
     messageSize() {
       if (!this.isRegularMessage) return 'payment';
@@ -55,6 +63,11 @@ export default {
     },
     showPayButton() {
       return this.isPaymentRequest &&
+        !this.message.isApproved &&
+        this.message.receiverUsername !== this.$route.params.username;
+    },
+    showEndButton() {
+      return this.isEndRequest &&
         !this.message.isApproved &&
         this.message.receiverUsername !== this.$route.params.username;
     }
@@ -76,10 +89,26 @@ export default {
         .replace(/\r?\n/g, '<br>');
     },
     async handlePayment() {
+      if (this.$route.query.isDisabled) {
+        return;
+      }
       await chatService.approveTransaction(this.message.transactionHash)
         .catch((err) => {
           this.$router.push(`/error/${err.status}`);
         });
+
+      this.message.isApproved = true;
+    },
+    async handleEndApproval() {
+      if (this.$route.query.isDisabled) {
+        return;
+      }
+      await chatService.approveEndRequest(this.message.endRequestHash)
+        .catch((err) => {
+          this.$router.push(`/error/${err.status}`);
+        });
+
+      this.message.isApproved = true;
     },
     formattedAmount(amount) {
       return `${amount.toFixed(2)}`;
@@ -134,6 +163,30 @@ export default {
     <div v-else-if="isPaymentApproved" class="message payment-message background flex-column">
       <div class="status approved">
         <p>Płatność zatwierdzona przez {{ message.approvedBy }}</p>
+        <p class="timestamp">{{ formattedDate(message.approvedAt) }}</p>
+      </div>
+    </div>
+
+    <!-- End request message -->
+    <div v-else-if="isEndRequest" class="message payment-message background flex-column">
+      <h3>Prośba o zakończenie zlecenia</h3>
+      <div v-if="message.isApproved" class="status approved">
+        Zakończone
+      </div>
+      <div v-else class="status pending">
+        <template v-if="showEndButton">
+          <button @click="handleEndApproval" class="pay-button">Potwierdź zakończenie</button>
+        </template>
+        <template v-else>
+          Oczekuje na potwierdzenie
+        </template>
+      </div>
+    </div>
+
+    <!-- End approved message -->
+    <div v-else-if="isEndApproved" class="message payment-message background flex-column">
+      <div class="status approved">
+        <p>Zlecenie zakończone przez {{ message.approvedBy }}</p>
         <p class="timestamp">{{ formattedDate(message.approvedAt) }}</p>
       </div>
     </div>

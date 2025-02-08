@@ -21,6 +21,16 @@ export const chatService = {
     );
     return response.data;
   },
+  async approveEndRequest(endHash) {
+    const response = await axios.post(
+      `${API_URL}/Chat/endRequest/${endHash}/approve`,
+      { endHash },
+      {
+        headers: getAuthHeaders(),
+      }
+    );
+    return response.data;
+  },
 };
 
 class ChatMessagesService {
@@ -91,11 +101,27 @@ class ChatMessagesService {
     return response.data;
   }
 
+  async sendEndRequestMessage(username) {
+    const response = await axios.post(
+      `${API_URL}/Chat/endRequest/${username}`,
+      {},
+      {
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return response.data;
+  }
+
   onMessage(callback) {
     const handlers = [
       "ReceiveMessage",
       "ReceiveTransactionMessage",
       "ReceiveTransactionApproval",
+      "ReceiveEndRequestMessage",
+      "receiveEndRequestApproval",
     ];
 
     const cleanupFunctions = handlers.map((eventName) => {

@@ -21,7 +21,8 @@ export default {
       ],
       amount: 0,
       paymentDescription: '',
-      isPaymentModalOpen: false
+      isPaymentModalOpen: false,
+      isEndChatModalOpen: false
     }
   },
   computed: {
@@ -34,6 +35,9 @@ export default {
   },
   methods: {
     async send() {
+      if (this.$route.query.isDisabled) {
+        return;
+      }
       if (this.message || this.selectedImages.length) {
         const formData = new FormData();
         const cleanUpMessage = this.message.trim();
@@ -80,11 +84,16 @@ export default {
         case 'requestPayment':
           this.isPaymentModalOpen = true;
           break;
-        // Other actions will be implemented later
+        case 'endChat':
+          this.isEndChatModalOpen = true;
+          break;
       }
       this.isMenuOpen = false;
     },
     async handleSendPayment() {
+      if (this.$route.query.isDisabled) {
+        return;
+      }
       if (!this.amount || !this.paymentDescription) {
         return;
       }
@@ -101,6 +110,17 @@ export default {
         this.paymentDescription = '';
         this.isPaymentModalOpen = false;
       });
+    },
+    async handleEndChat() {
+      try {
+        if (this.$route.query.isDisabled) {
+          return;
+        }
+        await chatMessagesService.sendEndRequestMessage(this.$route.params.username);
+        this.isEndChatModalOpen = false;
+      } catch (error) {
+        this.$router.push(`/error/${error.status}`);
+      }
     },
     handleFileSelect(event) {
       const file = event.target.files[0];
@@ -171,13 +191,15 @@ export default {
           </span>
           <span class="message-input" @dragover="handleDragOver" @drop="handleDrop">
             <span class="text-edit-panel">
-              <ClipIcon @click="toggleMenu" class="icon" :class="{ 'rotated': isMenuOpen }" />
+              <ClipIcon @click="toggleMenu" class="icon" :class="{ 'rotated': isMenuOpen }"
+                v-if="!this.$route.query.isDisabled" />
               <textarea v-model="message" placeholder="Napisz wiadomość" rows="1"
                 @keydown.enter="handleEnterPress($event)" @input="adjustTextareaHeight($event)"></textarea>
               <input type="file" ref="fileInput" accept="image/*" style="display: none" @change="handleFileSelect">
             </span>
             <Transition name="send-icon">
-              <SendIcon v-if="message.length > 0 || selectedImages.length > 0" @click="send" />
+              <SendIcon v-if="(message.length > 0 || selectedImages.length > 0) && !this.$route.query.isDisabled"
+                @click="send" />
             </Transition>
           </span>
         </span>
@@ -201,6 +223,26 @@ export default {
             </button>
             <button @click="handleSendPayment" class="submit-button" :disabled="!amount || !paymentDescription">
               Wyślij
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+    <!-- End Chat Confirmation Modal -->
+    <Transition name="modal">
+      <div v-if="isEndChatModalOpen" class="modal-overlay">
+        <div class="modal background">
+          <h3>Potwierdź zakończenie</h3>
+          <div class="modal-content">
+            <p>Czy na pewno chcesz zakończyć to zlecenie?</p>
+            <p class="warning-text">Ta akcja jest nieodwracalna.</p>
+          </div>
+          <div class="modal-actions">
+            <button @click="isEndChatModalOpen = false" class="cancel-button">
+              Anuluj
+            </button>
+            <button @click="handleEndChat" class="submit-button danger">
+              Zakończ
             </button>
           </div>
         </div>
@@ -524,5 +566,15 @@ export default {
 .modal-enter-from,
 .modal-leave-to {
   opacity: 0;
+}
+
+.warning-text {
+  color: var(--delete-button-border-color);
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.submit-button.danger {
+  background-color: var(--delete-button-border-color);
 }
 </style>

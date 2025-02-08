@@ -52,7 +52,8 @@ export default {
     }
   },
   methods: {
-    togglePin(username) {
+    togglePin(user) {
+      const username = user.username;
       const isSameChat = this.pinnedChat === username;
 
       if (isSameChat) {
@@ -60,10 +61,16 @@ export default {
         this.$router.push({ name: 'conversations' });
       } else {
         this.pinnedChat = username;
-        this.$router.push({
+        const routeConfig = {
           name: 'chat',
           params: { username }
-        });
+        };
+
+        if (user.chatStatus === 'disabled') {
+          routeConfig.query = { isDisabled: true };
+        }
+
+        this.$router.push(routeConfig);
       }
 
       this.lookingFor = '';
@@ -82,7 +89,7 @@ export default {
     <h3 v-if="filteredUsers.length === 0" class="info-message">Brak czatów</h3>
     <TransitionGroup name="chat-list">
       <ProfileBadge v-for="user in filteredUsers" :key="user.username" :user="user"
-        :isPinned="pinnedChat === user.username" @click="togglePin(user.username)" />
+        :isPinned="pinnedChat === user.username" @click="togglePin(user)" />
     </TransitionGroup>
   </article>
 </template>
