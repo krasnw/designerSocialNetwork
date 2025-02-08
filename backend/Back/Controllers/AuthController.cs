@@ -6,7 +6,7 @@ using Back.Models;
 namespace Back.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
@@ -35,7 +35,7 @@ public class AuthController : ControllerBase
                 return StatusCode(500, new { message = "Error generating token" });
             }
 
-            return Ok(new { token });
+            return Ok( token );
         }
         catch (UnauthorizedAccessException ex)
         {
