@@ -1,11 +1,11 @@
-namespace Back.Models.PostDto;
+namespace Back.Models.UserDto;
 
 public class UserMiniDto
 {
     public string Username { get; set; }
     public string FirstName { get; set; }
     public string LastName { get; set; }
-    public string ProfileImage { get; set; }  // Changed from ProfilePicture to ProfileImage
+    public string ProfileImage { get; set; } 
     
     public static UserMiniDto MapFromUser(User user)
     {
@@ -14,7 +14,7 @@ public class UserMiniDto
             Username = user.Username,
             FirstName = user.FirstName,
             LastName = user.LastName,
-            ProfileImage = user.ProfileImage  // Changed from ProfilePicture to ProfileImage
+            ProfileImage = user.ProfileImage
         };
     }
 }

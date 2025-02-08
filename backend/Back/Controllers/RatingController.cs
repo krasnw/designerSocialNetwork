@@ -1,4 +1,4 @@
-using Back.Models;
+using Back.Models.UserDto;
 using Back.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 

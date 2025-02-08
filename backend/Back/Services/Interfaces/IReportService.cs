@@ -8,6 +8,5 @@ namespace Back.Services.Interfaces
         Task CreatePostReportAsync(string username, CreatePostReportRequest request);
         Task<IEnumerable<ReasonResponse>> GetUserReasonsAsync();
         Task<IEnumerable<ReasonResponse>> GetPostReasonsAsync();
-        Task<AllReportsResponse> GetAllReportsAsync();
     }
 }

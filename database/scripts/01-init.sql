@@ -212,7 +212,6 @@ CREATE TABLE api_schema.user_report (
     reporter_id INTEGER REFERENCES "user"(id),
     reported_id INTEGER REFERENCES "user"(id),
     reason_id INTEGER REFERENCES reason(id),
-    description TEXT,
     report_date DATE NOT NULL
 );
 
@@ -221,7 +220,6 @@ CREATE TABLE api_schema.post_report (
     reporter_id INTEGER REFERENCES "user"(id),
     reported_id INTEGER REFERENCES post(id),
     reason_id INTEGER REFERENCES reason(id),
-    description TEXT,
     report_date DATE NOT NULL
 );
 
