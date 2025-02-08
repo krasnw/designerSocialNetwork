@@ -16,9 +16,12 @@ export default {
       selectedImages: [],
       menuItems: [
         { icon: '🖼️', text: 'Dodaj obrazki', action: 'addImage' },
-        { icon: '💰', text: 'Zaproś opłatę', action: 'requestPayment' },
+        { icon: '💰', text: 'Zaproś opłatę', action: 'requestPayment' },
         { icon: '🚫', text: 'Skończ zlecenie', action: 'endChat' }
-      ]
+      ],
+      amount: 0,
+      paymentDescription: '',
+      isPaymentModalOpen: false
     }
   },
   computed: {
@@ -74,9 +77,30 @@ export default {
         case 'addImage':
           this.$refs.fileInput.click();
           break;
+        case 'requestPayment':
+          this.isPaymentModalOpen = true;
+          break;
         // Other actions will be implemented later
       }
       this.isMenuOpen = false;
+    },
+    async handleSendPayment() {
+      if (!this.amount || !this.paymentDescription) {
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('receiverUsername', this.$route.params.username);
+      formData.append('amount', this.amount);
+      formData.append('description', this.paymentDescription);
+
+      await chatMessagesService.sendTransactionMessage(formData).catch(error => {
+        this.$router.push(`/error/${error.status}`);
+      }).finally(() => {
+        this.amount = 0;
+        this.paymentDescription = '';
+        this.isPaymentModalOpen = false;
+      });
     },
     handleFileSelect(event) {
       const file = event.target.files[0];
@@ -158,6 +182,29 @@ export default {
           </span>
         </span>
       </section>
+    </Transition><!-- Payment Modal -->
+    <Transition name="modal">
+      <div v-if="isPaymentModalOpen" class="modal-overlay">
+        <div class="modal background">
+          <h3>Zaproś opłatę</h3>
+          <div class="modal-content">
+            <div class="input-group">
+              <input type="number" v-model="amount" placeholder="Kwota" min="0" step="0.01" required>
+            </div>
+            <div class="input-group">
+              <input type="text" v-model="paymentDescription" placeholder="Opis płatności" required>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button @click="isPaymentModalOpen = false" class="cancel-button">
+              Anuluj
+            </button>
+            <button @click="handleSendPayment" class="submit-button" :disabled="!amount || !paymentDescription">
+              Wyślij
+            </button>
+          </div>
+        </div>
+      </div>
     </Transition>
   </main>
 </template>
@@ -380,5 +427,102 @@ export default {
 .send-icon-leave-to {
   opacity: 0;
   transform: scale(0.7);
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  padding: 20px;
+  border-radius: 15px;
+  min-width: 300px;
+  border: 0.5px solid var(--element-border-light-color);
+
+  h3 {
+    margin-bottom: 20px;
+    text-align: center;
+  }
+}
+
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--element-border-light-color);
+  background-color: var(--element-light-color);
+  color: var(--text-color);
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent-color);
+  }
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.submit-button,
+.cancel-button {
+  border: 0.5px solid var(--element-light-border-color);
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.submit-button {
+  background-color: var(--element-light-color);
+  color: white;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &:not(:disabled):hover {
+    background-color: var(--element-hover-light--color);
+  }
+}
+
+.cancel-button {
+  background-color: var(--element-light-color);
+
+
+  &:hover {
+    background-color: var(--element-hover-light-color);
+  }
+}
+
+/* Modal animation */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
 }
 </style>

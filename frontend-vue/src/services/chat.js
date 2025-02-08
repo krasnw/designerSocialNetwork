@@ -11,6 +11,16 @@ export const chatService = {
     });
     return response.data;
   },
+  async approveTransaction(transactionHash) {
+    const response = await axios.post(
+      `${API_URL}/Chat/transaction/${transactionHash}/approve`,
+      { transactionHash },
+      {
+        headers: getAuthHeaders(),
+      }
+    );
+    return response.data;
+  },
 };
 
 class ChatMessagesService {
@@ -34,26 +44,6 @@ class ChatMessagesService {
 
   async connect() {
     this.connection = this.createConnection();
-
-    this.connection.on("ReceiveMessage", (message) => {
-      console.log("Message received:", message);
-    });
-
-    this.connection.on("TestResponse", (message) => {
-      console.log("Test response:", message);
-    });
-
-    this.connection.on("ReceiveTransactionMessage", (message) => {
-      console.log("Transaction message:", message);
-    });
-
-    this.connection.on("ReceiveTransactionApproval", (approval) => {
-      console.log("Transaction approval:", approval);
-    });
-
-    this.connection.on("ReceiveEndRequestMessage", (request) => {
-      console.log("End request:", request);
-    });
 
     this.connection.onreconnected((connectionId) => {
       console.log("Reconnected.", connectionId);
@@ -91,11 +81,30 @@ class ChatMessagesService {
     return response.data;
   }
 
+  async sendTransactionMessage(formData) {
+    const response = await axios.post(`${API_URL}/Chat/transaction`, formData, {
+      headers: {
+        ...getAuthHeaders(),
+        "Content-Type": "application/json",
+      },
+    });
+    return response.data;
+  }
+
   onMessage(callback) {
-    this.connection.on("ReceiveMessage", callback);
-    return () => {
-      this.connection.off("ReceiveMessage", callback);
-    };
+    const handlers = [
+      "ReceiveMessage",
+      "ReceiveTransactionMessage",
+      "ReceiveTransactionApproval",
+    ];
+
+    const cleanupFunctions = handlers.map((eventName) => {
+      this.connection.on(eventName, callback);
+      return () => this.connection.off(eventName, callback);
+    });
+
+    // Return cleanup function that removes all handlers
+    return () => cleanupFunctions.forEach((cleanup) => cleanup());
   }
 }
 

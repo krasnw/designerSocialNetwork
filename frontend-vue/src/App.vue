@@ -68,6 +68,7 @@ export default {
   --element-border-light-color: rgba(255, 255, 255, 0.30);
   --delete-button-color: rgba(255, 57, 57, 0.40);
   --delete-button-border-color: rgba(255, 94, 94, 0.60);
+  --success-color: rgba(128, 255, 128, 0.7);
   --info-text-color: rgba(255, 255, 255, 0.7);
   --placeholder-color: rgba(255, 255, 255, 0.6);
   --placeholder-error-color: rgba(255, 170, 170, 0.8);

@@ -1,8 +1,13 @@
 <script>
+import RubyIcon from '@/assets/Icons/RubyIcon.vue';
 import { imageDirectory } from '@/services/constants';
+import { chatService } from '@/services/chat';
 
 export default {
   name: "Message",
+  components: {
+    RubyIcon
+  },
   props: {
     message: {
       type: Object,
@@ -12,29 +17,46 @@ export default {
   data() {
     return {
       selectedImage: null,
-      showModal: false
+      showModal: false,
+      messageTypes: {
+        REGULAR: 0,
+        PAYMENT_REQUEST: 1,
+        PAYMENT_APPROVED: 2
+      }
     }
   },
   computed: {
     isOutgoing() {
       return this.message.receiverUsername == this.$route.params.username;
     },
+    isRegularMessage() {
+      return this.message.type === this.messageTypes.REGULAR;
+    },
+    isPaymentRequest() {
+      return this.message.type === this.messageTypes.PAYMENT_REQUEST;
+    },
+    isPaymentApproved() {
+      return this.message.type === this.messageTypes.PAYMENT_APPROVED;
+    },
     messageSize() {
+      if (!this.isRegularMessage) return 'payment';
       const textLength = this.message.textContent.split(' ').length ?? 1;
-      let size;
-      if (this.message.imagePaths.length == 0) {
-        size = textLength > 30 ? 'large' : textLength > 15 ? 'medium' : 'small';
-      } else {
-        size = 'medium';
-      }
-      return size;
+      return this.message.imagePaths.length === 0
+        ? (textLength > 30 ? 'large' : textLength > 15 ? 'medium' : 'small')
+        : 'medium';
     },
     messageClass() {
+      if (!this.isRegularMessage) return { 'payment-message': true };
       return {
         [this.messageSize]: true,
         'incoming': !this.isOutgoing,
         'outgoing': this.isOutgoing
       }
+    },
+    showPayButton() {
+      return this.isPaymentRequest &&
+        !this.message.isApproved &&
+        this.message.receiverUsername !== this.$route.params.username;
     }
   },
   methods: {
@@ -52,21 +74,70 @@ export default {
     formattedText(text) {
       return String(text || '')
         .replace(/\r?\n/g, '<br>');
+    },
+    async handlePayment() {
+      await chatService.approveTransaction(this.message.transactionHash)
+        .catch((err) => {
+          this.$router.push(`/error/${err.status}`);
+        });
+    },
+    formattedAmount(amount) {
+      return `${amount.toFixed(2)}`;
+    },
+    formattedDate(dateString) {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('pl-PL', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date);
     }
   }
 };
 </script>
 
 <template>
-  <article class="message-container">
-    <div class="message background" :class="messageClass">
-      <span class="images-container" v-if="this.message.imagePaths.length > 0">
+  <article class="message-container" :class="{ 'center-message': !isRegularMessage }">
+    <!-- Regular message -->
+    <div v-if="isRegularMessage" class="message background" :class="messageClass">
+      <span class="images-container" v-if="this.message.imagePaths?.length > 0">
         <img v-for="imagePath in this.message.imagePaths" :key="imagePath" :src="imagePathHandler(imagePath)"
           @click="openImage(imagePath)" alt="Obrazek" />
       </span>
       <p class="message-text" v-html="formattedText(message.textContent)"></p>
     </div>
-    <!-- Модальное окно для просмотра изображений -->
+
+    <!-- Payment request message -->
+    <div v-else-if="isPaymentRequest" class="message payment-message background flex-column">
+      <h3>Prośba o płatność</h3>
+      <span class="amount-container">
+        <p class="amount">{{ formattedAmount(message.amount) }}</p>
+        <RubyIcon />
+      </span>
+      <p class="description">{{ message.description }}</p>
+      <div v-if="message.isApproved" class="status approved">
+        Opłacone
+      </div>
+      <div v-else class="status pending">
+        <template v-if="showPayButton">
+          <button @click="handlePayment" class="pay-button">Opłać</button>
+        </template>
+        <template v-else>
+          Oczekuje na płatność
+        </template>
+      </div>
+    </div>
+
+    <!-- Payment approved message -->
+    <div v-else-if="isPaymentApproved" class="message payment-message background flex-column">
+      <div class="status approved">
+        <p>Płatność zatwierdzona przez {{ message.approvedBy }}</p>
+        <p class="timestamp">{{ formattedDate(message.approvedAt) }}</p>
+      </div>
+    </div>
+
     <div v-if="showModal" class="modal" @click="closeModal">
       <img :src="selectedImage" class="modal-image" @click.stop />
     </div>
@@ -201,5 +272,83 @@ export default {
   .images-container {
     width: 250px;
   }
+}
+
+.center-message {
+  justify-content: center !important;
+}
+
+.payment-message {
+  text-align: center;
+  padding: 15px;
+  border-radius: 15px;
+  background-color: var(--element-dark-color) !important;
+  max-width: 300px;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.amount-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.payment-message .amount {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin: 0;
+}
+
+.payment-message .description {
+  color: var(--text-color);
+  margin: 0;
+}
+
+.status {
+  padding: 5px;
+  border-radius: 5px;
+}
+
+.status.pending {
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+.status.approved {
+  color: var(--success-color);
+  font-weight: 600;
+}
+
+.pay-button {
+  background-color: var(--element-light-color);
+  border: 0.5px solid var(--element-border-light-color);
+  padding: 8px 16px;
+  color: var(--text-color);
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pay-button:hover {
+  background-color: var(--element-hover-light-color);
+  transition: all 0.2s;
+}
+
+.pay-button:active {
+  transform: scale(0.98);
+  transition: all 0.2s;
+}
+
+.timestamp {
+  font-size: 0.8em;
+  color: var(--text-color);
+  margin-top: 5px;
 }
 </style>
