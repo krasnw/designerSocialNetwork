@@ -8,3 +8,6 @@ node_modules
 backend/Back/obj/
 backend/Back/bin/
 backend/Back.sln.DotSettings.user
+backend/AdminPanel/obj
+backend/AdminPanel/bin
+backend/AdminPanel.sln.DotSettings.user
