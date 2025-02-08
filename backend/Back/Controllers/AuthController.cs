@@ -52,8 +52,8 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var signUpResult = await _userService.SignUp(request.Username, request.Email, request.Password,
-                request.FirstName, request.LastName, request.PhoneNumber, null);
+            var signUpResult = await Task.FromResult(_userService.SignUp(request.Username, request.Email, request.Password,
+                request.FirstName, request.LastName, request.PhoneNumber, null));
 
             if (!string.IsNullOrEmpty(signUpResult))
             {
@@ -78,12 +78,12 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var newToken = await _authService.RenewToken(token);
+            // Changed: wrap the synchronous RenewToken call in Task.FromResult.
+            var newToken = await Task.FromResult(_authService.RenewToken(token));
             if (newToken == null)
             {
                 return Unauthorized(new { message = "Invalid token" });
             }
-
             return Ok(new { token = newToken });
         }
         catch (UnauthorizedAccessException ex)

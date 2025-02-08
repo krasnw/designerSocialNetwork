@@ -127,7 +127,8 @@ namespace Back.Tests.Controllers
                 signUpRequest.LastName,
                 signUpRequest.PhoneNumber,
                 It.IsAny<string>()))
-                .ReturnsAsync(errorMessage);
+                // Changed: return string directly instead of Task.FromResult.
+                .Returns(errorMessage);
 
             // Act
             var result = await _controller.SignUp(signUpRequest);
@@ -160,7 +161,8 @@ namespace Back.Tests.Controllers
                 signUpRequest.LastName,
                 signUpRequest.PhoneNumber,
                 It.IsAny<string>()))
-                .ThrowsAsync(new ArgumentException("Invalid data"));
+                // Changed: throw exception synchronously.
+                .Throws(new ArgumentException("Invalid data"));
 
             // Act
             var result = await _controller.SignUp(signUpRequest);
@@ -179,7 +181,8 @@ namespace Back.Tests.Controllers
             var newToken = "new.jwt.token";
 
             _authServiceMock.Setup(x => x.RenewToken(oldToken))
-                .ReturnsAsync(newToken);
+                // Changed: replace ReturnsAsync with Task.FromResult.
+                .Returns(Task.FromResult(newToken));
 
             // Act
             var result = await _controller.RenewToken(oldToken);

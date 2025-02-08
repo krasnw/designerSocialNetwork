@@ -1,5 +1,6 @@
 using Back.Services;
 using Back.Services.Interfaces;
+using Back.Middleware;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -166,7 +167,6 @@ app.UseRouting();
 app.UseCors("AllowAll");
 app.UseAuthentication();
 
-// Add the FrozenUserMiddleware after authentication but before authorization
 app.UseMiddleware<FrozenUserMiddleware>();
 
 app.UseAuthorization();
