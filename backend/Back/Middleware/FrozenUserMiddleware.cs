@@ -6,12 +6,12 @@ namespace Back.Middleware;
 public class FrozenUserMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly IDatabaseService _databaseService;
+    private readonly IServiceScopeFactory _scopeFactory;
 
-    public FrozenUserMiddleware(RequestDelegate next, IDatabaseService databaseService)
+    public FrozenUserMiddleware(RequestDelegate next, IServiceScopeFactory scopeFactory)
     {
         _next = next;
-        _databaseService = databaseService;
+        _scopeFactory = scopeFactory;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -23,19 +23,23 @@ public class FrozenUserMiddleware
             await _next(context);
             return;
         }
-
-        var username = context.User?.Identity?.Name;
-        if (!string.IsNullOrEmpty(username))
+        if (context.User.Identity?.Name != null)
         {
-            var userStatus = await _databaseService.GetUserStatus(username);
-            if (userStatus == "frozen")
+            using var scope = _scopeFactory.CreateScope();
+            var dbService = scope.ServiceProvider.GetRequiredService<IDatabaseService>();
+            
+            var username = context.User.Identity.Name;
+            if (!string.IsNullOrEmpty(username))
             {
-                context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                await context.Response.WriteAsJsonAsync(new { error = "Account is frozen" });
-                return;
+                var user = await dbService.GetUserStatus(username);
+                if (user == "frozen")
+                {
+                    context.Response.StatusCode = 403;
+                    await context.Response.WriteAsJsonAsync(new { error = "Account is frozen" });
+                    return;
+                }
             }
         }
-
         await _next(context);
     }
 }
