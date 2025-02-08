@@ -161,6 +161,27 @@ public class DatabaseService : IDatabaseService, IDisposable
         return await command.ExecuteNonQueryAsync();
     }
 
+    public async Task<string?> GetUserStatus(string username)
+    {
+        var query = "SELECT account_status FROM api_schema.user WHERE username = @username";
+        var parameters = new Dictionary<string, object> { { "@username", username } };
+
+        using var reader = ExecuteQuery(query, out var connection, out var command, parameters);
+        try
+        {
+            if (await reader.ReadAsync())
+            {
+                return reader.GetString(0);
+            }
+            return null;
+        }
+        finally
+        {
+            command?.Dispose();
+            connection?.Dispose();
+        }
+    }
+
     // Implement IDisposable
     public void Dispose()
     {

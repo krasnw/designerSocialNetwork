@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 using Back.Services;
+using Back.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication;
+using Moq;
 using Xunit;
 
 namespace Back.Tests.Services
@@ -11,6 +13,8 @@ namespace Back.Tests.Services
         private readonly string originalSecretKey;
         private readonly string originalIssuer;
         private readonly string originalAudience;
+        private readonly Mock<IDatabaseService> _databaseServiceMock;
+        private readonly AuthService _authService;
 
         public AuthServiceTests()
         {
@@ -23,6 +27,12 @@ namespace Back.Tests.Services
             Environment.SetEnvironmentVariable("JWT_SECRET_KEY", "your-256-bit-secret-your-256-bit-secret-your-256-bit-secret");
             Environment.SetEnvironmentVariable("JWT_ISSUER", "test-issuer");
             Environment.SetEnvironmentVariable("JWT_AUDIENCE", "test-audience");
+
+            _databaseServiceMock = new Mock<IDatabaseService>();
+            _databaseServiceMock.Setup(x => x.GetUserStatus(It.IsAny<string>()))
+                .ReturnsAsync("active");
+            
+            _authService = new AuthService(_databaseServiceMock.Object);
         }
 
         public void Dispose()
@@ -34,14 +44,13 @@ namespace Back.Tests.Services
         }
 
         [Fact]
-        public void GenerateToken_ValidUsername_ReturnsToken()
+        public async Task GenerateToken_ValidUsername_ReturnsToken()
         {
             // Arrange
-            var authService = new AuthService();
             var username = "testUser";
 
             // Act
-            var token = authService.GenerateToken(username);
+            var token = await _authService.GenerateToken(username);
 
             // Assert
             Assert.NotNull(token);
@@ -49,16 +58,28 @@ namespace Back.Tests.Services
         }
 
         [Fact]
-        public void ValidateToken_ValidToken_ReturnsPrincipal()
+        public async Task GenerateToken_FrozenUser_ThrowsUnauthorizedAccessException()
         {
             // Arrange
-            var authService = new AuthService();
+            var username = "frozenUser";
+            _databaseServiceMock.Setup(x => x.GetUserStatus(username))
+                .ReturnsAsync("frozen");
+
+            // Act & Assert
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(
+                async () => await _authService.GenerateToken(username));
+        }
+
+        [Fact]
+        public async Task ValidateToken_ValidToken_ReturnsPrincipal()
+        {
+            // Arrange
             var username = "testUser";
-            var token = authService.GenerateToken(username);
+            var token = await _authService.GenerateToken(username);
             Assert.NotNull(token); // Ensure token generation succeeded
 
             // Act
-            var principal = authService.ValidateToken(token);
+            var principal = _authService.ValidateToken(token);
 
             // Assert
             Assert.NotNull(principal);
@@ -70,17 +91,16 @@ namespace Back.Tests.Services
         }
         
         [Fact]
-        public void RenewToken_ValidToken_ReturnsNewToken()
+        public async Task RenewToken_ValidToken_ReturnsNewToken()
         {
             // Arrange
-            var authService = new AuthService();
             var username = "testUser";
-            var originalToken = authService.GenerateToken(username);
+            var originalToken = await _authService.GenerateToken(username);
             Assert.NotNull(originalToken); // Ensure token generation succeeded
 
             // Act
             System.Threading.Thread.Sleep(1000); // Ensure a different timestamp
-            var newToken = authService.RenewToken(originalToken);
+            var newToken = await _authService.RenewToken(originalToken);
 
             // Assert
             Assert.NotNull(newToken);
@@ -92,7 +112,8 @@ namespace Back.Tests.Services
         public void AddAuth_ConfiguresAuthenticationServices()
         {
             // Arrange
-            var authService = new AuthService();
+            var dbServiceMock = new Mock<IDatabaseService>();
+            var authService = new AuthService(dbServiceMock.Object);
             var services = new ServiceCollection();
 
             // Act
@@ -113,7 +134,8 @@ namespace Back.Tests.Services
             Environment.SetEnvironmentVariable("JWT_AUDIENCE", null);
 
             // Act & Assert
-            Assert.Throws<InvalidOperationException>(() => new AuthService());
+            var dbServiceMock = new Mock<IDatabaseService>();
+            Assert.Throws<InvalidOperationException>(() => new AuthService(dbServiceMock.Object));
         }
     }
 }

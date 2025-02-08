@@ -165,6 +165,11 @@ if (app.Environment.IsDevelopment())
 app.UseRouting();
 app.UseCors("AllowAll");
 app.UseAuthentication();
+
+// Add the FrozenUserMiddleware after authentication but before authorization
+app.UseMiddleware<FrozenUserMiddleware>();
+
+app.UseAuthorization();
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(

@@ -1,11 +1,12 @@
 ﻿using Back.Services;
 using Back.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Back.Models;
 
 namespace Back.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
@@ -18,23 +19,40 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public IActionResult Login([FromBody] LoginRequest request)
-    {
-        if (!_userService.Login(request.Username, request.Password))
-        {
-            return Unauthorized("Invalid username or password");
-        }
-
-        var token = _authService.GenerateToken(request.Username);
-        return Ok(token ?? "Token generation failed");
-    }
-
-    [HttpPost("signup")]
-    public IActionResult SignUp([FromBody] SignUpRequest request)
+    public async Task<IActionResult> Login([FromBody] User.LoginRequest loginRequest)
     {
         try
         {
-            var signUpResult = _userService.SignUp(request.Username, request.Email, request.Password,
+            var isValid = await _userService.Login(loginRequest.Username, loginRequest.Password);
+            if (!isValid)
+            {
+                return Unauthorized(new { message = "Invalid username or password" });
+            }
+
+            var token = await _authService.GenerateToken(loginRequest.Username);
+            if (token == null)
+            {
+                return StatusCode(500, new { message = "Error generating token" });
+            }
+
+            return Ok(new { token });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("signup")]
+    public async Task<IActionResult> SignUp([FromBody] User.SignUpRequest request)
+    {
+        try
+        {
+            var signUpResult = await _userService.SignUp(request.Username, request.Email, request.Password,
                 request.FirstName, request.LastName, request.PhoneNumber, null);
 
             if (!string.IsNullOrEmpty(signUpResult))
@@ -42,8 +60,8 @@ public class AuthController : ControllerBase
                 return BadRequest(new { message = signUpResult });
             }
 
-            var token = _authService.GenerateToken(request.Username);
-            return Ok(token);
+            var token = await _authService.GenerateToken(request.Username);
+            return Ok(new { token });
         }
         catch (ArgumentException ex)
         {
@@ -55,25 +73,26 @@ public class AuthController : ControllerBase
         }
     }
 
-    public class LoginRequest(string username, string password)
+    [HttpPost("renew")]
+    public async Task<IActionResult> RenewToken([FromBody] string token)
     {
-        public string Username { get; set; } = username ?? throw new ArgumentNullException(nameof(username));
-        public string Password { get; set; } = password ?? throw new ArgumentNullException(nameof(password));
-    }
+        try
+        {
+            var newToken = await _authService.RenewToken(token);
+            if (newToken == null)
+            {
+                return Unauthorized(new { message = "Invalid token" });
+            }
 
-    public class SignUpRequest(
-        string username,
-        string email,
-        string password,
-        string firstName,
-        string lastName,
-        string phoneNumber)
-    {
-        public string Username { get; set; } = username ?? throw new ArgumentNullException(nameof(username));
-        public string Email { get; set; } = email ?? throw new ArgumentNullException(nameof(email));
-        public string Password { get; set; } = password ?? throw new ArgumentNullException(nameof(password));
-        public string FirstName { get; set; } = firstName ?? throw new ArgumentNullException(nameof(firstName));
-        public string LastName { get; set; } = lastName ?? throw new ArgumentNullException(nameof(lastName));
-        public string PhoneNumber { get; set; } = phoneNumber ?? throw new ArgumentNullException(nameof(phoneNumber));
+            return Ok(new { token = newToken });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
     }
 }

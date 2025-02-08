@@ -1,10 +1,9 @@
 using Back.Controllers;
 using Back.Services.Interfaces;
-using Back.Services;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
-using static Back.Controllers.AuthController;
+using Back.Models;
 
 namespace Back.Tests.Controllers
 {
@@ -22,54 +21,65 @@ namespace Back.Tests.Controllers
         }
 
         [Fact]
-        public void Login_ValidCredentials_ReturnsOkWithToken()
+        public async Task Login_ValidCredentials_ReturnsOkWithToken()
         {
             // Arrange
-            var loginRequest = new LoginRequest("testUser", "password123");
+            var loginRequest = new User.LoginRequest 
+            { 
+                Username = "testUser", 
+                Password = "password123" 
+            };
             var expectedToken = "test.jwt.token";
 
             _userServiceMock.Setup(x => x.Login(loginRequest.Username, loginRequest.Password))
-                .Returns(true);
+                .ReturnsAsync(true);
             _authServiceMock.Setup(x => x.GenerateToken(loginRequest.Username))
-                .Returns(expectedToken);
+                .ReturnsAsync(expectedToken);
 
             // Act
-            var result = _controller.Login(loginRequest);
+            var result = await _controller.Login(loginRequest);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            Assert.Equal(expectedToken, okResult.Value);
+            dynamic value = okResult.Value;
+            Assert.Equal(expectedToken, value.token.ToString());
         }
 
         [Fact]
-        public void Login_InvalidCredentials_ReturnsUnauthorized()
+        public async Task Login_InvalidCredentials_ReturnsUnauthorized()
         {
             // Arrange
-            var loginRequest = new LoginRequest("wrongUser", "wrongPass");
+            var loginRequest = new User.LoginRequest 
+            { 
+                Username = "wrongUser", 
+                Password = "wrongPass" 
+            };
 
             _userServiceMock.Setup(x => x.Login(loginRequest.Username, loginRequest.Password))
-                .Returns(false);
+                .ReturnsAsync(false);
 
             // Act
-            var result = _controller.Login(loginRequest);
+            var result = await _controller.Login(loginRequest);
 
             // Assert
             var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
-            Assert.Equal("Invalid username or password", unauthorizedResult.Value);
+            dynamic value = unauthorizedResult.Value;
+            Assert.Equal("Invalid username or password", value.message.ToString());
         }
 
         [Fact]
-        public void SignUp_ValidData_ReturnsOkWithToken()
+        public async Task SignUp_ValidData_ReturnsOkWithToken()
         {
             // Arrange
-            var signUpRequest = new SignUpRequest(
-                "newUser",
-                "new@user.com",
-                "password123",
-                "John",
-                "Doe",
-                "+48123456789"
-            );
+            var signUpRequest = new User.SignUpRequest
+            {
+                Username = "newUser",
+                Email = "new@user.com",
+                Password = "password123",
+                FirstName = "John",
+                LastName = "Doe",
+                PhoneNumber = "+48123456789"
+            };
             var expectedToken = "new.user.token";
 
             _userServiceMock.Setup(x => x.SignUp(
@@ -80,31 +90,33 @@ namespace Back.Tests.Controllers
                 signUpRequest.LastName,
                 signUpRequest.PhoneNumber,
                 It.IsAny<string>()))
-                .Returns(string.Empty);
+                .ReturnsAsync(string.Empty);
 
             _authServiceMock.Setup(x => x.GenerateToken(signUpRequest.Username))
-                .Returns(expectedToken);
+                .ReturnsAsync(expectedToken);
 
             // Act
-            var result = _controller.SignUp(signUpRequest);
+            var result = await _controller.SignUp(signUpRequest);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            Assert.Equal(expectedToken, okResult.Value);
+            dynamic value = okResult.Value;
+            Assert.Equal(expectedToken, value.token.ToString());
         }
 
         [Fact]
-        public void SignUp_DuplicateUsername_ReturnsBadRequest()
+        public async Task SignUp_DuplicateUsername_ReturnsBadRequest()
         {
             // Arrange
-            var signUpRequest = new SignUpRequest(
-                "existingUser",
-                "existing@user.com",
-                "password123",
-                "John",
-                "Doe",
-                "+48123456789"
-            );
+            var signUpRequest = new User.SignUpRequest
+            {
+                Username = "existingUser",
+                Email = "existing@user.com",
+                Password = "password123",
+                FirstName = "John",
+                LastName = "Doe",
+                PhoneNumber = "+48123456789"
+            };
             var errorMessage = "Username already exists";
 
             _userServiceMock.Setup(x => x.SignUp(
@@ -115,10 +127,10 @@ namespace Back.Tests.Controllers
                 signUpRequest.LastName,
                 signUpRequest.PhoneNumber,
                 It.IsAny<string>()))
-                .Returns(errorMessage);
+                .ReturnsAsync(errorMessage);
 
             // Act
-            var result = _controller.SignUp(signUpRequest);
+            var result = await _controller.SignUp(signUpRequest);
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -127,17 +139,18 @@ namespace Back.Tests.Controllers
         }
 
         [Fact]
-        public void SignUp_InvalidData_ThrowsArgumentException()
+        public async Task SignUp_InvalidData_ReturnsBadRequest()
         {
             // Arrange
-            var signUpRequest = new SignUpRequest(
-                "",  // Invalid empty username
-                "invalid@email",
-                "pass",
-                "",  // Invalid empty first name
-                "Doe",
-                "+48123456789"
-            );
+            var signUpRequest = new User.SignUpRequest
+            {
+                Username = "",  // Invalid empty username
+                Email = "invalid@email",
+                Password = "pass",
+                FirstName = "",  // Invalid empty first name
+                LastName = "Doe",
+                PhoneNumber = "+48123456789"
+            };
 
             _userServiceMock.Setup(x => x.SignUp(
                 signUpRequest.Username,
@@ -147,15 +160,34 @@ namespace Back.Tests.Controllers
                 signUpRequest.LastName,
                 signUpRequest.PhoneNumber,
                 It.IsAny<string>()))
-                .Throws(new ArgumentException("Invalid data"));
+                .ThrowsAsync(new ArgumentException("Invalid data"));
 
             // Act
-            var result = _controller.SignUp(signUpRequest);
+            var result = await _controller.SignUp(signUpRequest);
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
             dynamic value = badRequestResult.Value;
             Assert.Equal("Invalid data", value.message.ToString());
+        }
+
+        [Fact]
+        public async Task RenewToken_ValidToken_ReturnsNewToken()
+        {
+            // Arrange
+            var oldToken = "old.jwt.token";
+            var newToken = "new.jwt.token";
+
+            _authServiceMock.Setup(x => x.RenewToken(oldToken))
+                .ReturnsAsync(newToken);
+
+            // Act
+            var result = await _controller.RenewToken(oldToken);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            dynamic value = okResult.Value;
+            Assert.Equal(newToken, value.token.ToString());
         }
     }
 }

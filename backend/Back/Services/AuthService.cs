@@ -15,9 +15,11 @@ public class AuthService : IAuthService
     private readonly string? _issuer;
     private readonly string? _audience;
     private readonly byte[] _keyBytes;
+    private readonly IDatabaseService _databaseService;
 
-    public AuthService()
+    public AuthService(IDatabaseService databaseService)
     {
+        _databaseService = databaseService;
         (_secretKey, _issuer, _audience) = GetJwtConfig();
         _keyBytes = Encoding.ASCII.GetBytes(_secretKey ?? string.Empty);
     }
@@ -67,9 +69,16 @@ public class AuthService : IAuthService
             });
     }
 
-    public string? GenerateToken(string username)
+    public async Task<string?> GenerateToken(string username)
     {
         if (string.IsNullOrEmpty(_secretKey)) return null;
+
+        // Check if user is frozen
+        var userStatus = await _databaseService.GetUserStatus(username);
+        if (userStatus == "frozen")
+        {
+            throw new UnauthorizedAccessException("Account is frozen");
+        }
 
         var tokenHandler = new JwtSecurityTokenHandler();
         var tokenDescriptor = new SecurityTokenDescriptor
@@ -87,8 +96,8 @@ public class AuthService : IAuthService
         var token = tokenHandler.CreateToken(tokenDescriptor);
         return tokenHandler.WriteToken(token);
     }
-    
-    public string? RenewToken(string token)
+
+    public async Task<string?> RenewToken(string token)
     {
         var principal = ValidateToken(token);
         if (principal == null)
@@ -101,7 +110,7 @@ public class AuthService : IAuthService
         {
             return null;
         }
-        return GenerateToken(username);
+        return await GenerateToken(username);
     }
 
     public ClaimsPrincipal? ValidateToken(string token)
