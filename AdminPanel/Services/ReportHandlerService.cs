@@ -158,10 +158,30 @@ public class ReportHandlerService : IReportHandlerService
 
     public async Task<bool> DeletePost(int postId)
     {
-        var query = "DELETE FROM api_schema.post WHERE id = @PostId";
+        var deleteReportsQuery = "DELETE FROM api_schema.post_report WHERE reported_id = @PostId";
+        var deletePostQuery = "DELETE FROM api_schema.post WHERE id = @PostId";
         var parameters = new Dictionary<string, object> { { "PostId", postId } };
-        var rowsAffected = await _dbService.ExecuteNonQueryAsync(query, parameters);
-        return rowsAffected > 0;
+
+        return await _dbService.ExecuteWithConnectionAsync(async connection =>
+        {
+            using var transaction = connection.BeginTransaction();
+            try
+            {
+                // Delete reports first
+                await _dbService.ExecuteNonQueryAsync(deleteReportsQuery, parameters, connection, transaction);
+
+                // Then delete the post
+                var result = await _dbService.ExecuteNonQueryAsync(deletePostQuery, parameters, connection, transaction);
+                
+                await transaction.CommitAsync();
+                return result > 0;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        });
     }
 
     public async Task<bool> DismissUserReport(int reportId)

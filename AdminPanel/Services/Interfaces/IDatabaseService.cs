@@ -9,4 +9,5 @@ public interface IDatabaseService
     Task<int> ExecuteNonQueryAsync(string query, Dictionary<string, object>? parameters = null);
     Task<T> ExecuteWithConnectionAsync<T>(Func<NpgsqlConnection, Task<T>> operation);
     Task<T> ExecuteScalarAsync<T>(string query, Dictionary<string, object>? parameters = null);
+    Task<int> ExecuteNonQueryAsync(string query, Dictionary<string, object> parameters, NpgsqlConnection connection, NpgsqlTransaction transaction);
 }
