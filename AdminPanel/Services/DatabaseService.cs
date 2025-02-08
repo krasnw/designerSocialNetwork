@@ -161,6 +161,21 @@ public class DatabaseService : IDatabaseService, IDisposable
         return await command.ExecuteNonQueryAsync();
     }
 
+    public async Task<T> ExecuteScalarAsync<T>(string query, Dictionary<string, object>? parameters = null)
+    {
+        using var connection = GetConnection();
+        using var command = new NpgsqlCommand(query, connection);
+        if (parameters != null)
+        {
+            foreach (var param in parameters)
+            {
+                command.Parameters.AddWithValue(param.Key, param.Value);
+            }
+        }
+        var result = await command.ExecuteScalarAsync();
+        return result == DBNull.Value ? default! : (T)result;
+    }
+
     // Implement IDisposable
     public void Dispose()
     {

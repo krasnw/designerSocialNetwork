@@ -34,20 +34,4 @@ namespace Back.Models
                    $"Images: {string.Join(", ", ImagesNames)}"; // Fixed capitalization of String.Join
         }
     }
-
-    public class PostSummary
-    {
-        public long Id { get; set; }
-        public string Title { get; set; }
-        public ImageContainer Images { get; set; }
-        public string Description { get; set; }
-
-        public PostSummary(long id, string title, ImageContainer images, string description)
-        {
-            Id = id;
-            Title = title;
-            Images = images;
-            Description = description;
-        }
-    }
 }

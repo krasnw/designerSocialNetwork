@@ -1,37 +1,67 @@
 namespace AdminPanel.Models;
 
-public enum ReportType
-{
-    User = 0,
-    Post = 1
-}
-
-public enum ReportStatus
-{
-    pending = 0,
-    resolved = 1,
-    dismissed = 2
-}
-
 public abstract class Report
 {
-    public int Id { get; set; }
-    public ReportType Type { get; set; }
-    public string ReportReason { get; set; } = string.Empty;
+    public long Id { get; set; }
+    public string ReportReason { get; set; }
     public DateTime ReportDate { get; set; }
-    public string? Description { get; set; }
-    public int ReporterId { get; set; }
-    public string? ReporterUsername { get; set; }
-    public ReportStatus Status { get; set; }
 }
 
 public class UserReport : Report
 {
-    public User ReportedUser { get; set; } = null!;
+    public UserMiniDTO ReportedUser { get; set; }
+    public UserMiniDTO Reporter { get; set; }
 }
 
 public class PostReport : Report
 {
-    public Post ReportedPost { get; set; } = null!;
-    public string PostTitle => ReportedPost?.Title ?? string.Empty;
+    public PostMiniDTO ReportedPost { get; set; }
+    public UserMiniDTO ReportedUser { get; set; }
+    public UserMiniDTO Reporter { get; set; }
+}
+
+public class UserMiniDTO
+{
+    public string Username { get; set; }
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public string ProfileImage { get; set; }
+    public string? profileDescription { get; set; }
+
+    public UserMiniDTO(string username, string firstName, string lastName, string profileImage, string? profileDescription)
+    {
+        Username = username;
+        FirstName = firstName;
+        LastName = lastName;
+        ProfileImage = profileImage;
+        this.profileDescription = profileDescription;
+    }
+}
+
+public class PostMiniDTO
+{
+    public long Id { get; set; }
+    public string Title { get; set; }
+    public string? Content { get; set; }
+    public ImageContainer Images { get; set; }
+
+    public PostMiniDTO(long id, string title, string? content, ImageContainer images)
+    {
+        Id = id;
+        Title = title;
+        Content = content;
+        Images = images;
+    }
+}
+
+public class ImageContainer
+{
+    public string MainImage { get; set; }
+    public List<string> Images { get; set; }
+
+    public ImageContainer(string mainImage, List<string> images)
+    {
+        MainImage = mainImage;
+        Images = images;
+    }
 }
