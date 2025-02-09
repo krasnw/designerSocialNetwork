@@ -18,7 +18,7 @@ export default {
       return new Date(date).toLocaleDateString();
     },
     async dismissReport() {
-      await userReportService.dismissReport(this.userReport.id);
+      await userReportService.dismissUser(this.userReport.id);
     },
     async freezeUser() {
       await userReportService.toggleFrozenUser(this.userReport.reportedUser.username);
