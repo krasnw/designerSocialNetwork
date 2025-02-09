@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+:root {
+  --font: 'Montserrat';
+  --secondary-font: 'Inter';
+  --text-color: #d5d5d5;
+  --header-color: #ebebeb;
+  --accept-button-color: #076f34;
+  --accept-button-border-color: #0d9e4b;
+  --reject-button-color: #8d3030;
+  --reject-button-border-color: #d45050;
+  --accent-color: #ffffff;
+  line-height: 1.1;
+  font-weight: 500;
+  font-size: 16px;
+  background-color: #242424;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  box-sizing: border-box;
+  overscroll-behavior: none;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+  color: white;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-image: url('assets/Images/main_bg5.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  height: 100vh;
+  font-family: var(--font);
+  overscroll-behavior: none;
+}
+
+p {
+  font-family: var(--secondary-font);
+  color: var(--text-color);
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--header-color);
+  font-weight: 600;
+  margin: 0;
+}
+
+a {
+  text-decoration: none;
+  background: linear-gradient(120deg, #4f6fbb 0%, #71cadc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+a:hover {
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+button {
+  display: flex;
+  border-radius: 6px;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+button:hover {
+  transform: scale(1.01);
+  transition: all 0.3;
+}
+
+button:active {
+  transform: scale(0.95);
+  transition: all 0.3;
+}
+
+.no-select {
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.green-gradient {
+  background: linear-gradient(120deg, #4fbb94 0%, #709fbc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.red-gradient {
+  background: linear-gradient(120deg, #ec4389 0%, #eba83d 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.blue-gradient {
+  background: linear-gradient(120deg, #8d74df 0%, #5aaee3 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.accept-button {
+  background-color: var(--accept-button-color);
+  border: 1px solid var(--accept-button-border-color);
+}
+
+.reject-button {
+  background-color: var(--reject-button-color);
+  border: 1px solid var(--reject-button-border-color);
+}
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #353849;
+  backdrop-filter: blur(10px);
+}
+
+.nav-links {
+  display: flex;
+  gap: 2rem;
+}
+
+.nav-link {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
