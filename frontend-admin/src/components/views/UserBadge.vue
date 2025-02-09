@@ -15,6 +15,7 @@ export default {
       return image ? imageDirectory + image : defaultImage;
     },
     formatTextToHTML(text) {
+      if (!text) return 'Brak opisu';
       if (text.length === 0) return 'Brak opisu';
       return text.replace(/\n/g, '<br>');
     },

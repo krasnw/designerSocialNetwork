@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import userReportService from '../../services/users';
 import UserBadge from '../views/UserBadge.vue';
+import UserView from '../views/UserView.vue';
 
 const selectedOption = ref('');
 const error = ref('');
@@ -29,6 +30,10 @@ const changeSelectedOption = async (option) => {
     await loadReportedUsersList();
   }
 };
+
+const unFreezeUser = async (username) => {
+  await userReportService.toggleFrozenUser(username);
+}
 
 const loadFrozenUsersList = async () => {
   isLoading.value = true;
@@ -74,7 +79,19 @@ const loadReportedUsersList = async () => {
         placeholder="Wyszukaj użytkownika" v-model="searchQuery">
       <span class="flex gap-2" v-for="user in filteredFrozenUsers" :key="user.username">
         <UserBadge :user="user" />
-        <button class="px-4 py-2 bg-amber-500 max-w-max max-h-max self-center">Przewróć</button>
+        <button class="px-4 py-2 bg-amber-500 max-w-max max-h-max self-center"
+          @click="unFreezeUser(user.username)">Przewróć</button>
+      </span>
+    </div>
+  </section>
+
+  <section v-else-if="selectedOption === 'reports'">
+    <div v-if="isLoading" class="flex items-center justify-center py-4">
+      <p class="px-4 py-2 bg-neutral-950 rounded-lg">Ładowanie...</p>
+    </div>
+    <div v-else class="flex flex-col items-center gap-4">
+      <span v-for="userReport in reportedUsers" :key="userReport.id">
+        <UserView :userReport="userReport" />
       </span>
     </div>
   </section>
