@@ -66,9 +66,9 @@ export default {
     },
     validateForm() {
       this.errors.reason = !this.selectedReason;
-      this.errors.description = this.selectedReason?.reasonName === 'Inne' && !this.reasonDescription.trim();
+      this.errors.description = !this.reasonDescription.trim();
 
-      return !this.errors.reason && (!this.errors.description || this.selectedReason?.reasonName !== 'Inne');
+      return !this.errors.reason && (!this.errors.description);
     },
     async report() {
       if (!this.validateForm()) return;
@@ -76,9 +76,7 @@ export default {
       try {
         const formData = new FormData();
         formData.append('reason', this.selectedReason.id);
-        if (this.selectedReason.reasonName === 'Inne') {
-          formData.append('description', this.reasonDescription);
-        }
+        formData.append('description', this.reasonDescription);
         if (this.isPostReport) {
           formData.append('postId', this.reportedPostId);
         } else {
