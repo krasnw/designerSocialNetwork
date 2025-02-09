@@ -193,7 +193,7 @@ export default {
     },
 
     async copyLink() {
-      const fullLink = `http://localhost:8080/post/protected/${this.protectedLink}`;
+      const fullLink = `http://localhost:8084/post/protected/${this.protectedLink}`;
       try {
         await navigator.clipboard.writeText(fullLink);
         this.isCopied = true;
