@@ -114,38 +114,37 @@ namespace Back.Tests.Controllers
             var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
             Assert.Equal("Blame the token, relog please", unauthorizedResult.Value);
         }
+        
 
         [Fact]
-        public async Task GetUser_ValidUsername_ReturnsOkResult()
+        public async Task GetUser_ViewingOwnProfile_RedirectsToGetMyProfile()
         {
             // Arrange
-            var testUsername = "testUser";
-            var expectedProfile = new UserProfile(
-                testUsername,
-                "Test",
-                "User",
-                "Test description",
-                "test.jpg",
-                100,  // rubies
-                0,    // totalLikes
-                0     // completedTasks
-            );
+            var username = "testUser";
+            
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, username)
+            };
+            var identity = new ClaimsIdentity(claims, "TestAuth");
+            var claimsPrincipal = new ClaimsPrincipal(identity);
 
-            _userServiceMock.Setup(x => x.GetProfile(testUsername))
-                .Returns(expectedProfile);
-            _subscriptionServiceMock.Setup(x => x.IsSubscribed(It.IsAny<string>(), testUsername))
-                .ReturnsAsync(false);
-            _ratingServiceMock.Setup(x => x.GetRatingPosition(testUsername))
-                .ReturnsAsync(1);
+            var httpContext = new DefaultHttpContext
+            {
+                User = claimsPrincipal
+            };
+
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = httpContext
+            };
 
             // Act
-            var result = await _controller.GetUser(testUsername);
+            var result = await _controller.GetUser(username);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            dynamic returnedProfile = okResult.Value;
-            Assert.Equal(testUsername, returnedProfile.Username);
-            Assert.Equal(1, returnedProfile.RatingPosition);
+            var redirectResult = Assert.IsType<RedirectToActionResult>(result);
+            Assert.Equal(nameof(UserController.GetMyProfile), redirectResult.ActionName);
         }
     }
 }

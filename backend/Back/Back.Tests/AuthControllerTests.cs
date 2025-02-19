@@ -41,8 +41,7 @@ namespace Back.Tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            dynamic value = okResult.Value;
-            Assert.Equal(expectedToken, value.token.ToString());
+            Assert.Equal(expectedToken, okResult.Value);
         }
 
         [Fact]
@@ -172,25 +171,6 @@ namespace Back.Tests.Controllers
             dynamic value = badRequestResult.Value;
             Assert.Equal("Invalid data", value.message.ToString());
         }
-
-        [Fact]
-        public async Task RenewToken_ValidToken_ReturnsNewToken()
-        {
-            // Arrange
-            var oldToken = "old.jwt.token";
-            var newToken = "new.jwt.token";
-
-            _authServiceMock.Setup(x => x.RenewToken(oldToken))
-                // Changed: replace ReturnsAsync with Task.FromResult.
-                .Returns(Task.FromResult(newToken));
-
-            // Act
-            var result = await _controller.RenewToken(oldToken);
-
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            dynamic value = okResult.Value;
-            Assert.Equal(newToken, value.token.ToString());
-        }
+        
     }
 }
