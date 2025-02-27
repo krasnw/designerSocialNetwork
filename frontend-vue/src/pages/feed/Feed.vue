@@ -2,7 +2,6 @@
 import Spinner from '@/assets/Icons/Spinner.vue';
 import PostView from '@/components/PostView.vue';
 import { postsContentService } from '@/services/postsContent';
-
 export default {
   components: {
     PostView,
@@ -20,13 +19,11 @@ export default {
   methods: {
     async loadPosts() {
       if (this.loading || !this.hasMore) return;
-
       this.loading = true;
       try {
         console.log('Loading page:', this.currentPage);
         const newPosts = await postsContentService.getFeedPosts(this.currentPage);
         console.log('Received posts:', newPosts);
-
         if (!Array.isArray(newPosts) || newPosts.length === 0) {
           console.log('No more posts available');
           this.hasMore = false;
@@ -37,9 +34,7 @@ export default {
       } catch (error) {
         console.error('Error loading posts:', error);
         this.hasMore = false;
-      } finally {
-        this.loading = false;
-      }
+      } finally { this.loading = false; }
     },
     setupIntersectionObserver() {
       this.observer = new IntersectionObserver(
@@ -50,13 +45,8 @@ export default {
             this.loadPosts();
           }
         },
-        {
-          rootMargin: '300px', // Увеличиваем отступ для более раннего срабатывания
-          threshold: 0.1 // Немного увеличиваем порог видимости
-        }
+        { rootMargin: '300px', threshold: 0.1 }
       );
-
-      // Добавляем проверку наличия элемента
       if (this.$refs.sentinel) {
         this.observer.observe(this.$refs.sentinel);
       } else {
@@ -66,15 +56,10 @@ export default {
   },
   async mounted() {
     await this.loadPosts();
-    // Даем время для рендеринга DOM перед установкой observer
-    this.$nextTick(() => {
-      this.setupIntersectionObserver();
-    });
+    this.$nextTick(() => { this.setupIntersectionObserver(); });
   },
   beforeUnmount() {
-    if (this.observer) {
-      this.observer.disconnect();
-    }
+    if (this.observer) { this.observer.disconnect(); }
   },
   name: "FeedPage",
 };

@@ -48,10 +48,12 @@ export default {
     },
     messageSize() {
       if (!this.isRegularMessage) return 'payment';
-      const textLength = this.message.textContent.split(' ').length ?? 1;
-      return this.message.imagePaths.length === 0
-        ? (textLength > 30 ? 'large' : textLength > 15 ? 'medium' : 'small')
-        : 'medium';
+      if (!this.message?.imagePaths?.length && !this.message?.textContent) return 'small';
+
+      if (this.message?.imagePaths?.length > 0) return 'medium';
+
+      const textLength = this.message?.textContent?.split(' ')?.length || 0;
+      return textLength > 30 ? 'large' : textLength > 15 ? 'medium' : 'small';
     },
     messageClass() {
       if (!this.isRegularMessage) return { 'payment-message': true };

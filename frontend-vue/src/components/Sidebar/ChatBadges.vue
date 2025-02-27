@@ -55,7 +55,6 @@ export default {
     togglePin(user) {
       const username = user.username;
       const isSameChat = this.pinnedChat === username;
-
       if (isSameChat) {
         this.pinnedChat = null;
         this.$router.push({ name: 'conversations' });
@@ -65,14 +64,11 @@ export default {
           name: 'chat',
           params: { username }
         };
-
         if (user.chatStatus === 'disabled') {
           routeConfig.query = { isDisabled: true };
         }
-
         this.$router.push(routeConfig);
       }
-
       this.lookingFor = '';
     }
   }

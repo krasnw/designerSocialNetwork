@@ -112,15 +112,18 @@ export default {
       switch (type) {
         case 'UI':
           this.selected_ui = this.selected_ui.filter(item => item !== value);
-          savedFilters.selected_ui = (savedFilters.selected_ui || []).filter(item => item !== value);
+          savedFilters.selected_ui = (savedFilters.selected_ui || [])
+            .filter(item => item !== value);
           break;
         case 'Styl':
           this.selected_style = this.selected_style.filter(item => item !== value);
-          savedFilters.selected_style = (savedFilters.selected_style || []).filter(item => item !== value);
+          savedFilters.selected_style = (savedFilters.selected_style || [])
+            .filter(item => item !== value);
           break;
         case 'Kolor':
           this.selected_color = this.selected_color.filter(item => item !== value);
-          savedFilters.selected_color = (savedFilters.selected_color || []).filter(item => item !== value);
+          savedFilters.selected_color = (savedFilters.selected_color || [])
+            .filter(item => item !== value);
           break;
       }
 

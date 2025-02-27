@@ -1,4 +1,6 @@
 <script>
+import { userService } from '@/services/user';
+
 const MULTIPLIER = 0.1;
 
 export default {
@@ -85,9 +87,15 @@ export default {
     selectPayment(method) {
       this.paymentMethod = method;
     },
-    handlePayment() {
+    async handlePayment() {
       if ((this.paymentMethod === 'card' && this.isCardValid) ||
         (this.paymentMethod === 'blik' && this.isBlikValid)) {
+        const userData = await userService.getMyData();
+        const username = userData.username;
+        const formData = new FormData();
+        formData.append('amount', this.rubiesAmount);
+        formData.append('username', username);
+        const response = await userService.buyRubies(formData);
         this.page = 3;
       }
     },
