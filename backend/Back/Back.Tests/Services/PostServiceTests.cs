@@ -174,9 +174,9 @@ namespace Back.Tests.Services
         {
             var mockReader = new Mock<DbDataReader>();
             mockReader.SetupSequence(r => r.Read())
-                .Returns(true)
-                .Returns(false);
-            mockReader.Setup(r => r.GetInt32(0)).Returns(hasAccess ? 1 : 0);
+                .Returns(true);
+            mockReader.Setup(r => r.HasRows).Returns(true);
+            mockReader.Setup(r => r.GetBoolean(0)).Returns(hasAccess); 
 
             _mockDbService.Setup(db => db.ExecuteQuery(
                 It.IsAny<string>(),

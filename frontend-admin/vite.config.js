@@ -6,7 +6,7 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [vue(), tailwindcss()],
   server: {
-    port: 42069,
-    strictPort: true,
+    port: 8085,
+    host: true,
   },
 });

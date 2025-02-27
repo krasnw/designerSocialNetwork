@@ -158,7 +158,10 @@ public class ReportHandlerService : IReportHandlerService
 
     public async Task<bool> DeletePost(int postId)
     {
-        var deleteReportsQuery = "DELETE FROM api_schema.post_report WHERE reported_id = @PostId";
+        var deletePostTagsQuery = "DELETE FROM api_schema.post_tags WHERE post_id = @PostId";
+        var deletePowerupQuery = "DELETE FROM api_schema.powerup WHERE post_id = @PostId";
+        var deletePostReportQuery = "DELETE FROM api_schema.post_report WHERE reported_id = @PostId";
+        var deletePostLikesQuery = "DELETE FROM api_schema.post_likes WHERE post_id = @PostId";
         var deletePostQuery = "DELETE FROM api_schema.post WHERE id = @PostId";
         var parameters = new Dictionary<string, object> { { "PostId", postId } };
 
@@ -167,12 +170,21 @@ public class ReportHandlerService : IReportHandlerService
             using var transaction = connection.BeginTransaction();
             try
             {
-                // Delete reports first
-                await _dbService.ExecuteNonQueryAsync(deleteReportsQuery, parameters, connection, transaction);
+                // Delete related post tags
+                await _dbService.ExecuteNonQueryAsync(deletePostTagsQuery, parameters, connection, transaction);
+
+                // Delete related powerups
+                await _dbService.ExecuteNonQueryAsync(deletePowerupQuery, parameters, connection, transaction);
+
+                // Delete related post reports
+                await _dbService.ExecuteNonQueryAsync(deletePostReportQuery, parameters, connection, transaction);
+
+                // Delete related post likes
+                await _dbService.ExecuteNonQueryAsync(deletePostLikesQuery, parameters, connection, transaction);
 
                 // Then delete the post
                 var result = await _dbService.ExecuteNonQueryAsync(deletePostQuery, parameters, connection, transaction);
-                
+
                 await transaction.CommitAsync();
                 return result > 0;
             }

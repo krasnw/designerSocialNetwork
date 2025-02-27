@@ -77,8 +77,8 @@ namespace Back.Tests.Controllers
             var result = _controller.GetPosts(pageNumber, pageSize);
 
             // Assert
-            var okResult = Assert.IsType<JsonResult>(result);
-            var returnedPosts = Assert.IsType<List<PostDto>>(okResult.Value);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var returnedPosts = Assert.IsAssignableFrom<IEnumerable<PostDto>>(okResult.Value);
             Assert.Single(returnedPosts);
         }
 
@@ -149,19 +149,27 @@ namespace Back.Tests.Controllers
         {
             // Arrange
             var username = "testUser";
-            var posts = new List<Post>
+            var posts = new List<PostMini>
             {
-                new Post(
-                    1, 
-                    new User(username, "test@test.com", "password", "Test", "User", "123456789", 0, "active", "user", "", "default.jpg"),
-                    "Test Post", "Content", 
-                    new ImageContainer(1, new Image(1, "test.jpg"), new List<Image>()), 
-                    DateTime.Now, 0, "public", 
-                    new List<Tag>()
-                )
+                new PostMini
+                {
+                    Id = 1,
+                    Title = "Test Post",
+                    Access = "public",
+                    MainImageFilePath = "test.jpg",
+                    Likes = 0,
+                    Tags = new List<string>(),
+                    IsLiked = false
+                }
             };
 
-            _postServiceMock.Setup(x => x.GetAllUserPosts(username))
+            _postServiceMock.Setup(x => x.GetUserPosts(
+                username,
+                It.IsAny<string>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()))
                 .Returns(posts);
 
             // Setup HttpContext
@@ -180,12 +188,18 @@ namespace Back.Tests.Controllers
         }
 
         [Fact]
-        public void GetUserPosts_NoPosts_ReturnsNotFound()
+        public void GetUserPosts_NoPosts_ReturnsEmptyList()
         {
             // Arrange
             var username = "testUser";
-            _postServiceMock.Setup(x => x.GetAllUserPosts(username))
-                .Returns(new List<Post>());
+            _postServiceMock.Setup(x => x.GetUserPosts(
+                username,
+                It.IsAny<string>(),
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()))
+                .Returns(new List<PostMini>());
 
             // Setup HttpContext
             _controller.ControllerContext = new ControllerContext
@@ -197,8 +211,9 @@ namespace Back.Tests.Controllers
             var result = _controller.GetUserPosts(username);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
-            Assert.Equal("No posts found for this user.", notFoundResult.Value);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var returnedPosts = Assert.IsType<List<PostMini>>(okResult.Value);
+            Assert.Empty(returnedPosts);
         }
 
         [Fact]
@@ -246,6 +261,14 @@ namespace Back.Tests.Controllers
 
             _postServiceMock.Setup(x => x.GetProtectedPost(hash))
                 .Returns(post);
+
+            _postServiceMock.Setup(x => x.IsPostLikedByUser(It.IsAny<string>(), post.Id))
+                .Returns(false);
+
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            };
 
             // Act
             var result = _controller.GetProtectedPost(hash);
