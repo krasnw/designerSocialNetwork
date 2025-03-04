@@ -1,8 +1,8 @@
 FROM postgres:latest
 
-ENV POSTGRES_USER=api_user
-ENV POSTGRES_PASSWORD=api_user_password
-ENV POSTGRES_DB=api_database
+ENV POSTGRES_USER=${DATABASE_USER}
+ENV POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+ENV POSTGRES_DB=${DATABASE}
 
 COPY scripts/* /docker-entrypoint-initdb.d/
 

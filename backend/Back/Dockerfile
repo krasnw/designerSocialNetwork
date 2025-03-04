@@ -18,6 +18,5 @@ RUN dotnet publish "Back.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseA
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-COPY .env .
 ENV ASPNETCORE_ENVIRONMENT=Development
 ENTRYPOINT ["dotnet", "Back.dll"]

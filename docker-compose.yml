@@ -5,9 +5,9 @@ services:
             dockerfile: Dockerfile
         container_name: postgres_db
         environment:
-            POSTGRES_USER: api_user
-            POSTGRES_PASSWORD: api_user_password
-            POSTGRES_DB: api_database
+            POSTGRES_USER: ${DATABASE_USER}
+            POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+            POSTGRES_DB: ${DATABASE}
         volumes:
             - postgres_data:/var/lib/postgresql/data
         ports:
@@ -15,7 +15,7 @@ services:
         networks:
             - api-network
         healthcheck:
-            test: ["CMD-SHELL", "pg_isready -d api_database -U api_user"]
+            test: ["CMD-SHELL", "pg_isready -d ${DATABASE} -U ${DATABASE_USER}"]
             interval: 10s
             timeout: 5s
             retries: 5
@@ -26,7 +26,10 @@ services:
             dockerfile: Dockerfile
         environment:
             - ASPNETCORE_ENVIRONMENT=Development
-            - ConnectionStrings__DefaultConnection=Host=database;Port=5432;Database=api_database;Username=api_user;Password=api_user_password
+            - ConnectionStrings__DefaultConnection=${DEFAULT_CONNECTION}
+            - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+            - JWT_ISSUER=${JWT_ISSUER}
+            - JWT_AUDIENCE=${JWT_AUDIENCE}
         ports:
             - "8088:8080"
             - "8081:8081"
@@ -48,7 +51,7 @@ services:
             dockerfile: Dockerfile
         environment:
             - ASPNETCORE_ENVIRONMENT=Development
-            - ConnectionStrings__DefaultConnection=Host=database;Port=5432;Database=api_database;Username=api_user;Password=api_user_password
+            - ConnectionStrings__DefaultConnection=${DEFAULT_CONNECTION}
             - JWT_SECRET_KEY=${JWT_SECRET_KEY}
             - JWT_ISSUER=${JWT_ISSUER}
             - JWT_AUDIENCE=${JWT_AUDIENCE}
@@ -72,7 +75,7 @@ services:
             context: ./frontend-vue
             dockerfile: Dockerfile
         ports:
-            - "8084:8080" 
+            - "8084:8080"
         networks:
             - api-network
         depends_on:
