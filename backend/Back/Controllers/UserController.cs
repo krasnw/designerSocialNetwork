@@ -57,14 +57,12 @@ public class UserController : ControllerBase
             user.LastName,
             user.Description,
             user.ProfileImage,
-            user.Rubies,
             user.TotalLikes,
             user.CompletedTasks,
             IsSubscribedTo = isSubscribed,
             RatingPosition = position
         });
     }
-    
     
     //edit profile
     [Authorize]

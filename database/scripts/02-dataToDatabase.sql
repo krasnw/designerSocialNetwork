@@ -19,28 +19,6 @@ VALUES
 ('user9', 'user9@example.com', '$2b$12$aEYTtqGca3UNHJJrAloXwu4jt2qnxEOuiPYvgTDjJt4gyr40s9Pra', 'Michał', 'Mazur', '123-456-7898', '2024-09-01', 'active', 'user', 90),
 ('admin2', 'admin2@example.com', '$2b$12$XpD6cuyZta5OIVe1Rcq.SuZZjiIdwSxi3an021cLPYx5gl2D0jGdq', 'Joanna', 'Szymańska', '123-456-7899', '2024-10-01', 'active', 'admin', 100);
 
-INSERT INTO api_schema.payment_method (method_name) 
-VALUES 
-('Karta płatnicza'), 
-('Google Pay'), 
-('BLIK');
-
-
-INSERT INTO api_schema.currency_transaction 
-(amount_outer, amount_inner, rate_at_time, transaction_date, user_id, outer_transaction_id, payment_method_id, card_number, way) 
-VALUES
-(100.00, 100, 1.0, '2024-01-10', 1, 'txn_001', 1, '1234-5678-1234-5678', TRUE),
-(150.00, 150, 1.0, '2024-02-10', 2, 'txn_002', 2, '1234-5678-1234-5679', TRUE),
-(200.00, 200, 1.0, '2024-03-10', 3, 'txn_003', 3, '1234-5678-1234-5680', TRUE),
-(250.00, 250, 1.0, '2024-04-10', 4, 'txn_004', 1, '1234-5678-1234-5681', TRUE),
-(300.00, 300, 1.0, '2024-05-10', 5, 'txn_005', 2, '1234-5678-1234-5682', TRUE),
-(350.00, 350, 1.0, '2024-06-10', 6, 'txn_006', 3, '1234-5678-1234-5683', TRUE),
-(400.00, 400, 1.0, '2024-07-10', 7, 'txn_007', 1, '1234-5678-1234-5684', TRUE),
-(450.00, 450, 1.0, '2024-08-10', 8, 'txn_008', 2, '1234-5678-1234-5685', TRUE),
-(500.00, 500, 1.0, '2024-09-10', 9, 'txn_009', 3, '1234-5678-1234-5686', TRUE),
-(550.00, 550, 1.0, '2024-10-10', 10, 'txn_010', 1, '1234-5678-1234-5687', TRUE);
-
-
 INSERT INTO api_schema.wallet (amount, user_id) 
 VALUES
 (100, 1),
@@ -126,8 +104,6 @@ INSERT INTO api_schema.tags (tag_name, tag_type) VALUES
 ('Purple', 'color'),
 ('Orange', 'color'),
 ('Brown', 'color');
-
-
 
 INSERT INTO api_schema.post (user_id, post_name, post_text, container_id, post_date, likes, access_level) 
 VALUES

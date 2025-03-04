@@ -37,24 +37,6 @@ CREATE TABLE api_schema."user" (
     completed_requests INTEGER NOT NULL DEFAULT 0
 );
 
-CREATE TABLE api_schema.payment_method (
-    id SERIAL PRIMARY KEY,
-    method_name VARCHAR(50) NOT NULL UNIQUE
-);
-
-CREATE TABLE api_schema.currency_transaction (
-    id SERIAL PRIMARY KEY,
-    amount_outer DECIMAL(10, 2) NOT NULL,
-    amount_inner INTEGER NOT NULL,
-    rate_at_time DECIMAL(10, 2) NOT NULL,
-    transaction_date DATE NOT NULL,
-    user_id INTEGER REFERENCES "user"(id),
-    outer_transaction_id VARCHAR(50) NOT NULL,
-    payment_method_id INTEGER REFERENCES payment_method(id),
-    card_number VARCHAR(50) NOT NULL,
-    way BOOLEAN NOT NULL
-);
-
 CREATE TABLE api_schema.wallet (
     id SERIAL PRIMARY KEY,
     amount INTEGER NOT NULL,
@@ -116,14 +98,6 @@ CREATE TABLE api_schema.post_tags (
     id SERIAL PRIMARY KEY,
     post_id INTEGER REFERENCES post(id),
     tag_id INTEGER REFERENCES tags(id)
-);
-
-CREATE TABLE api_schema.powerup (
-    id SERIAL PRIMARY KEY,
-    post_id INTEGER REFERENCES post(id),
-    transaction_id INTEGER REFERENCES inner_transaction(id),
-    powerup_date DATE NOT NULL,
-    power_days INTEGER NOT NULL
 );
 
 CREATE TABLE api_schema.protected_post_access (
@@ -188,18 +162,6 @@ CREATE TABLE api_schema.transaction_message (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_transaction_number UNIQUE (transaction_number),
     CONSTRAINT unique_transaction_hash UNIQUE (transaction_hash)
-);
-
-CREATE TABLE api_schema.chat_image (
-    id SERIAL PRIMARY KEY,
-    chat_id INTEGER REFERENCES chat(id),
-    container_id INTEGER REFERENCES image_container(id)
-);
-
-CREATE TABLE api_schema.chat_transaction (
-    id SERIAL PRIMARY KEY,
-    chat_id INTEGER REFERENCES chat(id),
-    transaction_id INTEGER REFERENCES inner_transaction(id)
 );
 
 CREATE TABLE api_schema.reason (

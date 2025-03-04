@@ -102,7 +102,7 @@ public class ChatController : ControllerBase
             return result switch
             {
                 RequestActionResult.Success => Ok(new { message }),
-                RequestActionResult.NotFound => NotFound(new { message }), // Will now properly return 404
+                RequestActionResult.NotFound => NotFound(new { message }),
                 RequestActionResult.AlreadyAccepted => BadRequest(new { message }),
                 RequestActionResult.NotSeller => BadRequest(new { message }),
                 RequestActionResult.Error => BadRequest(new { message }),
