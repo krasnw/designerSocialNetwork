@@ -11,7 +11,7 @@ services:
         volumes:
             - postgres_data:/var/lib/postgresql/data
         ports:
-            - "5433:5432"
+            - "${DATABASE_PORT}:5432"
         networks:
             - api-network
         healthcheck:
@@ -26,13 +26,12 @@ services:
             dockerfile: Dockerfile
         environment:
             - ASPNETCORE_ENVIRONMENT=Development
-            - ConnectionStrings__DefaultConnection=${DEFAULT_CONNECTION}
             - JWT_SECRET_KEY=${JWT_SECRET_KEY}
             - JWT_ISSUER=${JWT_ISSUER}
             - JWT_AUDIENCE=${JWT_AUDIENCE}
         ports:
-            - "8088:8080"
-            - "8081:8081"
+            - "${SERVER_PORT}:8080"
+            - "${SERVER_HTTPS_PORT}:8081"
         networks:
             - api-network
         depends_on:
@@ -51,13 +50,12 @@ services:
             dockerfile: Dockerfile
         environment:
             - ASPNETCORE_ENVIRONMENT=Development
-            - ConnectionStrings__DefaultConnection=${DEFAULT_CONNECTION}
             - JWT_SECRET_KEY=${JWT_SECRET_KEY}
             - JWT_ISSUER=${JWT_ISSUER}
             - JWT_AUDIENCE=${JWT_AUDIENCE}
         ports:
-            - "8082:8082"
-            - "8083:8083"
+            - "${ADMINPANEL_PORT}:8080"
+            - "${ADMINPANEL_HTTPS_PORT}:8081"
         networks:
             - api-network
         depends_on:
@@ -75,7 +73,7 @@ services:
             context: ./frontend-vue
             dockerfile: Dockerfile
         ports:
-            - "8084:8080"
+            - "${FRONTEND_PORT}:8080"
         networks:
             - api-network
         depends_on:
@@ -94,8 +92,14 @@ services:
         build:
             context: ./frontend-admin
             dockerfile: Dockerfile
+            args:
+                VITE_SERVER_PORT: ${SERVER_PORT}
+                VITE_ADMINPANEL_PORT: ${ADMINPANEL_PORT}
+        environment:
+            - VITE_SERVER_PORT=${SERVER_PORT}
+            - VITE_ADMINPANEL_PORT=${ADMINPANEL_PORT}
         ports:
-            - "8085:8085"
+            - "${ADMIN_FRONTEND_PORT}:8085"
         networks:
             - api-network
         depends_on:
