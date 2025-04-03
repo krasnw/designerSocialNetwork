@@ -1,12 +1,12 @@
-<header align="center">
+<div align="center">
 <h3>Social network for UI/UX designers</h3>
 <p>
 
 [![Vue.js](https://img.shields.io/badge/Vue.js-4FC08D?logo=vuedotjs&logoColor=fff)](#) [![.NET](https://img.shields.io/badge/Asp.NET%20Core-512BD4?logo=dotnet&logoColor=fff)](#) [![Postgres](https://img.shields.io/badge/Postgres-%23316192.svg?logo=postgresql&logoColor=white)](#)
 
 </p>
-</header>
-A modern web platform designed and developed for Polish-speaking UI/UX designers, featuring a fully localized Polish interface.
+</div>
+A modern web platform for UI/UX designers to showcase their work, interact with clients, and manage their portfolio.
 
 ## ✨ Features
 
@@ -20,12 +20,19 @@ A modern web platform designed and developed for Polish-speaking UI/UX designers
 ## 🎥 Demo
 
 ### Portfolio View
-
-![Portfolio Demo](picturesForReadMe/portfolio-demo.png)
+<img 
+  src="picturesForReadMe/portfolio-demo.png" 
+  alt="Portfolio Demo" 
+  width="600"
+/>
 
 ### Post Upload
+<img 
+  src="picturesForReadMe/upload-demo.png" 
+  alt="Portfolio Demo" 
+  width="600"
+/>
 
-![Upload Demo](picturesForReadMe/upload-demo.png)
 
 <!--
 ### Chat Interface
@@ -67,6 +74,7 @@ DATABASE_PASSWORD=api_user_password
 
 > [!IMPORTANT]
 > Make sure that JWT_SECRET_KEY is at least 32 characters long. System will not work if it is shorter.
+
 > [!NOTE]
 > Database related variables are used to connect to the database, so they can be used to externally connect to the database.
 
