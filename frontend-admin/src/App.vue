@@ -20,10 +20,10 @@ const logout = () => {
   <main>
     <nav class="navbar">
       <div class="nav-links">
-        <RouterLink class="nav-link" to="/reports/users">Użytkownicy</RouterLink>
-        <RouterLink class="nav-link" to="/reports/posts">Publikacje</RouterLink>
+        <RouterLink class="nav-link" to="/reports/users">Users</RouterLink>
+        <RouterLink class="nav-link" to="/reports/posts">Posts</RouterLink>
       </div>
-      <RouterLink class="nav-link" to="/login" v-if="!isUserLogged">Login</RouterLink>
+      <RouterLink class="nav-link" to="/login" v-if="!isUserLogged">Log In</RouterLink>
       <h4 class="nav-link cursor-pointer hover:opacity-90" @click="logout" v-else>
         <span class="red-gradient">Logout</span>
       </h4>

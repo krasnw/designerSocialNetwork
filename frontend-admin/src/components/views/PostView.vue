@@ -52,11 +52,11 @@ export default {
   <article class="flex flex-col gap-4 p-4 border border-gray-300 rounded-lg max-w-max">
     <span class="flex flex-row gap-2 items-center justify-around">
       <span class="flex flex-col gap-2">
-        <p>Użytkownik reklamowany</p>
+        <p>Reported User</p>
         <UserBadge :user="post.reportedUser" />
       </span>
       <span class="flex flex-col gap-2">
-        <p>Użytkownik zgłaszający</p>
+        <p>Reporting User</p>
         <UserBadge :user="post.reporter" />
       </span>
     </span>
@@ -79,8 +79,8 @@ export default {
         <p>{{ formatDate(post.reportDate) }}</p>
       </span>
       <span class="flex flex-col gap-2 max-w-max">
-        <button class="accept-button" @click="dismissReport">Odrzuć zgłoszenie</button>
-        <button class="reject-button" @click="deletePost">Usuń post</button>
+        <button class="accept-button" @click="dismissReport">Dismiss Report</button>
+        <button class="reject-button" @click="deletePost">Delete Post</button>
       </span>
     </span>
   </article>

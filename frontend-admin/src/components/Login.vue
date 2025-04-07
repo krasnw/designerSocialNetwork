@@ -55,26 +55,26 @@ export default {
 <template>
   <div class="flex relative items-center justify-center min-h-screen error-anchor">
     <div class="w-full max-w-md p-8 space-y-6 bg-neutral-900 rounded-lg shadow-md">
-      <h1 class="text-2xl font-bold text-center text-gray-500">Logowanie do systemu</h1>
+      <h1 class="text-2xl font-bold text-center text-gray-500">Login to System</h1>
 
       <form class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700">Imię użytkownika</label>
+          <label class="block text-sm font-medium text-gray-700">Username</label>
           <input type="text" class="w-full px-3 py-2 mt-1 border rounded-md focus:outline-none"
-            :class="{ 'border-red-500': fieldErrors.username }" placeholder="Wprowadź imię" v-model="username"
+            :class="{ 'border-red-500': fieldErrors.username }" placeholder="Enter username" v-model="username"
             @focus="clearError('username')">
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700">Hasło</label>
+          <label class="block text-sm font-medium text-gray-700">Password</label>
           <input type="password" class="w-full px-3 py-2 mt-1 border rounded-md focus:outline-none"
-            :class="{ 'border-red-500': fieldErrors.password }" placeholder="Wprowadź hasło" v-model="password"
+            :class="{ 'border-red-500': fieldErrors.password }" placeholder="Enter password" v-model="password"
             @focus="clearError('password')">
         </div>
 
         <button @click="login" type="button"
           class="w-full px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
-          Zaloguj się
+          Log In
         </button>
       </form>
     </div>
@@ -83,7 +83,7 @@ export default {
         class="error-message bg-neutral-700 px-4 py-2 rounded-md border border-red-500 max-w-md flex justify-center items-center">
         <p class="text-red-500 truncate">{{ error }}</p>
       </div>
-      <button class="reject-button" @click="error = ''">Schowaj</button>
+      <button class="reject-button" @click="error = ''">Hide</button>
     </div>
   </div>
 </template>

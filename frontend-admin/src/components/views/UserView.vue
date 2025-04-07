@@ -31,11 +31,11 @@ export default {
   <article class="flex flex-col gap-4 bg-neutral-900 rounded-lg px-4 py-3">
     <div class="flex flex-row gap-4">
       <span class="flex flex-col gap-2">
-        <p>Użytkownik reklamowany</p>
+        <p>Reported user</p>
         <UserBadge :user="userReport.reportedUser" />
       </span>
       <span class="flex flex-col gap-2">
-        <p>Użytkownik zgłaszający</p>
+        <p>Reporting user</p>
         <UserBadge :user="userReport.reporter" />
       </span>
     </div>
@@ -46,8 +46,8 @@ export default {
         <p>{{ formatDate(userReport.reportDate) }}</p>
       </div>
       <div class="flex flex-col gap-2">
-        <button class="accept-button" @click="dismissReport">Anuluj</button>
-        <button class="reject-button" @click="freezeUser">Zmróź</button>
+        <button class="accept-button" @click="dismissReport">Dismiss</button>
+        <button class="reject-button" @click="freezeUser">Freeze</button>
       </div>
     </div>
   </article>
