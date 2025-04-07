@@ -1,6 +1,6 @@
 export const API_URL = "http://localhost:8088";
-export const imageDirectory = "http://localhost:8088/images/";
-export const WS_URL = "http://localhost:8088/chathub";
+export const imageDirectory = API_URL + "/images/";
+export const WS_URL = API_URL + "/chathub";
 
 export const formatNumber = (number) => {
   if (number >= 1000000000) {

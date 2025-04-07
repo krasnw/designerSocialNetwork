@@ -37,7 +37,8 @@ export default {
         arrows: (localStorage.getItem('allowArrow') === 'true') ? this.post.images.length > 1 : false,
         wheel: localStorage.getItem('allowWheel') === 'true',
         waitForTransition: localStorage.getItem('allowWheel') === 'true',
-        releaseWheel: false,
+        releaseWheel: true,
+        direction: 'ltr',
         lazyLoad: 'nearby',
         preloadPages: 1,
         gap: '20px',
@@ -87,7 +88,7 @@ export default {
 <template>
   <article class="post background">
     <div class="post-content">
-      <Splide class="picture-slider" :options="splideOptions" aria-label="Post slides">
+      <Splide class="picture-slider" :options="splideOptions()" aria-label="Post slides">
         <SplideSlide v-for="(picture, index) in post.images" :key="index">
           <img class="slide" :src="imagePathHandler(picture)" loading="lazy" alt="Post Picture"
             onmousedown='return false;' ondragstart='return false;'>
@@ -113,15 +114,15 @@ export default {
 
       <div class="stats no-select">
         <span v-if="post.access === 'protected'">
-          <p class="access-type">Chroniony</p>
+          <p class="access-type">By Link</p>
           <Link />
         </span>
         <span v-if="post.access === 'private'">
-          <p class="access-type">Prywatny</p>
+          <p class="access-type">Private</p>
           <Lock />
         </span>
         <span>
-          <p v-if="isCopied" class="access-type">Skopiowane</p>
+          <p v-if="isCopied" class="access-type">Copied</p>
           <ShareIcon @click="copyLink" />
         </span>
         <span @click="likePost" class="post-like">

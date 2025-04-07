@@ -33,40 +33,40 @@ export default {
     validateField(field) {
       const validations = {
         username: () => {
-          if (this.username.trim() === '') return 'Nazwa użytkownika jest wymagana';
-          if (this.username.length < 3) return 'Nazwa użytkownika musi mieć min. 3 znaki';
+          if (this.username.trim() === '') return 'Username is required';
+          if (this.username.length < 3) return 'Username must be at least 3 characters';
           return null;
         },
         email: () => {
-          if (this.email.trim() === '') return 'Email jest wymagany';
-          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) return 'Nieprawidłowy format email';
+          if (this.email.trim() === '') return 'Email is required';
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) return 'Invalid email format';
           return null;
         },
         firstName: () => {
-          if (this.firstName.trim() === '') return 'Imię jest wymagane';
+          if (this.firstName.trim() === '') return 'First name is required';
           return null;
         },
         lastName: () => {
-          if (this.lastName.trim() === '') return 'Nazwisko jest wymagane';
+          if (this.lastName.trim() === '') return 'Last name is required';
           return null;
         },
         phoneNumber: () => {
-          if (this.phoneNumber.trim() === '') return 'Numer telefonu jest wymagany';
+          if (this.phoneNumber.trim() === '') return 'Phone number is required';
           // example of phone number validation +48123123123
-          if (!/^\+\d{1,3}\d{9}$/.test(this.phoneNumber)) return 'Nieprawidłowy format numeru telefonu';
+          if (!/^\+\d{1,3}\d{9}$/.test(this.phoneNumber)) return 'Invalid phone number format';
           return null;
         },
         password: () => {
-          if (this.password.trim() === '') return 'Hasło jest wymagane';
-          if (this.password.length < 6) return 'Hasło musi mieć min. 8 znaków';
+          if (this.password.trim() === '') return 'Password is required';
+          if (this.password.length < 6) return 'Password must be at least 8 characters';
           // password must have number
-          if (!/\d/.test(this.password)) return 'Hasło musi zawierać cyfrę';
+          if (!/\d/.test(this.password)) return 'Password must contain a number';
           // password must have uppercase letter
-          if (!/[A-Z]/.test(this.password)) return 'Hasło musi zawierać wielką literę';
+          if (!/[A-Z]/.test(this.password)) return 'Password must contain an uppercase letter';
           return null;
         },
         passwordRepeat: () => {
-          if (this.passwordRepeat !== this.password) return 'Hasła nie są zgodne';
+          if (this.passwordRepeat !== this.password) return 'Passwords do not match';
           return null;
         }
       };
@@ -120,14 +120,14 @@ export default {
 
 <template>
   <main>
-    <h2 class="page-name">Rejestracja</h2>
+    <h2 class="page-name">Registration</h2>
     <section>
       <form class="form background" autocomplete="off" @submit="handleRegister">
         <div class="register-form first-column">
-          <h3>Dane logowania</h3>
+          <h3>Login details</h3>
           <div class="form-group">
             <input autocomplete="off" type="text" v-model="username" :class="{ 'error': errors.username }"
-              placeholder="Nazwa użytkownika" @blur="validateField('username')" />
+              placeholder="Username" @blur="validateField('username')" />
             <span class="error-message" v-if="errors.username">{{ errors.username }}</span>
           </div>
 
@@ -139,37 +139,37 @@ export default {
 
           <div class="form-group">
             <input autocomplete="new-password" type="password" v-model="password" :class="{ 'error': errors.password }"
-              placeholder="Hasło" @blur="validateField('password')" />
+              placeholder="Password" @blur="validateField('password')" />
             <span class="error-message" v-if="errors.password">{{ errors.password }}</span>
           </div>
 
           <div class="form-group">
             <input autocomplete="new-password" type="password" v-model="passwordRepeat"
-              :class="{ 'error': errors.passwordRepeat }" placeholder="Powtórz hasło"
+              :class="{ 'error': errors.passwordRepeat }" placeholder="Repeat password"
               @blur="validateField('passwordRepeat')" />
             <span class="error-message" v-if="errors.passwordRepeat">{{ errors.passwordRepeat }}</span>
           </div>
         </div>
 
         <div class="register-form second-column">
-          <h3>Dane o użytkowniku</h3>
+          <h3>User details</h3>
           <div class="form-group">
-            <input type="text" v-model="firstName" :class="{ 'error': errors.firstName }" placeholder="Imię"
+            <input type="text" v-model="firstName" :class="{ 'error': errors.firstName }" placeholder="First name"
               @blur="validateField('firstName')" />
             <span class="error-message" v-if="errors.firstName">{{ errors.firstName }}</span>
           </div>
           <div class="form-group">
-            <input type="text" v-model="lastName" :class="{ 'error': errors.lastName }" placeholder="Nazwisko"
+            <input type="text" v-model="lastName" :class="{ 'error': errors.lastName }" placeholder="Last name"
               @blur="validateField('lastName')" />
             <span class="error-message" v-if="errors.lastName">{{ errors.lastName }}</span>
           </div>
           <div class="form-group">
             <input autocomplete="off" type="text" v-model="phoneNumber" :class="{ 'error': errors.phoneNumber }"
-              placeholder="Numer telefonu (+48...)" @blur="validateField('phoneNumber')" />
+              placeholder="Phone number (+48...)" @blur="validateField('phoneNumber')" />
             <span class="error-message" v-if="errors.phoneNumber">{{ errors.phoneNumber }}</span>
           </div>
           <button type="submit" class="button">
-            Zarejestruj się
+            Register
             <Spinner v-if="isLoading" class="spinner" />
           </button>
         </div>
@@ -177,9 +177,9 @@ export default {
 
       <transition name="slide-fade">
         <article class="error-garbage" v-if="serverError">
-          <h3>Ups... coś poszło nie tak</h3>
+          <h3>Oops... something went wrong</h3>
           <p class="background">{{ serverError }}</p>
-          <button @click="clearError()" id="deleteErr">Zamknij</button>
+          <button @click="clearError()" id="deleteErr">Close</button>
         </article>
       </transition>
     </section>

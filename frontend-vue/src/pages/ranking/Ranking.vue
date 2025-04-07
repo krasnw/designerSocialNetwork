@@ -63,7 +63,7 @@ export default {
 
 <template>
   <main>
-    <h2 class="page-name">Tablica liderów</h2>
+    <h2 class="page-name">Lider board</h2>
     <section class="ranking">
       <UserBadge v-for="user in users" :key="user.user.username" :data="user" />
       <div v-if="hasMore" ref="sentinel" class="sentinel">

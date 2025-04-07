@@ -32,7 +32,7 @@ export default {
       this.validateField('password');
 
       if (this.username.trim() === '' || this.password.trim() === '') {
-        this.error = 'Wszystkie pola są wymagane.';
+        this.error = 'All fields are required.';
         return;
       }
 
@@ -53,10 +53,10 @@ export default {
         if (match) {
           const parsedError = JSON.parse(match[0]);
           this.error = parsedError.message === "Account is frozen"
-            ? "Konto zostało zablokowane, skontaktuj się z administratorem"
-            : "Nieprawidłowe dane logowania";
+            ? "Account has been frozen, please contact the administrator"
+            : "Invalid login details";
         } else {
-          this.error = "Wystąpił błąd podczas logowania";
+          this.error = "An error occurred during login";
         }
       } finally {
         this.isLoading = false;
@@ -71,22 +71,22 @@ export default {
 
 <template>
   <main>
-    <h2 class="page-name">Zaloguj się</h2>
+    <h2 class="page-name">Log In</h2>
     <section>
       <form class="login-form background" @submit="handleLogin">
-        <input type="text" v-model="username" class="input" :class="{ 'error': usernameError }"
-          placeholder="Nazwa użytkownika" @blur="validateField('username')" />
-        <input type="password" v-model="password" class="input" :class="{ 'error': passwordError }" placeholder="Hasło"
-          @blur="validateField('password')" />
-        <button type="submit" class="button accept-button">Zaloguj się
+        <input type="text" v-model="username" class="input" :class="{ 'error': usernameError }" placeholder="Username"
+          @blur="validateField('username')" />
+        <input type="password" v-model="password" class="input" :class="{ 'error': passwordError }"
+          placeholder="Password" @blur="validateField('password')" />
+        <button type="submit" class="button accept-button">Log In
           <Spinner v-if="isLoading" class="spinner" />
         </button>
       </form>
       <transition name="slide-fade">
         <article class="error-garbage" v-show="error">
-          <h3>Ups... coś poszło nie tak</h3>
+          <h3>Oops... Something went wrong</h3>
           <p class="background">{{ error }}</p>
-          <button @click="deleteError" id="deleteErr">Zamknij</button>
+          <button @click="deleteError" id="deleteErr">Close</button>
         </article>
       </transition>
     </section>

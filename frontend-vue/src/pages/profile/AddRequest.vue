@@ -14,7 +14,7 @@ export default {
     },
     validateForm() {
       if (!this.description.trim()) {
-        this.error = "Treść zlecenia nie może być pusta";
+        this.error = "The task description cannot be empty";
         return false;
       }
       return true;
@@ -41,13 +41,13 @@ export default {
 
 <template>
   <main>
-    <h2 class="page-name">Złożenie zlecenia</h2>
+    <h2 class="page-name">Submit a Task</h2>
     <article class="background task">
-      <textarea class="reply-textarea" placeholder="Napisz treść zlecenia" v-model="description"></textarea>
+      <textarea class="reply-textarea" placeholder="Write the task description" v-model="description"></textarea>
       <p v-if="error" class="error-message">{{ error }}</p>
       <span class="control-buttons">
-        <button @click="returnToPortfolio" class="accept-button button">Powróć</button>
-        <button @click="sendTask" class="accept-button button">Wyslij</button>
+        <button @click="returnToPortfolio" class="accept-button button">Return</button>
+        <button @click="sendTask" class="accept-button button">Send</button>
       </span>
     </article>
   </main>

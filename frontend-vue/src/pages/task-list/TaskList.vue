@@ -31,9 +31,9 @@ export default {
 
 <template>
   <main>
-    <h2 class="page-name">Lista zleceń</h2>
+    <h2 class="page-name">Task page</h2>
     <section>
-      <div v-if="isLoading" class="loading">Ładowanie
+      <div v-if="isLoading" class="loading">Loading
         <Spinner class="spinner" />
       </div>
       <section class="task-list" v-else>
@@ -41,7 +41,7 @@ export default {
           <TaskView :task="task" @task-deleted="handleTaskDelete" />
         </article>
         <div class="no-tasks" v-if="!tasks.length">
-          Brak Zleceń
+          No tasks found
         </div>
       </section>
     </section>

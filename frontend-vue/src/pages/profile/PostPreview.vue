@@ -86,14 +86,14 @@ export default {
         </span>
       </span>
     </article>
-    <div v-if="isLoading" class="loading">Ładowanie
+    <div v-if="isLoading" class="loading">Loading
       <Spinner class="spinner" />
     </div>
     <article v-if="fullPostVisible" class="post-view">
       <PostView :post="fullPost" />
       <section class="post-control-buttons">
-        <button class="accept-button button" @click="hidePost">Schowaj</button>
-        <button class="delete-button button" v-if="!$route.params.username" @click="deletePost">Usuń</button>
+        <button class="accept-button button" @click="hidePost">Hide</button>
+        <button class="delete-button button" v-if="!$route.params.username" @click="deletePost">Delete</button>
         <button class="delete-button button" v-else @click="reportPost">Report</button>
       </section>
     </article>

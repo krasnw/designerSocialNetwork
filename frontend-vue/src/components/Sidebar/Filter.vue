@@ -49,11 +49,9 @@ export default {
     }
   },
   mounted() {
-    // Добавляем слушатель при монтировании компонента
     window.addEventListener('click', this.handleClickOutside);
   },
   beforeDestroy() {
-    // Удаляем слушатель при уничтожении компонента
     window.removeEventListener('click', this.handleClickOutside);
   },
   watch: {
@@ -61,10 +59,10 @@ export default {
       this.updateSelectedOptions('UI', newVal);
     },
     selected_style(newVal) {
-      this.updateSelectedOptions('Styl', newVal);
+      this.updateSelectedOptions('Style', newVal);
     },
     selected_color(newVal) {
-      this.updateSelectedOptions('Kolor', newVal);
+      this.updateSelectedOptions('Color', newVal);
     },
     activeToggle(newVal) {
       this.saveFiltersToStorage();
@@ -100,8 +98,8 @@ export default {
         this.activeToggle = filters.activeToggle || 'public';
 
         this.updateSelectedOptions('UI', this.selected_ui);
-        this.updateSelectedOptions('Styl', this.selected_style);
-        this.updateSelectedOptions('Kolor', this.selected_color);
+        this.updateSelectedOptions('Style', this.selected_style);
+        this.updateSelectedOptions('Color', this.selected_color);
       }
     },
 
@@ -115,12 +113,12 @@ export default {
           savedFilters.selected_ui = (savedFilters.selected_ui || [])
             .filter(item => item !== value);
           break;
-        case 'Styl':
+        case 'Style':
           this.selected_style = this.selected_style.filter(item => item !== value);
           savedFilters.selected_style = (savedFilters.selected_style || [])
             .filter(item => item !== value);
           break;
-        case 'Kolor':
+        case 'Color':
           this.selected_color = this.selected_color.filter(item => item !== value);
           savedFilters.selected_color = (savedFilters.selected_color || [])
             .filter(item => item !== value);
@@ -183,22 +181,22 @@ export default {
   <div class="filter-wrapper no-select">
     <div class="filter">
       <div class="filter-header">
-        <h3>Filtruj</h3>
+        <h3>Content filter</h3>
         <ReloadIcon v-if="isTagNumChanged" @click="handleReload" :class="{ 'spin-animation': isSpinning }"
           class="reload-icon" />
       </div>
 
       <div class="toggle-type">
         <div class="toggle-option" :class="{ active: activeToggle === 'public' }" @click="toggleOption('public')">
-          Publiczne
+          Public
         </div>
         <div class="toggle-option" :class="{ active: activeToggle === 'private' }" @click="toggleOption('private')">
-          Płatne
+          Private
         </div>
       </div>
 
       <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'ui' }" ref="ui">
-        <span class="anchor" @click="toggleDropdown('ui', $event)">Element UI</span>
+        <span class="anchor" @click="toggleDropdown('ui', $event)">UI Element</span>
         <ul class="items">
           <li v-for="option in ui" :key="option.value" @click="toggleCheckbox($event, 'ui-' + option.value)">
             <input type="checkbox" :id="'ui-' + option.value" :value="option.value" v-model="selected_ui">
@@ -208,7 +206,7 @@ export default {
       </div>
 
       <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'style' }" ref="style">
-        <span class="anchor" @click="toggleDropdown('style', $event)">Styl</span>
+        <span class="anchor" @click="toggleDropdown('style', $event)">Style</span>
         <ul class="items">
           <li v-for="option in style" :key="option.value" @click="toggleCheckbox($event, 'style-' + option.value)">
             <input type="checkbox" :id="'style-' + option.value" :value="option.value" v-model="selected_style">
@@ -218,7 +216,7 @@ export default {
       </div>
 
       <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'color' }" ref="color">
-        <span class="anchor" @click="toggleDropdown('color', $event)">Kolor</span>
+        <span class="anchor" @click="toggleDropdown('color', $event)">Color</span>
         <ul class="items">
           <li v-for="option in color" :key="option.value" @click="toggleCheckbox($event, 'color-' + option.value)">
             <input type="checkbox" :id="'color-' + option.value" :value="option.value" v-model="selected_color">

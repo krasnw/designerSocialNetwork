@@ -26,9 +26,9 @@ export default {
       style: [],
       color: [],
       accessLevels: [
-        { value: "public", text: "Publiczny" },
-        { value: "protected", text: "Chroniony" },
-        { value: "private", text: "Płatny" },
+        { value: "public", text: "Public" },
+        { value: "protected", text: "By link" },
+        { value: "private", text: "Private" },
       ],
       activeDropdown: null,
       // errors 
@@ -47,7 +47,7 @@ export default {
   computed: {
     selectedAccessLevelText() {
       const selected = this.accessLevels.find(level => level.value === this.accessLevel)
-      return selected ? selected.text : 'Poziom dostępu'
+      return selected ? selected.text : 'Access level'
     }
   },
   async created() {
@@ -74,10 +74,10 @@ export default {
       this.updateSelectedOptions('UI', newVal);
     },
     selected_style(newVal) {
-      this.updateSelectedOptions('Styl', newVal);
+      this.updateSelectedOptions('Style', newVal);
     },
     selected_color(newVal) {
-      this.updateSelectedOptions('Kolor', newVal);
+      this.updateSelectedOptions('Color', newVal);
     },
     selectedOptions: {
       handler(newVal, oldVal) {
@@ -123,10 +123,10 @@ export default {
         case 'UI':
           this.selected_ui = this.selected_ui.filter(item => item !== value);
           break;
-        case 'Styl':
+        case 'Style':
           this.selected_style = this.selected_style.filter(item => item !== value);
           break;
-        case 'Kolor':
+        case 'Color':
           this.selected_color = this.selected_color.filter(item => item !== value);
           break;
       }
@@ -236,7 +236,7 @@ export default {
 
 <template>
   <main>
-    <h2 class="page-name">Dodaj nowy post</h2>
+    <h2 class="page-name">Add new post</h2>
     <section class="wrapper">
       <!-- first page of the form -->
       <section v-if="activePage === 1">
@@ -245,7 +245,7 @@ export default {
 
 
 
-            <h3 class="no-select">Wybierz obrazki</h3>
+            <h3 class="no-select">Select images</h3>
 
             <div class="file-upload" @click="triggerFileInput" @dragenter="onDragEnter" @dragleave="onDragLeave"
               @dragover.prevent @drop="onDrop" :class="{ 'dragging': isDragging }">
@@ -254,7 +254,7 @@ export default {
 
               <div v-if="images.length === 0" class="empty-file-upload">
                 <span class="icon">+</span>
-                <h4 class="text" :class="{ 'error': errors.images }">Dodaj obrazki lub przeciągnij pliki tutaj</h4>
+                <h4 class="text" :class="{ 'error': errors.images }">Drag and drop here or upload from your device</h4>
               </div>
 
               <div v-else class="images-preview">
@@ -270,7 +270,7 @@ export default {
                     </div>
                   </div>
                 </div>
-                <p class="add-more-hint">Kliknij lub przeciągnij, aby dodać więcej zdjęć</p>
+                <p class="add-more-hint">Click or drag to add more images</p>
               </div>
             </div>
 
@@ -278,14 +278,14 @@ export default {
 
           </div>
           <div class="right-side">
-            <h3 class="no-select">Tytuł</h3>
-            <input type="text" v-model="title" placeholder="Temat postu" :class="{ 'error': errors.title }" />
-            <h3 class="no-select">Opis</h3>
-            <textarea v-model="content" placeholder="Opis postu" rows="7" />
+            <h3 class="no-select">Title</h3>
+            <input type="text" v-model="title" placeholder="Post title" :class="{ 'error': errors.title }" />
+            <h3 class="no-select">Description</h3>
+            <textarea v-model="content" placeholder="Post description" rows="7" />
           </div>
         </form>
         <span class="controls">
-          <button class="button" @click="nextPage">Dalej</button>
+          <button class="button" @click="nextPage">Next</button>
         </span>
       </section>
 
@@ -293,7 +293,7 @@ export default {
       <section v-if="activePage === 2">
         <form class="form-page background">
           <div class="left-side no-select">
-            <h3>Kategorię</h3>
+            <h3>Category</h3>
             <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'ui' }" ref="ui">
               <span class="anchor" @click="toggleDropdown('ui', $event)">Element UI</span>
               <ul class="items">
@@ -305,7 +305,7 @@ export default {
             </div>
 
             <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'style' }" ref="style">
-              <span class="anchor" @click="toggleDropdown('style', $event)">Styl</span>
+              <span class="anchor" @click="toggleDropdown('style', $event)">Style</span>
               <ul class="items">
                 <li v-for="option in style" :key="option.value"
                   @click="toggleCheckbox($event, 'style-' + option.value)">
@@ -316,7 +316,7 @@ export default {
             </div>
 
             <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'color' }" ref="color">
-              <span class="anchor" @click="toggleDropdown('color', $event)">Kolor</span>
+              <span class="anchor" @click="toggleDropdown('color', $event)">Color</span>
               <ul class="items">
                 <li v-for="option in color" :key="option.value"
                   @click="toggleCheckbox($event, 'color-' + option.value)">
@@ -326,15 +326,15 @@ export default {
               </ul>
             </div>
 
-            <h3>Wybrane kryteria</h3>
-            <p v-if="selectedOptions.length === 0">Brak wybranych</p>
+            <h3>Selected categories</h3>
+            <p v-if="selectedOptions.length === 0">No categories selected</p>
             <section v-else class="selected-tags">
               <TagView v-for="option in selectedOptions" :key="option" :text="option" @delete="removeTag" />
             </section>
           </div>
 
           <div class="right-side no-select">
-            <h3>Poziom dostępu</h3>
+            <h3>Access level</h3>
             <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'access' }" ref="access">
               <span class="anchor" @click="toggleDropdown('access', $event)">{{ selectedAccessLevelText }}</span>
               <ul class="items">
@@ -347,28 +347,28 @@ export default {
           </div>
         </form>
         <span class="controls">
-          <button class="button" @click="prevPage">Powrót</button>
-          <button class="button" @click="publishPost">Publikuj</button>
+          <button class="button" @click="prevPage">Back</button>
+          <button class="button" @click="publishPost">Publish</button>
         </span>
       </section>
 
       <!-- third page of the form -->
       <section v-if="showSuccess" class="post-info">
         <section class="success-message background no-select">
-          <h3>Post jest wysłany</h3>
-          <p v-if="protectedPost" class="advice">Post jest zapisany jako <span class="green-gradient">chroniony</span>,
-            jest dostępny dla
-            ciebie w profilu w
-            zakładce <span class="red-gradient">Prywatne</span>
+          <h3>Post submitted</h3>
+          <p v-if="protectedPost" class="advice">The post is saved as <span class="green-gradient">protected</span> and
+            is available in
+            your profile
+            under the <span class="red-gradient">Private</span> tab.
             <br />
-            Dla wszystkich jest dostępny po prez <a @click="copyLink">Link</a>, <span v-if="isCopied"
-              class="green-gradient">Skopiowane</span><span v-else>kliknij aby skopiować</span>
+            It is available to everyone via <a @click="copyLink">Link</a>, <span v-if="isCopied"
+              class="green-gradient">Copied</span><span class="advice" v-else>click to copy</span>
           </p>
-          <a class="link" @click="this.$router.push('profile/me')">Przejdź do profilu</a>
+          <a class="link" @click="this.$router.push('profile/me')">Go to profile</a>
         </section>
 
         <span>
-          <button class="button" @click="activePage = 1; showSuccess = false">Dodaj kolejny</button>
+          <button class="button" @click="activePage = 1; showSuccess = false">Add another</button>
         </span>
       </section>
     </section>

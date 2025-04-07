@@ -135,28 +135,28 @@ export default {
     <div v-if="isRegularMessage" class="message background" :class="messageClass">
       <span class="images-container" v-if="this.message.imagePaths?.length > 0">
         <img v-for="imagePath in this.message.imagePaths" :key="imagePath" :src="imagePathHandler(imagePath)"
-          @click="openImage(imagePath)" alt="Obrazek" />
+          @click="openImage(imagePath)" alt="Image" />
       </span>
       <p class="message-text" v-html="formattedText(message.textContent)"></p>
     </div>
 
     <!-- Payment request message -->
     <div v-else-if="isPaymentRequest" class="message payment-message background flex-column">
-      <h3>Prośba o płatność</h3>
+      <h3>Payment request</h3>
       <span class="amount-container">
         <p class="amount">{{ formattedAmount(message.amount) }}</p>
         <RubyIcon />
       </span>
       <p class="description">{{ message.description }}</p>
       <div v-if="message.isApproved" class="status approved">
-        Opłacone
+        Paid
       </div>
       <div v-else class="status pending">
         <template v-if="showPayButton">
-          <button @click="handlePayment" class="pay-button">Opłać</button>
+          <button @click="handlePayment" class="pay-button">Pay</button>
         </template>
         <template v-else>
-          Oczekuje na płatność
+          Awaiting payment
         </template>
       </div>
     </div>
@@ -164,23 +164,23 @@ export default {
     <!-- Payment approved message -->
     <div v-else-if="isPaymentApproved" class="message payment-message background flex-column">
       <div class="status approved">
-        <p>Płatność zatwierdzona przez {{ message.approvedBy }}</p>
+        <p>Payment approved by {{ message.approvedBy }}</p>
         <p class="timestamp">{{ formattedDate(message.approvedAt) }}</p>
       </div>
     </div>
 
     <!-- End request message -->
     <div v-else-if="isEndRequest" class="message payment-message background flex-column">
-      <h3>Prośba o zakończenie zlecenia</h3>
+      <h3>End request</h3>
       <div v-if="message.isApproved" class="status approved">
-        Zakończone
+        Ended
       </div>
       <div v-else class="status pending">
         <template v-if="showEndButton">
-          <button @click="handleEndApproval" class="pay-button">Potwierdź zakończenie</button>
+          <button @click="handleEndApproval" class="pay-button">Confirm end</button>
         </template>
         <template v-else>
-          Oczekuje na potwierdzenie
+          Awaiting confirmation
         </template>
       </div>
     </div>
@@ -188,7 +188,7 @@ export default {
     <!-- End approved message -->
     <div v-else-if="isEndApproved" class="message payment-message background flex-column">
       <div class="status approved">
-        <p>Zlecenie zakończone przez {{ message.approvedBy }}</p>
+        <p>Task ended by {{ message.approvedBy }}</p>
         <p class="timestamp">{{ formattedDate(message.approvedAt) }}</p>
       </div>
     </div>
@@ -270,7 +270,6 @@ export default {
   opacity: 0.9;
 }
 
-/* Динамические стили для разного количества изображений */
 .images-container:has(img:only-child) {
   grid-template-columns: 1fr;
 }

@@ -46,7 +46,7 @@ export default {
           this.errorMessage = '';
         } catch (err) {
           if (err.status === 400 && err.data === 'Insufficient funds') {
-            this.errorMessage = 'Nie masz wystarczająco środków na koncie';
+            this.errorMessage = 'You do not have enough funds in your account';
             return;
           }
           this.$router.push(`/error/${err.status}`);
@@ -59,36 +59,30 @@ export default {
 
 <template>
   <main>
-    <h2 class="page-name">Szczegóły subskrypcji</h2>
-    <div v-if="isLoading" class="loading">Ładowanie
+    <h2 class="page-name">Subscription Details</h2>
+    <div v-if="isLoading" class="loading">Loading
       <Spinner class="spinner" />
     </div>
     <section v-else class="subscription background">
       <div class="subscription__info">
-        <h3 class="subscription__title">Stan subskrypcji</h3>
-        <p v-if="subscription.status" class="subscription__description">Dostęp jest <span
-            class="green-gradient">wykupiony</span></p>
-        <p v-else class="subscription__description"><span class="red-gradient">Niema dostępu</span> do płatnej treści
-        </p>
-        <!-- <div class="subscription__info"> 
-        <h3 class="subscription__title">Data ważności</h3>
-        <p class="subscription__description">Brak</p>
-      </div>-->
+        <h3 class="subscription__title">Subscription Status</h3>
+        <p v-if="subscription.status" class="subscription__description">Access is <span
+            class="green-gradient">purchased</span></p>
+        <p v-else class="subscription__description"><span class="red-gradient">No access</span> to paid content</p>
       </div>
-
 
       <div class="subscription__info-row">
         <div class="subscription__info">
-          <h3 class="subscription__title">Cena</h3>
+          <h3 class="subscription__title">Price</h3>
           <p class="subscription__description">
-            Za miesiąc: <span class="blue-gradient">{{ subscription.price }}</span>
+            Per month: <span class="blue-gradient">{{ subscription.price }}</span>
             <RubyIcon />
           </p>
         </div>
         <div class="subscription__button">
-          <button @click="handleSubscription" v-if="subscription.status" class="delete-button button">Anuluj
-            subskrypcję</button>
-          <button @click="handleSubscription" v-else class="accept-button button">Kupuję</button>
+          <button @click="handleSubscription" v-if="subscription.status" class="delete-button button">Cancel
+            Subscription</button>
+          <button @click="handleSubscription" v-else class="accept-button button">Subscribe</button>
         </div>
       </div>
     </section>

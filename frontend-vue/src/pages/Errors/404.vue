@@ -1,6 +1,6 @@
 <template>
   <main>
-    <h2 class="page-name">Błąd 404</h2>
-    <p class="background error-wrap">Strona nie została znaleziona. Sprawdź poprawność wprowadzonego adresu URL.</p>
+    <h2 class="page-name">Error 404</h2>
+    <p class="background error-wrap">Page not found. Please check the correctness of the entered URL.</p>
   </main>
 </template>

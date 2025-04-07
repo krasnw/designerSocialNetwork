@@ -17,7 +17,6 @@ export default {
   methods: {
     checkLoginStatus() {
       this.isLoggedIn = localStorage.getItem('JWT') !== null;
-      // Принудительно вызываем обновление компонента
       this.$forceUpdate();
     },
     goToLogin() {
@@ -48,7 +47,6 @@ export default {
     }
   },
   async mounted() {
-    // Добавляем слушатель для нового события
     window.addEventListener('loginStatusChanged', this.checkLoginStatus);
     window.addEventListener('storage', this.checkLoginStatus);
     await this.loadUserData();
@@ -61,7 +59,6 @@ export default {
     }
   },
   beforeDestroy() {
-    // Удаляем оба слушателя
     window.removeEventListener('loginStatusChanged', this.checkLoginStatus);
     window.removeEventListener('storage', this.checkLoginStatus);
   }
@@ -78,8 +75,8 @@ export default {
       <img :src="user.image" alt="Profile picture" />
     </article>
     <article class="sidebar-profile" v-else>
-      <button @click="goToLogin">Zaloguj się</button>
-      <button @click="goToRegister">Stwórz konto</button>
+      <button @click="goToLogin">Log In</button>
+      <button @click="goToRegister">Sign Up</button>
     </article>
 
   </span>
@@ -106,6 +103,7 @@ export default {
   border: 0.5px solid white;
   padding: 12px 25px;
   color: var(--primery-text-color);
+  width: 100%;
 
   a {
     text-decoration: none;

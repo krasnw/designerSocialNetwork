@@ -78,11 +78,11 @@ export default {
 <template>
   <article class="profile-badges">
     <div class="search-container">
-      <input type="text" class="search" placeholder="Szukaj" v-model="lookingFor" />
+      <input type="text" class="search" placeholder="Search" v-model="lookingFor" />
       <Lupa class="search-icon" />
     </div>
-    <h3>Czaty</h3>
-    <h3 v-if="filteredUsers.length === 0" class="info-message">Brak czatów</h3>
+    <h3>Chats</h3>
+    <h3 v-if="filteredUsers.length === 0" class="info-message">No chats</h3>
     <TransitionGroup name="chat-list">
       <ProfileBadge v-for="user in filteredUsers" :key="user.username" :user="user"
         :isPinned="pinnedChat === user.username" @click="togglePin(user)" />

@@ -157,7 +157,7 @@ export default {
   <main class="conversation">
     <Transition name="fade" mode="out-in">
       <section v-if="!hasSelectedChat" class="conversation-container">
-        <h2 class="default-info no-select">Brak wybranego czatu</h2>
+        <h2 class="default-info no-select">No chat selected</h2>
       </section>
 
       <section v-else class="chat-container">

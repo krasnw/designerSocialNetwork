@@ -48,7 +48,7 @@ export default {
       return this.reportedPostId ? true : false;
     },
     selectedReasonText() {
-      return this.selectedReason ? this.selectedReason.reasonName : 'Wybierz powód';
+      return this.selectedReason ? this.selectedReason.reasonName : 'Select reason';
     }
   },
   methods: {
@@ -101,10 +101,10 @@ export default {
 
 <template>
   <main>
-    <h2 class="page-name">Reklamacja {{ isPostReport ? 'postu' : 'Użytkownika' }}</h2>
+    <h2 class="page-name">Report {{ isPostReport ? 'Post' : 'User' }}</h2>
     <section class="page background">
       <span class="cell">
-        <h3>Wybierz powód:</h3>
+        <h3>Select reason:</h3>
         <div class="dropdown-check-list" :class="{ visible: activeDropdown === 'reason', error: errors.reason }"
           ref="reason">
           <span class="anchor" @click="toggleDropdown('reason', $event)">{{ selectedReasonText }}</span>
@@ -117,12 +117,12 @@ export default {
         </div>
       </span>
       <span class="cell">
-        <h3>Opis:</h3>
+        <h3>Description:</h3>
         <textarea class="reason-description" :class="{ error: errors.description }" rows="5"
-          placeholder="Opisz powód zgłoszenia" v-model="reasonDescription"></textarea>
+          placeholder="Describe the reason for reporting" v-model="reasonDescription"></textarea>
       </span>
       <button class="report-button" @click="report">
-        Zgłoś
+        Report
         <ReportIcon />
       </button>
     </section>

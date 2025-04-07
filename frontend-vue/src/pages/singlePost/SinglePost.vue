@@ -50,9 +50,9 @@ export default {
 
 <template>
   <main>
-    <h2 class="page-name">Post użytkownika <span :class="randomGradientClass" class="text-shadow">{{ username }}</span>
+    <h2 class="page-name">Post by <span :class="randomGradientClass" class="text-shadow">{{ username }}</span>
     </h2>
-    <div v-if="isLoading" class="loading">Ładowanie
+    <div v-if="isLoading" class="loading">Loading
       <Spinner class="spinner" />
     </div>
     <PostView v-else-if="post" :post="post" />

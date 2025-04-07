@@ -217,52 +217,52 @@ export default {
 
 <template>
   <main>
-    <h2 class="page-name">Kupuj rubiny</h2>
+    <h2 class="page-name">Buy Rubies</h2>
     <section class="page background">
       <transition name="fade" mode="out-in">
         <article class="option-section" v-if="page === 1" key="page1">
           <div class="cell">
             <span class="row">
-              <p>Wpisz ile rubinów podrebujesz</p>
+              <p>Enter the number of rubies you need</p>
               <input type="number" v-model="rubiesAmount" min="0" class="no-spinners" />
             </span>
             <transition name="fade">
-              <p v-if="rubiesAmount">Do opłaty zostanie {{ totalAmount }} zł</p>
+              <p v-if="rubiesAmount">The total payment will be {{ totalAmount }} zł</p>
             </transition>
           </div>
           <transition name="fade">
             <div class="cell" v-if="rubiesAmount">
-              <p>Wybierz metodę płatności</p>
+              <p>Select a payment method</p>
               <div class="payment-method">
                 <span class="payment-method__item"
                   :class="{ 'payment-method__item--active': paymentMethod === 'card' || paymentMethod === '' }"
                   @click="selectPayment('card')">
-                  💳 Karta płatnicza
+                  💳 Credit Card
                 </span>
                 <span class="payment-method__item"
                   :class="{ 'payment-method__item--active': paymentMethod === 'blik' || paymentMethod === '' }"
                   @click="selectPayment('blik')">
-                  🏦 Kod blik
+                  🏦 BLIK Code
                 </span>
               </div>
             </div>
           </transition>
           <button @click="page++" class="accept-button button" :disabled="!canProceed">
-            Dalej
+            Next
           </button>
         </article>
 
         <article class="option-section" v-else-if="page === 2 && paymentMethod === 'card'" key="page2card">
           <div class="nav-buttons">
             <button @click="goBack" class="back-button">
-              ← Wróć
+              ← Back
             </button>
             <div class="divider"></div>
-            <h3>Dane płatnicze</h3>
+            <h3>Payment Details</h3>
           </div>
           <div class="row-bank">
             <span>
-              <p>Wprowadź dane karty bankowej</p>
+              <p>Enter your credit card details</p>
               <div class="card">
                 <div class="card__front">
                   <div class="card__chip"></div>
@@ -275,18 +275,18 @@ export default {
                     </div>
                     <div class="card__info">
                       <div class="card__info-item">
-                        <span>Właściciel karty</span>
-                        <input type="text" v-model="cardHolder" placeholder="IMIĘ NAZWISKO" class="card__holder"
+                        <span>Cardholder Name</span>
+                        <input type="text" v-model="cardHolder" placeholder="FIRST LAST" class="card__holder"
                           :class="{ 'error': cardErrors.holder }" @blur="handleCardBlur('holder')" />
                       </div>
                       <div class="card__info-item">
-                        <span>Ważność</span>
+                        <span>Expiration Date</span>
                         <div class="card__date">
                           <input type="text" v-model="cardMonth" placeholder="MM" maxlength="2" class="card__date-part"
                             :class="{ 'error': cardErrors.date }" @input="formatCardMonth"
                             @blur="handleCardBlur('date')" />
                           <span class="card__date-separator">/</span>
-                          <input type="text" v-model="cardYear" ref="yearInput" placeholder="RR" maxlength="2"
+                          <input type="text" v-model="cardYear" ref="yearInput" placeholder="YY" maxlength="2"
                             class="card__date-part" :class="{ 'error': cardErrors.date }" @keydown="handleDateKeyDown"
                             @blur="handleCardBlur('date')" />
                         </div>
@@ -298,24 +298,24 @@ export default {
             </span>
             <span>
               <p class="cvc-hint">
-                Wprowadź kod CVC z tyłu karty
+                Enter the CVC code from the back of the card
               </p>
               <input type="text" v-model="cardCvc" ref="cvcInput" placeholder="CVC" maxlength="3" class="cvc-input"
                 :class="{ 'error': cardErrors.cvc }" @blur="handleCardBlur('cvc')" />
             </span>
           </div>
           <button @click="handlePayment" class="accept-button button" :disabled="!isCardValid">
-            Zapłać
+            Pay
           </button>
         </article>
 
         <article class="option-section" v-else-if="page === 2 && paymentMethod === 'blik'" key="page2blik">
           <div class="nav-buttons">
             <button @click="goBack" class="back-button">
-              ← Wróć
+              ← Back
             </button>
             <div class="divider"></div>
-            <h3>Wprowadź kod BLIK</h3>
+            <h3>Enter BLIK Code</h3>
           </div>
           <div class="blik-input-container">
             <input v-for="(part, index) in blikParts" :key="index" type="text" v-model="blikParts[index]"
@@ -323,15 +323,15 @@ export default {
               @input="handleBlikInput(index, $event)" @keydown="handleBlikKeyDown(index, $event)" />
           </div>
           <button @click="handlePayment" class="accept-button button" :disabled="!isBlikValid">
-            Zapłać
+            Pay
           </button>
         </article>
 
         <article class="option-section" v-else-if="page === 3" key="page3">
-          <h3>Płatność zakończona pomyślnie!</h3>
-          <p>Dziękujemy za zakup. Rubiny zostały dodane do Twojego <span class="blue-gradient"
-              @click="$router.push('/profile/me')">konta</span>.</p>
-          <p @click="page = 1">Kup więcej <span class="green-gradient" style="cursor: pointer;">rubinów</span></p>
+          <h3>Payment Successful!</h3>
+          <p>Thank you for your purchase. Rubies have been added to your <span class="blue-gradient"
+              @click="$router.push('/profile/me')">account</span>.</p>
+          <p @click="page = 1">Buy more <span class="green-gradient" style="cursor: pointer;">rubies</span></p>
         </article>
       </transition>
     </section>

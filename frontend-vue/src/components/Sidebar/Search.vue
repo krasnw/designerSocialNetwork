@@ -11,7 +11,7 @@ export default {
 
 <template>
   <div class="search-container">
-    <input type="text" class="search" placeholder="Szukaj" />
+    <input type="text" class="search" placeholder="Search" />
     <Lupa class="search-icon" />
   </div>
 </template>

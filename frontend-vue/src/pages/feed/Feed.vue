@@ -67,20 +67,20 @@ export default {
 
 <template>
   <main>
-    <h2 class="page-name">Strona główna</h2>
+    <h2 class="page-name">Main page</h2>
     <section class="posts" ref="postsContainer">
       <div v-if="posts.length === 0 && !loading" class="no-posts">
-        Brak dostępnych postów
+        No posts available
       </div>
       <article v-for="post in posts" :key="post.id">
         <PostView :post="post" />
       </article>
       <div ref="sentinel" class="sentinel" style="height: 20px;"></div>
-      <div v-if="loading" class="loading">Ładowanie
+      <div v-if="loading" class="loading">Loading posts
         <Spinner class="spinner" />
       </div>
       <div v-if="!hasMore && posts.length > 0" class="no-more">
-        Nie ma więcej postów
+        No more posts
       </div>
     </section>
   </main>

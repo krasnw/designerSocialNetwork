@@ -71,15 +71,15 @@ export default {
 </script>
 
 <template>
-  <p class="message background" v-if="isAccepted">Zlecenie zostało <span class="green-gradient">zaakceptowane</span>
-    <br>Przejdź do <a @click="goToChat" class="chat-link blue-gradient">czatu</a>
+  <p class="message background" v-if="isAccepted">The task has been <span class="green-gradient">accepted</span>
+    <br>Go to <a @click="goToChat" class="chat-link blue-gradient">chat</a>
   </p>
   <div class="delete-message" v-if="isDeleted">
     <p class="message background">
-      Zlecenie zostało <span class="red-gradient">usunięte</span>
+      The task has been <span class="red-gradient">deleted</span>
     </p>
     <button @click="cancelDelete" class="delete-button button">
-      Cofnij ({{ deleteCountdown }})
+      Undo ({{ deleteCountdown }})
     </button>
   </div>
   <article v-if="!(isAccepted || isDeleted)" class="task background">
@@ -90,14 +90,13 @@ export default {
     </span>
     <p class="task-description">{{ task.description }}</p>
     <span :class="isAllowed ? 'common-control-buttons' : 'warning-control-buttons'">
-      <p v-if="!isAllowed" class="warning">Nie można rozpocząć tego zlecenia, póki<br>jest <span
-          class="red-gradient">nie
-          zamknięte</span> z tym
-        <a @click="goToChat" class="chat-link blue-gradient">użytkownikiem</a>
+      <p v-if="!isAllowed" class="warning">This task cannot be started until<br>it is <span
+          class="red-gradient">closed</span> with this
+        <a @click="goToChat" class="chat-link blue-gradient">user</a>
       </p>
       <span class="control-buttons">
-        <button @click="deleteTask" class="delete-button button">Usuń</button>
-        <button v-if="isAllowed" @click="acceptTask" class="accept-button button">Zatwierdź</button>
+        <button @click="deleteTask" class="delete-button button">Delete</button>
+        <button v-if="isAllowed" @click="acceptTask" class="accept-button button">Accept</button>
       </span>
     </span>
   </article>

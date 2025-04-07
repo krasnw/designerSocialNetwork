@@ -76,12 +76,12 @@ export default {
 
 <template>
   <main>
-    <h2 class="page-name">Ustawienia</h2>
+    <h2 class="page-name">Settings</h2>
     <section class="wrapper">
       <section class="settings background">
-        <h3>Ustawienia widoku</h3>
+        <h3>View Settings</h3>
         <article class="settings-cell">
-          <p>Sidebar domyślnie jest widoczny</p>
+          <p>The sidebar is visible by default</p>
           <label class="switch">
             <input type="checkbox" v-model="sidebarAlwaysOpen" @change="toggleSidebar">
             <span class="slider round"></span>
@@ -89,7 +89,7 @@ export default {
         </article>
 
         <article class="settings-cell">
-          <p>Włączyć strzałki dla przeglądu zdjęć</p>
+          <p>Enable arrows for photo browsing</p>
           <label class="switch">
             <input type="checkbox" v-model="allowArrow" @change="toggleArrow">
             <span class="slider round"></span>
@@ -97,7 +97,7 @@ export default {
         </article>
 
         <article class="settings-cell">
-          <p>Przełączenie pomiędzy zdjęciami za pomocą kółka myszy</p>
+          <p>Switch between photos using the mouse wheel</p>
           <label class="switch">
             <input type="checkbox" v-model="allowWheel" @change="toggleWheel">
             <span class="slider round"></span>
@@ -105,7 +105,7 @@ export default {
         </article>
 
         <article class="settings-cell">
-          <p>Ilość lodowanych postów jednocześnie</p>
+          <p>Number of posts loaded at once</p>
           <label class="number-input">
             <input type="number" min="3" max="15" step="1" v-model="postsPerRequest" @input="validateAndSavePages"
               :style="{ border: isInvalidPages ? '0.5px solid var(--delete-button-border-color)' : '0.5px solid var(--element-border-light-color)' }">
@@ -113,32 +113,32 @@ export default {
         </article>
 
         <article class="settings-cell">
-          <p>Wyczyść pamięć podręczną</p>
-          <button class="button" @click="clearData">Wyczyść</button>
+          <p>Clear cache</p>
+          <button class="button" @click="clearData">Clear</button>
         </article>
       </section>
 
       <section class="settings background" v-if="isLoggedIn()">
-        <h3>Ustawienia konta</h3>
+        <h3>Account Settings</h3>
         <article class="settings-cell">
-          <p>Doładowanie konta walutą wewnętrzną</p>
-          <button class="button" @click="$router.push('/profile/rubies')">Kupuj
+          <p>Recharge account with internal currency</p>
+          <button class="button" @click="$router.push('/profile/rubies')">Buy
             <WhiteRuby />
           </button>
         </article>
         <article class="settings-cell">
-          <p>Zmiana danych użytkownika</p>
-          <button class="button" @click="$router.push('/profile/me/edit')">Przejdź</button>
+          <p>Change user data</p>
+          <button class="button" @click="$router.push('/profile/me/edit')">Go</button>
         </article>
         <article class="settings-cell">
-          <p>Wylogowanie z aktywnego konta</p>
-          <button class="button" @click="logout">Wyloguj się</button>
+          <p>Log out of the active account</p>
+          <button class="button" @click="logout">Log out</button>
         </article>
       </section>
       <section class="settings background" v-else>
-        <h3>Ustawienia konta</h3>
+        <h3>Account Settings</h3>
         <article class="settings-cell">
-          <p>Nie jesteś zalogowany, zaloguj się aby dokonać ustawień swojego konta</p>
+          <p>You are not logged in, log in to configure your account settings</p>
         </article>
       </section>
     </section>

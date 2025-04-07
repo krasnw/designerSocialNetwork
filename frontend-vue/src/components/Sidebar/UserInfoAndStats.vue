@@ -71,7 +71,7 @@ export default {
         rank: Number((userData.rating || userData.ratingPosition) || 0),  //TODO remove ratingPosition when backend is updated
         tasks: Number(userData.completedTasks || 0),
         likes: Number(userData.totalLikes || 0),
-        description: userData.description || 'Użytkownik nie dodał jeszcze opisu'
+        description: userData.description || 'User has not added a description yet'
       };
     } catch (error) {
       if (error.message === "404") {
@@ -143,13 +143,13 @@ export default {
       <img class="profile-picture no-select" :src="imagePathHandler(user.image)" alt="Profile picture"
         onmousedown='return false;' ondragstart='return false;' />
       <div class="stat-info">
-        <h3>Statystyka</h3>
+        <h3>Statistics</h3>
         <div class="stats-container">
           <span class="stat-row">
             <span class="stats-icon">
               <RankIcon />
             </span>
-            <span class="stat-label">Miejsce</span>
+            <span class="stat-label">Rank</span>
             <span class="stat-number">{{ formatNumber(user.rank) }}</span>
           </span>
           <span class="stat-row rubies-link"
@@ -157,54 +157,56 @@ export default {
             <span class="stats-icon">
               <RubyIcon />
             </span>
-            <span class="stat-label">Rubiny</span>
+            <span class="stat-label">Rubies</span>
             <span class="stat-number">{{ formatNumber(user.rubies) }}</span>
           </span>
           <span class="stat-row">
             <span class="stats-icon">
               <TasksIcon />
             </span>
-            <span class="stat-label">Zlecenia</span>
+            <span class="stat-label">Tasks</span>
             <span class="stat-number">{{ formatNumber(user.tasks) }}</span>
           </span>
           <span class="stat-row">
             <span class="stats-icon">
               <ProfileLike />
             </span>
-            <span class="stat-label">Lajki</span>
+            <span class="stat-label">Likes</span>
             <span class="stat-number">{{ formatNumber(user.likes) }}</span>
           </span>
         </div>
       </div>
     </article>
     <article class="profile-description">
-      <h3>Opis</h3>
+      <h3>Description</h3>
       <div class="divider" />
       <p class="text-description" v-html="formattedText(user.description)"></p>
     </article>
     <button class="main-button subscribe" v-if="page === 'subscription'"
       @click="$router.push(`/${user.username}/portfolio`)">
-      Zobacz portfolio
+      View portfolio
       <PortfolioIcon />
     </button>
     <button class="main-button subscribe"
       v-else-if="page !== 'myProfile' && page !== 'editProfile' && page !== 'buyRubies'"
       @click="$router.push(`/${user.username}/subscription`)">
+      <!-- If user is not subscribed -->
       <span v-if="!user.isSubscribedTo">
-        Wykup dostęp
+        Buy Subscription
       </span>
+      <!-- If user is subscribed -->
       <span v-else>
-        Zarządzaj subskrypcją
+        Manage Subscription
       </span>
       <WhiteRuby />
     </button>
     <span class="profile-buttons">
-      <button class="main-button" v-if="page === 'myProfile' || page === 'buyRubies'" @click="editPath">Edytuj profil
+      <button class="main-button" v-if="page === 'myProfile' || page === 'buyRubies'" @click="editPath">Edit profile
         <PenIcon />
       </button>
-      <button class="main-button" v-else-if="page === 'editProfile'" @click="$router.go(-1)">Powrót ↩︎
+      <button class="main-button" v-else-if="page === 'editProfile'" @click="$router.go(-1)">Back ↩︎
       </button>
-      <button class="main-button" v-else @click="requestModal">Złóż zlecenie
+      <button class="main-button" v-else @click="requestModal">Request task
         <PenIcon />
       </button>
       <button class="copy-button" @click="copyLink">

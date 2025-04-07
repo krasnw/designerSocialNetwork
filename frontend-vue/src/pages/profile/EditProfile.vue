@@ -53,14 +53,14 @@ export default {
     },
     newPasswordError() {
       if (!this.newPasswordFieldTouched || this.isNewPasswordValid) return '';
-      return 'Hasło musi zawierać minimum 8 znaków, jedną wielką literę, jedną małą literę i jedną cyfrę';
+      return 'Password must contain at least 8 characters, one uppercase letter, one lowercase letter, and one digit';
     },
     repeatPasswordError() {
       if (!this.repeatPasswordFieldTouched || this.isRepeatPasswordValid) return '';
-      return 'Hasła nie są identyczne';
+      return 'Passwords do not match';
     },
     currentPasswordError() {
-      return !this.isPasswordValid ? 'Wprowadź hasło' : '';
+      return !this.isPasswordValid ? 'Enter your current password' : '';
     },
     isEmailValid() {
       if (!this.sensitiveForm.email) return true;
@@ -69,7 +69,7 @@ export default {
     },
     emailError() {
       if (!this.emailFieldTouched || this.isEmailValid) return '';
-      return 'Wprowadź poprawny adres email';
+      return 'Enter a valid email address';
     },
     isPhoneValid() {
       if (!this.sensitiveForm.phoneNumber) return true;
@@ -79,7 +79,7 @@ export default {
     },
     phoneError() {
       if (!this.phoneFieldTouched || this.isPhoneValid) return '';
-      return 'Numer telefonu powinien być w formacie: +48000000000';
+      return 'Phone number should be in the format: +48000000000';
     },
     hasFormChanges() {
       return this.sensitiveForm.username ||
@@ -241,7 +241,7 @@ export default {
         this.showSuccess = true;
         this.hideSuccessMessage();
       } catch (error) {
-        this.errors = error.response?.data?.errors || ['Wystąpił błąd podczas aktualizacji danych'];
+        this.errors = error.response?.data?.errors || ['An error occurred while updating the data'];
       } finally {
         this.processing = false;
       }
@@ -253,28 +253,28 @@ export default {
 
 <template>
   <main>
-    <h2 class="page-name">Edytuj swoją stronę</h2>
+    <h2 class="page-name">Edit Your Page</h2>
     <div v-if="showSuccess" class="success-message background">
-      Dane zostały zaktualizowane
+      Data has been updated
     </div>
     <form class="form background" autocomplete="off" @submit.prevent="basicFormSubmit">
-      <h2>Podstawowe informacje</h2>
+      <h2>Basic Information</h2>
       <div class="columns">
         <div class="form-group">
-          <label for="firstName">Imię</label>
+          <label for="firstName">First Name</label>
           <input type="text" id="firstName" v-model="basicForm.firstName" autocomplete="new-password" />
         </div>
         <div class="form-group">
-          <label for="lastName">Nazwisko</label>
+          <label for="lastName">Last Name</label>
           <input type="text" id="lastName" v-model="basicForm.lastName" />
         </div>
       </div>
       <div class="form-group">
-        <label for="description">Opis</label>
+        <label for="description">Description</label>
         <textarea id="description" v-model="basicForm.description"></textarea>
       </div>
       <div class="form-group">
-        <label for="profileImage">Zdjęcie profilowe</label>
+        <label for="profileImage">Profile Picture</label>
         <div class="file-upload" @click="triggerFileInput" @dragenter="onDragEnter" @dragleave="onDragLeave"
           @dragover.prevent @drop="onDrop" :class="{ 'dragging': isDragging }">
           <input type="file" multiple accept="image/*" class="hidden-input" ref="fileInput"
@@ -285,38 +285,38 @@ export default {
           </div>
           <div v-else class="empty-file-upload">
             <span class="icon">+</span>
-            <h4 class="text" :class="{ 'error': errors.images }">Dodaj obrazek lub przeciągnij pliki tutaj</h4>
+            <h4 class="text" :class="{ 'error': errors.images }">Add an image or drag files here</h4>
           </div>
         </div>
       </div>
-      <button class="accept button" type="submit">Zapisz</button>
+      <button class="accept button" type="submit">Save</button>
     </form>
 
     <form class="form background" autocomplete="off" @submit.prevent="sensitiveFormSubmit">
-      <h2>Dane osobowe</h2>
-      <p>Wypełnij tylko te dane które chcesz zmienić</p>
-      <h3>Zmiana hasła</h3>
+      <h2>Personal Data</h2>
+      <p>Fill in only the data you want to change</p>
+      <h3>Change Password</h3>
       <div class="form-group">
-        <label for="newPassword">Nowe hasło</label>
+        <label for="newPassword">New Password</label>
         <input type="password" id="newPassword" v-model="sensitiveForm.newPassword" autocomplete="new-password"
           :class="{ 'invalid': newPasswordFieldTouched && !isNewPasswordValid }" @blur="validateNewPassword" />
         <span class="error-message" v-if="newPasswordError">{{ newPasswordError }}</span>
       </div>
       <div class="form-group">
-        <label for="newPasswordRepeat">Powtórz nowe hasło</label>
+        <label for="newPasswordRepeat">Repeat New Password</label>
         <input type="password" id="newPasswordRepeat" v-model="sensitiveForm.newPasswordRepeat"
           autocomplete="new-password" :class="{ 'invalid': repeatPasswordFieldTouched && !isRepeatPasswordValid }"
           @blur="validateRepeatPassword" />
         <span class="error-message" v-if="repeatPasswordError">{{ repeatPasswordError }}</span>
       </div>
-      <h3>Dane użytkownika</h3>
+      <h3>User Data</h3>
       <div class="form-group">
-        <label for="username">Nazwa użytkownika</label>
+        <label for="username">Username</label>
         <input type="text" id="username" v-model="sensitiveForm.username" autocomplete="off"
           :placeholder="userData.username" />
       </div>
       <div class="form-group">
-        <label for="phoneNumber">Numer telefonu</label>
+        <label for="phoneNumber">Phone Number</label>
         <input type="text" id="phoneNumber" v-model="sensitiveForm.phoneNumber" autocomplete="off"
           :placeholder="userData.phoneNumber" :class="{ 'invalid': phoneFieldTouched && !isPhoneValid }"
           @blur="validatePhone" />
@@ -329,18 +329,18 @@ export default {
         <span class="error-message" v-if="emailError">{{ emailError }}</span>
       </div>
       <div class="form-group">
-        <label for="accessFee">Kwota dostępu</label>
+        <label for="accessFee">Access Fee</label>
         <input type="number" id="accessFee" v-model="sensitiveForm.accessFee" :placeholder="userData.accessFee" />
       </div>
 
       <div class="form-group">
-        <label for="password">Wprowadź hasło obecne</label>
+        <label for="password">Enter Current Password</label>
         <input type="password" id="password" v-model="sensitiveForm.password" autocomplete="new-password"
           :class="{ 'invalid': !isPasswordValid }" @blur="validatePassword" />
         <span class="error-message" v-if="currentPasswordError">{{ currentPasswordError }}</span>
       </div>
 
-      <button class="accept button" type="submit">Zapisz</button>
+      <button class="accept button" type="submit">Save</button>
     </form>
 
   </main>

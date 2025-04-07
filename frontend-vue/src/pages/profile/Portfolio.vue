@@ -82,7 +82,7 @@ export default {
       <Spinner v-if="isLoading" class="spinner" />
     </div>
     <div v-else-if="userPosts.length === 0" class="no-posts">
-      Brak dostępnych postów
+      No posts available
     </div>
   </main>
 </template>

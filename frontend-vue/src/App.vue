@@ -11,7 +11,7 @@ export default {
   data() {
     return {
       isSidebarHidden: JSON.parse(localStorage.getItem('sidebarHidden') || 'false'),
-      routerViewKey: 0 // добавляем новое свойство
+      routerViewKey: 0
     }
   },
   methods: {
