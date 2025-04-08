@@ -81,8 +81,28 @@ DATABASE_PASSWORD=api_user_password
 3. Run the following command.
 
 ```bash
-docker-compose up
+docker-compose up -d --build
 ```
+
+4. Open your browser and navigate to:
+
+   - Frontend client: [http://localhost:8084](http://localhost:8084)
+   - Admin panel: [http://localhost:8085](http://localhost:8085)
+
+### 🎬 About demo
+
+You can use the following credentials to log in.
+
+**Users**  
+username: `JohnSmith`  
+password: `pass1`
+
+username: `EthanParker`  
+password: `pass3`
+
+**Admin**  
+username: `Administrator`  
+password: `pass2`
 
 ### 🔌 Ports
 
@@ -91,3 +111,4 @@ docker-compose up
 - Database: 5433
 - Frontend: 8084
 - Frontend Admin: 8085
+
