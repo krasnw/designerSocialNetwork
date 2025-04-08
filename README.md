@@ -12,26 +12,27 @@ A modern web platform for UI/UX designers to showcase their work, interact with 
 
 - 📸 Portfolio Management – Easily create and manage a personal portfolio to showcase design projects.
 - 💬 Real-time Chat – Communicate with clients and other designers instantly via built-in messaging.
-- 🪙 In-app Currency System – A built-in currency for premium features and user transactions.
+- 💎 In-app Currency System – A built-in currency for premium features and user transactions.
 - 🔒 Protected & Private Posts – Control the visibility of posts with advanced privacy settings.
 - 👥 User Subscriptions – Follow and subscribe to designers for updates and exclusive content.
 - 📱 Responsive Design – Optimized for seamless use across different devices and screen sizes.
 
 ## 🎥 Demo
 
-### Portfolio View
-<img 
-  src="picturesForReadMe/portfolio-demo.png" 
-  alt="Portfolio Demo" 
-  width="600"
-/>
+### Main Page
+https://github.com/user-attachments/assets/93fc7792-a46a-4ca2-859c-ba01f4fe01f0
+
+### Users portfolio
+https://github.com/user-attachments/assets/c79aced5-fd9f-43e5-830f-0196f7b4ebc9
 
 ### Post Upload
-<img 
-  src="picturesForReadMe/upload-demo.png" 
-  alt="Portfolio Demo" 
-  width="600"
-/>
+https://github.com/user-attachments/assets/41f02ada-d5d0-4d10-ba69-5de85fa2865c
+
+### Chat ant Tasks
+https://github.com/user-attachments/assets/0e2b130f-5c13-4dbd-9166-477d7a4a0c39
+
+If demo is not working, you can find it in `picturesForReadMe` folder
+
 
 
 <!--
