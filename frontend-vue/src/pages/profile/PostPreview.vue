@@ -36,9 +36,6 @@ export default {
         return (likes / 1000).toFixed(1).replace('.', ',') + ' K';
       }
       return likes;
-    },
-    imagePath() {
-      return imageDirectory + this.post.mainImageFilePath;
     }
   },
   methods: {
@@ -49,6 +46,9 @@ export default {
       });
       this.fullPostVisible = true;
       await console.log(this.fullPost);
+    },
+    imagePath() {
+      return imageDirectory + this.post.mainImageFilePath;
     },
     hidePost() {
       this.fullPostVisible = false;
@@ -74,7 +74,7 @@ export default {
 <template>
   <section class="post-wrapper">
     <article v-if="!fullPostVisible" class="post-preview background" @click="showPost">
-      <img class="post-preview-img" :src="imagePath" loading="lazy" alt="post.title" onmousedown='return false;'
+      <img class="post-preview-img" :src="imagePath()" loading="lazy" alt="post.title" onmousedown='return false;'
         ondragstart='return false;'>
       <span class="post-preview-info">
         <h4 class="post-preview-title">{{ post.title }}</h4>

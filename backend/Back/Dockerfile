@@ -18,5 +18,9 @@ RUN dotnet publish "Back.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseA
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+
+RUN mkdir -p wwwroot/images
+COPY images/ wwwroot/images/
+
 ENV ASPNETCORE_ENVIRONMENT=Development
 ENTRYPOINT ["dotnet", "Back.dll"]

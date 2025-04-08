@@ -22,12 +22,12 @@ export default {
   watch: {
     selectedReason() {
       this.errors.reason = false;
-      if (this.selectedReason?.reasonName !== 'Inne') {
+      if (this.selectedReason?.reasonName !== 'Other') {
         this.errors.description = false;
       }
     },
     reasonDescription() {
-      if (this.selectedReason?.reasonName === 'Inne') {
+      if (this.selectedReason?.reasonName === 'Other') {
         this.errors.description = false;
       }
     }

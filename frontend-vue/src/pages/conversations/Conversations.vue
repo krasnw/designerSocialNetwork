@@ -193,7 +193,7 @@ export default {
             <span class="text-edit-panel">
               <ClipIcon @click="toggleMenu" class="icon" :class="{ 'rotated': isMenuOpen }"
                 v-if="!this.$route.query.isDisabled" />
-              <textarea v-model="message" placeholder="Napisz wiadomość" rows="1"
+              <textarea v-model="message" placeholder="Write a message" rows="1"
                 @keydown.enter="handleEnterPress($event)" @input="adjustTextareaHeight($event)"></textarea>
               <input type="file" ref="fileInput" accept="image/*" style="display: none" @change="handleFileSelect">
             </span>
@@ -208,21 +208,21 @@ export default {
     <Transition name="modal">
       <div v-if="isPaymentModalOpen" class="modal-overlay">
         <div class="modal background">
-          <h3>Zaproś opłatę</h3>
+          <h3>Request Payment</h3>
           <div class="modal-content">
             <div class="input-group">
-              <input type="number" v-model="amount" placeholder="Kwota" min="0" step="0.01" required>
+              <input type="number" v-model="amount" placeholder="Amount" min="0" step="1" required>
             </div>
             <div class="input-group">
-              <input type="text" v-model="paymentDescription" placeholder="Opis płatności" required>
+              <input type="text" v-model="paymentDescription" placeholder="Payment Description" required>
             </div>
           </div>
           <div class="modal-actions">
             <button @click="isPaymentModalOpen = false" class="cancel-button">
-              Anuluj
+              Cancel
             </button>
             <button @click="handleSendPayment" class="submit-button" :disabled="!amount || !paymentDescription">
-              Wyślij
+              Send
             </button>
           </div>
         </div>
@@ -232,17 +232,17 @@ export default {
     <Transition name="modal">
       <div v-if="isEndChatModalOpen" class="modal-overlay">
         <div class="modal background">
-          <h3>Potwierdź zakończenie</h3>
+          <h3>Confirm End Chat</h3>
           <div class="modal-content">
-            <p>Czy na pewno chcesz zakończyć to zlecenie?</p>
-            <p class="warning-text">Ta akcja jest nieodwracalna.</p>
+            <p>Are you sure you want to end this chat?</p>
+            <p class="warning-text">This action cannot be undone.</p>
           </div>
           <div class="modal-actions">
             <button @click="isEndChatModalOpen = false" class="cancel-button">
-              Anuluj
+              Cancel
             </button>
             <button @click="handleEndChat" class="submit-button danger">
-              Zakończ
+              End Chat
             </button>
           </div>
         </div>
